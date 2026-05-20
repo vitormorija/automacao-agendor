@@ -126,16 +126,42 @@ export default function ConfigPanel() {
         </Field>
       </Section>
 
-      {/* Email do administrador */}
-      <Section title="Administrador">
-        <Field label="Email do administrador" help="Recebe cópia de todas as notificações">
-          <input
-            type="email"
+      {/* Email dos administradores */}
+      <Section title="Administradores">
+        <Field
+          label="Emails dos administradores"
+          help="Recebem o resumo semanal toda sexta às 11h. Para mais de um, separe por vírgula."
+        >
+          <textarea
+            rows={3}
             value={config.admin_email || ''}
             onChange={e => handleChange('admin_email', e.target.value)}
-            placeholder="admin@suaempresa.com.br"
-            className="input w-full"
+            placeholder="admin1@empresa.com.br, admin2@empresa.com.br"
+            className="input w-full resize-none"
           />
+          {config.admin_email && (
+            <div className="mt-1.5 flex flex-wrap gap-1">
+              {config.admin_email.split(',').map(e => e.trim()).filter(Boolean).map((email, i) => (
+                <span key={i} className="bg-blue-50 text-blue-700 text-xs px-2 py-0.5 rounded-full border border-blue-200">
+                  {email}
+                </span>
+              ))}
+            </div>
+          )}
+        </Field>
+
+        <Field label="Notificar o criador do card" help="Se ativado, quem criou o negócio também recebe o email (além do responsável)">
+          <label className="flex items-center gap-2 cursor-pointer">
+            <div
+              onClick={() => handleChange('notify_author', config.notify_author === 'true' ? 'false' : 'true')}
+              className={`relative w-11 h-6 rounded-full transition-colors cursor-pointer ${config.notify_author !== 'false' ? 'bg-blue-600' : 'bg-gray-300'}`}
+            >
+              <span className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${config.notify_author !== 'false' ? 'translate-x-6' : 'translate-x-1'}`} />
+            </div>
+            <span className="text-sm text-gray-700">
+              {config.notify_author !== 'false' ? 'Ativado' : 'Desativado'}
+            </span>
+          </label>
         </Field>
       </Section>
 

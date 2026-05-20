@@ -14,7 +14,7 @@ router.get('/', (req, res) => {
 
 // PUT /api/config
 router.put('/', (req, res) => {
-  const allowed = ['stale_days', 'admin_email', 'smtp_host', 'smtp_port', 'smtp_user', 'smtp_pass', 'smtp_from', 'cron_schedule', 'notifications_enabled'];
+  const allowed = ['stale_days', 'admin_email', 'notify_author', 'smtp_host', 'smtp_port', 'smtp_user', 'smtp_pass', 'smtp_from', 'cron_schedule', 'notifications_enabled'];
   for (const key of allowed) {
     if (req.body[key] !== undefined && req.body[key] !== '••••••••') {
       setConfig(key, req.body[key]);
