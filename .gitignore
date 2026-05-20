@@ -1,5 +1,39 @@
+# Dependências
 node_modules/
+
+# Variáveis de ambiente (NUNCA subir)
 .env
+.env.*
+
+# Banco de dados (dados locais)
 *.db
+*.db-journal
+
+# Build
 dist/
+
+# Sistema
 .DS_Store
+Thumbs.db
+
+# Arquivos gerados (apresentações, docs)
+*.pptx
+*.pptx.bak
+*.docx
+*.pdf
+~$*
+
+# Screenshots e arquivos temporários
+slides_screenshots/
+unpacked/
+capture_screenshots.py
+make_pptx.js
+make_slides.js
+make_docx.js
+
+# Logs
+*.log
+/tmp/
+
+# Claude
+.claude/settings.local.json
