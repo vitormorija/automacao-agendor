@@ -35,5 +35,5 @@ make_docx.js
 *.log
 /tmp/
 
-# Claude
-.claude/settings.local.json
+# Claude (configs locais com tokens)
+.claude/
