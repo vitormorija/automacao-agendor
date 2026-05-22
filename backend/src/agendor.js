@@ -48,9 +48,10 @@ const EXCLUDED_CATEGORIES = ['Inativo (sem resposta)', 'Parceiro', 'Fornecedor']
 const NEGOCIO_CATEGORIES = ['Cliente', 'Cliente Ouro', 'Cliente Bronze'];
 const EXCLUDED_OWNERS = ['Maria Lobato'];
 
-// Etapas (stages) que indicam que o deal foi encerrado/congelado
-// mesmo que o status geral ainda conste como "Em andamento" no Agendor
-const EXCLUDED_STAGES = ['perdido', 'congelado', 'ganho'];
+// Prefixos/palavras que indicam que o deal foi encerrado/congelado.
+// Usamos correspondência parcial para cobrir variações de gênero e composições:
+// perdido, perdida, oportunidade perdida, ganho, ganha, congelado, congelada, etc.
+const EXCLUDED_STAGE_WORDS = ['perd', 'ganh', 'congelad', 'suspenso', 'suspend', 'arquivad', 'encerrad', 'cancelad'];
 
 function getDealType(orgCategory) {
   if (!orgCategory || orgCategory === 'Lead') return 'Lead';
@@ -119,8 +120,12 @@ async function getStaleDeals(staleDays = 15) {
     if (EXCLUDED_OWNERS.includes(deal.owner?.name)) continue;
 
     // Exclui deals cuja etapa indica encerramento/congelamento
-    const stageName = deal.dealStage?.name?.toLowerCase() || '';
-    if (EXCLUDED_STAGES.some(s => stageName.includes(s))) continue;
+    // Verifica também o status direto do deal (deal_status_id: 2=Ganho, 3=Perdido, 4=Congelado)
+    const dealStatusId = deal.dealStatus?.id || deal.status?.id || null;
+    if (dealStatusId && dealStatusId !== 1) continue;
+
+    const stageName = (deal.dealStage?.name || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+    if (EXCLUDED_STAGE_WORDS.some(w => stageName.includes(w))) continue;
 
     allDeals.push({
       id: deal.id,
