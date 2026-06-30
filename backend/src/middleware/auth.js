@@ -1,5 +1,5 @@
 const jwt = require('jsonwebtoken');
-const JWT_SECRET = process.env.JWT_SECRET || 'agendor-secret-key';
+const { JWT_SECRET } = require('../secret');
 
 // Rotas públicas que não precisam de autenticação
 const PUBLIC_PATHS = [
