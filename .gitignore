@@ -12,6 +12,14 @@ node_modules/
 # Build
 dist/
 
+# Exports e dados de cliente (NUNCA versionar — contêm nomes, e-mails e dados reais do CRM)
+/data/
+*.csv
+*.xlsx
+*.xls
+empresas_*.txt
+relatorio_*.html
+
 # Sistema
 .DS_Store
 Thumbs.db
