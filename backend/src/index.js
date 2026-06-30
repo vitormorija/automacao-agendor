@@ -35,7 +35,9 @@ const logDir = path.join(__dirname, '../../logs');
 if (!fs.existsSync(logDir)) fs.mkdirSync(logDir, { recursive: true });
 
 // Log em arquivo (produção) + console (desenvolvimento)
+// Streams abertos UMA vez (evita leak de file descriptors sob carga).
 const accessLogStream = fs.createWriteStream(path.join(logDir, 'access.log'), { flags: 'a' });
+const errorLogStream = fs.createWriteStream(path.join(logDir, 'error.log'), { flags: 'a' });
 app.use(morgan('combined', { stream: accessLogStream }));
 if (process.env.NODE_ENV !== 'production') {
   app.use(morgan('dev'));
@@ -52,15 +54,6 @@ app.use('/api/track', require('./routes/track'));
 // ── Health check ─────────────────────────────────────────────────
 app.get('/api/health', (req, res) => {
   res.json({ ok: true, time: new Date().toISOString(), env: process.env.NODE_ENV || 'development' });
-});
-
-// ── Screenshot interno ───────────────────────────────────────────
-app.post('/api/save-screenshot', express.json({ limit: '20mb' }), (req, res) => {
-  const { name, data } = req.body;
-  const dir = path.join(__dirname, '../../slides_screenshots');
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-  fs.writeFileSync(path.join(dir, `${name}.png`), Buffer.from(data, 'base64'));
-  res.json({ ok: true, path: path.join(dir, `${name}.png`) });
 });
 
 // ── Rotas protegidas ─────────────────────────────────────────────
@@ -82,17 +75,42 @@ if (process.env.NODE_ENV === 'production' && fs.existsSync(frontendDist)) {
 
 // ── Tratamento de erros global ───────────────────────────────────
 app.use((err, req, res, next) => {
-  const errorLogStream = fs.createWriteStream(path.join(logDir, 'error.log'), { flags: 'a' });
-  const msg = `[${new Date().toISOString()}] ${err.message}\n${err.stack}\n`;
+  const msg = `[${new Date().toISOString()}] ${req.method} ${req.path} — ${err.message}\n${err.stack}\n`;
   errorLogStream.write(msg);
   if (process.env.NODE_ENV !== 'production') console.error(err);
-  res.status(err.status || 500).json({ error: err.message || 'Erro interno do servidor' });
+
+  // Em produção não vaza detalhes internos (stack/mensagem) ao cliente.
+  const status = err.status || 500;
+  const clientMessage = process.env.NODE_ENV === 'production'
+    ? 'Erro interno do servidor.'
+    : (err.message || 'Erro interno do servidor.');
+  res.status(status).json({ error: clientMessage });
 });
+
+// ── Validação de BASE_URL para links de email ───────────────────
+function checkBaseUrl() {
+  const raw = (process.env.BASE_URL || '').trim();
+  if (!raw) {
+    console.log('ℹ️  BASE_URL não configurado — botões nos emails apontarão direto para o Agendor (sem tracking de cliques).');
+    return;
+  }
+  try {
+    const host = new URL(raw).hostname.toLowerCase();
+    if (host === 'localhost' || host === '127.0.0.1' || host === '0.0.0.0' || host.endsWith('.local')) {
+      console.warn(`⚠️  BASE_URL=${raw} aponta para localhost — botões nos emails NÃO funcionariam em outras máquinas. Usando link direto para o Agendor.`);
+    } else {
+      console.log(`🔗 BASE_URL=${raw} — botões nos emails usarão tracking de cliques.`);
+    }
+  } catch (_) {
+    console.warn(`⚠️  BASE_URL=${raw} inválido — botões nos emails usarão link direto para o Agendor.`);
+  }
+}
 
 // ── Inicia servidor ──────────────────────────────────────────────
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
   console.log(`🚀 Backend rodando em http://localhost:${PORT} [${process.env.NODE_ENV || 'development'}]`);
+  checkBaseUrl();
   const { scheduleTask } = require('./scheduler');
   scheduleTask();
 });

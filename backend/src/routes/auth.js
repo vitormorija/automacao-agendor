@@ -10,10 +10,24 @@ const {
   logLogin, getLoginLogs,
 } = require('../db');
 const { sendResetPasswordEmail } = require('../emailer');
+const { JWT_SECRET } = require('../secret');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'agendor-secret-key';
 const TOKEN_EXPIRY = '8h';
 const BCRYPT_ROUNDS = 10;
+
+// Usuários autorizados a gerenciar outros usuários (criar/listar/excluir/ver logs).
+// Lista de e-mails separada por vírgula em ADMIN_USERS. Se vazia, qualquer
+// usuário autenticado é tratado como admin (comportamento legado) — defina
+// ADMIN_USERS em produção para restringir.
+const ADMIN_USERS = (process.env.ADMIN_USERS || '')
+  .split(',').map(u => u.trim().toLowerCase()).filter(Boolean);
+
+function requireAdmin(req, res, next) {
+  if (!ADMIN_USERS.length) return next(); // não configurado → não restringe
+  const username = (req.user?.username || '').toLowerCase();
+  if (ADMIN_USERS.includes(username)) return next();
+  return res.status(403).json({ ok: false, message: 'Acesso restrito a administradores.' });
+}
 
 // ── Rate limiting (bloqueio por IP após 5 tentativas) ────────────
 const loginAttempts = new Map(); // ip → { count, blockedUntil }
@@ -51,30 +65,23 @@ function clearAttempts(ip) {
   loginAttempts.delete(ip);
 }
 
-// ── Garante usuários iniciais ────────────────────────────────────
+// ── Garante usuário administrador inicial ────────────────────────
+// Em vez de credenciais hardcoded no código, o usuário inicial é semeado a
+// partir de variáveis de ambiente (SEED_ADMIN_EMAIL / SEED_ADMIN_PASSWORD) e
+// somente quando NÃO existe nenhum usuário cadastrado. Após o primeiro boot,
+// gerencie usuários pela própria aplicação.
 async function ensureDefaultUsers() {
-  const users = [
-    { username: 'patricia.maricato@cadmus.com.br', password: 'cadmus2026' },
-    { username: 'renato.enachev@cadmus.com.br',    password: 'cadmus2026' },
-  ];
+  const seedEmail = (process.env.SEED_ADMIN_EMAIL || '').trim();
+  const seedPassword = process.env.SEED_ADMIN_PASSWORD || '';
 
-  for (const u of users) {
-    const existing = getUser(u.username);
-    if (!existing) {
-      const hash = await bcrypt.hash(u.password, BCRYPT_ROUNDS);
-      createUser(u.username, hash);
-      console.log(`[Auth] Usuário criado: ${u.username}`);
-    } else if (!existing.password.startsWith('$2')) {
-      // Migra senha em texto puro para hash
-      const hash = await bcrypt.hash(existing.password, BCRYPT_ROUNDS);
-      updateUserPassword(u.username, hash);
-      console.log(`[Auth] Senha migrada para hash: ${u.username}`);
-    }
+  if (seedEmail && seedPassword && listUsers().length === 0) {
+    const hash = await bcrypt.hash(seedPassword, BCRYPT_ROUNDS);
+    createUser(seedEmail, hash);
+    console.log(`[Auth] Usuário administrador inicial criado: ${seedEmail}`);
   }
 
-  // Migra todos os outros usuários sem hash
-  const all = listUsers();
-  for (const u of all) {
+  // Migra senhas legadas em texto puro para hash bcrypt (idempotente).
+  for (const u of listUsers()) {
     const full = getUser(u.username);
     if (full && !full.password.startsWith('$2')) {
       const hash = await bcrypt.hash(full.password, BCRYPT_ROUNDS);
@@ -247,12 +254,12 @@ router.post('/reset-password', async (req, res) => {
 });
 
 // ── GET /api/auth/users ──────────────────────────────────────────
-router.get('/users', (req, res) => {
+router.get('/users', requireAdmin, (req, res) => {
   res.json(listUsers());
 });
 
 // ── POST /api/auth/users ─────────────────────────────────────────
-router.post('/users', async (req, res) => {
+router.post('/users', requireAdmin, async (req, res) => {
   const { username, password } = req.body;
   if (!username || !password) {
     return res.status(400).json({ ok: false, message: 'Usuário e senha são obrigatórios.' });
@@ -267,13 +274,16 @@ router.post('/users', async (req, res) => {
 });
 
 // ── DELETE /api/auth/users/:username ────────────────────────────
-router.delete('/users/:username', (req, res) => {
+router.delete('/users/:username', requireAdmin, (req, res) => {
+  if (req.params.username === req.user?.username) {
+    return res.status(400).json({ ok: false, message: 'Você não pode excluir o próprio usuário.' });
+  }
   deleteUser(req.params.username);
   res.json({ ok: true });
 });
 
 // ── GET /api/auth/logs ───────────────────────────────────────────
-router.get('/logs', (req, res) => {
+router.get('/logs', requireAdmin, (req, res) => {
   res.json(getLoginLogs(100));
 });
 
