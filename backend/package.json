@@ -2,6 +2,9 @@
   "name": "agendor-automation-backend",
   "version": "1.0.0",
   "type": "commonjs",
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "start": "node src/index.js",
     "dev": "nodemon src/index.js"
@@ -11,7 +14,6 @@
     "bcryptjs": "^3.0.3",
     "better-sqlite3": "^9.6.0",
     "cors": "^2.8.5",
-    "docx": "^9.6.1",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
     "helmet": "^8.1.0",
