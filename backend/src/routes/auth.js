@@ -11,6 +11,7 @@ const {
 } = require('../db');
 const { sendResetPasswordEmail } = require('../emailer');
 const { JWT_SECRET } = require('../secret');
+const logger = require('../logger');
 
 const TOKEN_EXPIRY = '8h';
 const BCRYPT_ROUNDS = 10;
@@ -77,7 +78,7 @@ async function ensureDefaultUsers() {
   if (seedEmail && seedPassword && listUsers().length === 0) {
     const hash = await bcrypt.hash(seedPassword, BCRYPT_ROUNDS);
     createUser(seedEmail, hash);
-    console.log(`[Auth] Usuário administrador inicial criado: ${seedEmail}`);
+    logger.info(`[Auth] Usuário administrador inicial criado: ${seedEmail}`);
   }
 
   // Migra senhas legadas em texto puro para hash bcrypt (idempotente).
@@ -86,7 +87,7 @@ async function ensureDefaultUsers() {
     if (full && !full.password.startsWith('$2')) {
       const hash = await bcrypt.hash(full.password, BCRYPT_ROUNDS);
       updateUserPassword(u.username, hash);
-      console.log(`[Auth] Senha migrada para hash: ${u.username}`);
+      logger.info(`[Auth] Senha migrada para hash: ${u.username}`);
     }
   }
 }
@@ -197,7 +198,7 @@ router.post('/change-password', async (req, res) => {
 
   const hash = await bcrypt.hash(newPassword, BCRYPT_ROUNDS);
   updateUserPassword(username, hash);
-  console.log(`[Auth] Senha alterada pelo usuário: ${username}`);
+  logger.info(`[Auth] Senha alterada pelo usuário: ${username}`);
   res.json({ ok: true, message: 'Senha alterada com sucesso!' });
 });
 
@@ -218,9 +219,9 @@ router.post('/forgot-password', async (req, res) => {
 
     try {
       await sendResetPasswordEmail({ to: username, resetUrl });
-      console.log(`[Auth] E-mail de redefinição enviado para: ${username}`);
+      logger.info(`[Auth] E-mail de redefinição enviado para: ${username}`);
     } catch (err) {
-      console.error('[Auth] Erro ao enviar e-mail de redefinição:', err.message);
+      logger.error('[Auth] Erro ao enviar e-mail de redefinição:', err.message);
     }
   }
 
@@ -249,7 +250,7 @@ router.post('/reset-password', async (req, res) => {
   updateUserPassword(record.username, hash);
   markTokenUsed(token);
 
-  console.log(`[Auth] Senha redefinida para: ${record.username}`);
+  logger.info(`[Auth] Senha redefinida para: ${record.username}`);
   res.json({ ok: true, message: 'Senha redefinida com sucesso! Você já pode fazer login.' });
 });
 

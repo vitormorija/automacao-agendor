@@ -88,6 +88,13 @@ for (const sql of migrations) {
   try { db.exec(sql); } catch (_) { /* coluna já existe */ }
 }
 
+// Índices para as colunas mais consultadas/filtradas no notification_log.
+db.exec(`
+  CREATE INDEX IF NOT EXISTS idx_notiflog_deal_id ON notification_log (deal_id);
+  CREATE INDEX IF NOT EXISTS idx_notiflog_sent_at ON notification_log (sent_at);
+  CREATE INDEX IF NOT EXISTS idx_notiflog_status  ON notification_log (status);
+`);
+
 // Valores padrão de configuração
 const defaults = {
   stale_days: '15',
@@ -276,7 +283,13 @@ function getLoginLogs(limit = 50) {
   return db.prepare('SELECT * FROM login_logs ORDER BY created_at DESC LIMIT ?').all(limit);
 }
 
+// Fecha a conexão com o banco (usado no graceful shutdown).
+function closeDb() {
+  try { db.close(); } catch (_) { /* já fechado */ }
+}
+
 module.exports = {
+  closeDb,
   getConfig, setConfig, getAllConfig,
   logNotification, getNotificationLogs, alreadyNotifiedToday,
   saveWeeklySnapshot, getWeeklySnapshots,
