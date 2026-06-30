@@ -1,5 +1,6 @@
 const nodemailer = require('nodemailer');
 const { getConfig } = require('./db');
+const { shouldNotifyOwner } = require('./agendor');
 
 function createTransporter() {
   return nodemailer.createTransport({
@@ -19,10 +20,31 @@ function urgencyColor(days) {
   return '#ca8a04';
 }
 
+// Retorna a BASE_URL pública do backend quando configurada e acessível externamente.
+// Se não houver BASE_URL ou ela apontar para localhost/127.0.0.1, retorna null —
+// nesse caso os emails usam o link direto do Agendor (sem tracking de cliques),
+// para não enviar URLs quebradas para usuários em outras máquinas/celulares.
+function getPublicBaseUrl() {
+  const raw = (process.env.BASE_URL || '').trim();
+  if (!raw) return null;
+  try {
+    const host = new URL(raw).hostname.toLowerCase();
+    if (host === 'localhost' || host === '127.0.0.1' || host === '0.0.0.0' || host.endsWith('.local')) {
+      return null;
+    }
+    return raw.replace(/\/+$/, '');
+  } catch (_) {
+    return null;
+  }
+}
+
 function dealEmailHtml({ deal, ownerName, role, logId }) {
-  const BASE_URL = process.env.BASE_URL || 'http://localhost:3001';
-  const trackUrl = logId
-    ? `${BASE_URL}/api/track/click?log_id=${logId}`
+  const publicBase = getPublicBaseUrl();
+  // Usa tracking apenas quando temos BASE_URL pública E logId — caso contrário,
+  // link direto para o card no Agendor (garante que sempre abre, sem depender do nosso servidor).
+  // O parâmetro `u` serve de fallback se o log_id for perdido (DB resetado, log antigo).
+  const trackUrl = (publicBase && logId && deal.webUrl)
+    ? `${publicBase}/api/track/click?log_id=${logId}&u=${encodeURIComponent(deal.webUrl)}`
     : deal.webUrl;
   const updatedDate = new Date(deal.updatedAt).toLocaleDateString('pt-BR');
   const createdDate = new Date(deal.createdAt).toLocaleDateString('pt-BR');
@@ -578,7 +600,15 @@ function ownerWeeklyHtml({ ownerName, deals, weekLabel, staleDays }) {
 }
 
 async function sendOwnerWeeklySummary({ deals, users }) {
-  if (!deals.length) return [];
+  // Filtra funis sem notificação ao responsável (ex.: Beefor) — os cards ainda
+  // aparecem no relatório admin, mas não no e-mail individual do comercial.
+  const notifiable = deals.filter(shouldNotifyOwner);
+  const skippedByFunnel = deals.length - notifiable.length;
+  if (skippedByFunnel > 0) {
+    console.log(`[Emailer] Relatório semanal: ${skippedByFunnel} card(s) ignorado(s) por funil sem notificação ao responsável`);
+  }
+  if (!notifiable.length) return [];
+
   const transporter = createTransporter();
   const from = getConfig('smtp_from') || getConfig('smtp_user');
   const staleDays = parseInt(getConfig('stale_days')) || 15;
@@ -588,7 +618,7 @@ async function sendOwnerWeeklySummary({ deals, users }) {
 
   // Agrupa deals por dono
   const byOwner = {};
-  for (const d of deals) {
+  for (const d of notifiable) {
     const owner = users[d.ownerId];
     if (!owner?.email) continue;
     if (!byOwner[owner.email]) byOwner[owner.email] = { name: d.ownerName, deals: [] };
