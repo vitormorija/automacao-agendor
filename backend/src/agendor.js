@@ -48,6 +48,17 @@ const EXCLUDED_CATEGORIES = ['Inativo (sem resposta)', 'Parceiro', 'Fornecedor']
 const NEGOCIO_CATEGORIES = ['Cliente', 'Cliente Ouro', 'Cliente Bronze'];
 const EXCLUDED_OWNERS = ['Maria Lobato'];
 
+// Funis cujos cards aparecem nos relatórios/dashboard, mas NÃO disparam
+// notificações para o responsável do card. A Beefor é uma empresa do grupo Cadmus
+// com produto próprio — o vendedor da Cadmus pode ser dono da organização sem ser
+// responsável por acompanhar oportunidades no funil Beefor.
+const NO_OWNER_NOTIFY_FUNNELS = ['beefor'];
+
+function shouldNotifyOwner(deal) {
+  const funnel = (deal?.funnel || '').trim().toLowerCase();
+  return !NO_OWNER_NOTIFY_FUNNELS.includes(funnel);
+}
+
 // Prefixos/palavras que indicam que o deal foi encerrado/congelado.
 // Usamos correspondência parcial para cobrir variações de gênero e composições:
 // perdido, perdida, oportunidade perdida, ganho, ganha, congelado, congelada, etc.
@@ -184,4 +195,4 @@ async function getDealsWithFutureTasks() {
   return dealIds;
 }
 
-module.exports = { getUsers, getStaleDeals, getDealsWithFutureTasks };
+module.exports = { getUsers, getStaleDeals, getDealsWithFutureTasks, shouldNotifyOwner };
