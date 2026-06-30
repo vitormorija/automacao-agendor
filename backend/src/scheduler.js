@@ -1,7 +1,8 @@
 const cron = require('node-cron');
 const { getConfig, logNotification, alreadyNotifiedToday, saveWeeklySnapshot } = require('./db');
-const { getStaleDeals, getUsers, getDealsWithFutureTasks } = require('./agendor');
+const { getStaleDeals, getUsers, getDealsWithFutureTasks, shouldNotifyOwner } = require('./agendor');
 const { sendStaleNotification, sendWeeklySummary, sendOwnerWeeklySummary } = require('./emailer');
+const logger = require('./logger');
 
 let currentTask = null;
 let weeklyTask = null;
@@ -22,7 +23,7 @@ async function runCheck() {
     const notifyAuthor = getConfig('notify_author') !== 'false';
     const notificationsEnabled = getConfig('notifications_enabled') === 'true';
 
-    console.log(`[Scheduler] Iniciando verificação — threshold: ${staleDays} dias`);
+    logger.info(`[Scheduler] Iniciando verificação — threshold: ${staleDays} dias`);
 
     const [staleDeals, users, futureTasks] = await Promise.all([
       getStaleDeals(staleDays),
@@ -34,7 +35,7 @@ async function runCheck() {
     const dealsToNotify = staleDeals.filter(d => !futureTasks.has(d.id));
     const skippedFutureTasks = staleDeals.length - dealsToNotify.length;
     if (skippedFutureTasks > 0) {
-      console.log(`[Scheduler] ${skippedFutureTasks} deal(s) ignorado(s) por terem tarefa futura agendada`);
+      logger.info(`[Scheduler] ${skippedFutureTasks} deal(s) ignorado(s) por terem tarefa futura agendada`);
     }
 
     results.stale = dealsToNotify.length;
@@ -62,6 +63,16 @@ async function runCheck() {
       // Não notificar duas vezes no mesmo dia
       if (alreadyNotifiedToday(deal.id)) {
         dealResult.skipped = true;
+        results.skipped++;
+        results.deals.push(dealResult);
+        continue;
+      }
+
+      // Funis sem notificação ao responsável (ex.: Beefor — produto de outra equipe do grupo).
+      // O card continua visível no dashboard e relatório admin, só não dispara email pro dono.
+      if (!shouldNotifyOwner(deal)) {
+        dealResult.skipped = true;
+        dealResult.skipReason = `funil ${deal.funnel} não notifica responsável`;
         results.skipped++;
         results.deals.push(dealResult);
         continue;
@@ -119,10 +130,10 @@ async function runCheck() {
 
     results.duration = Date.now() - startTime;
     results.ranAt = startTime.toISOString();
-    console.log(`[Scheduler] Concluído: ${results.stale} negócios parados, ${results.notified} notificações enviadas`);
+    logger.info(`[Scheduler] Concluído: ${results.stale} negócios parados, ${results.notified} notificações enviadas`);
   } catch (err) {
     results.error = err.message;
-    console.error('[Scheduler] Erro na verificação:', err);
+    logger.error('[Scheduler] Erro na verificação:', err);
   } finally {
     isRunning = false;
     lastRunResult = results;
@@ -132,7 +143,7 @@ async function runCheck() {
 }
 
 async function runWeeklySummary() {
-  console.log('[Scheduler] Iniciando resumo semanal...');
+  logger.info('[Scheduler] Iniciando resumo semanal...');
   try {
     const staleDays = parseInt(getConfig('stale_days')) || 15;
     const adminEmails = (getConfig('admin_email') || '').split(',').map(e => e.trim()).filter(Boolean);
@@ -169,16 +180,16 @@ async function runWeeklySummary() {
     // 1. Resumo consolidado para admins
     if (adminEmails.length) {
       await sendWeeklySummary({ deals: enriched, adminEmails });
-      console.log(`[Scheduler] Resumo admin enviado para: ${adminEmails.join(', ')}`);
+      logger.info(`[Scheduler] Resumo admin enviado para: ${adminEmails.join(', ')}`);
     }
 
     // 2. Relatório individualizado para cada comercial responsável
     const results = await sendOwnerWeeklySummary({ deals: enriched, users });
     const sent = results.filter(r => r.success).length;
-    console.log(`[Scheduler] Relatórios individuais enviados para ${sent} comercial(is)`);
+    logger.info(`[Scheduler] Relatórios individuais enviados para ${sent} comercial(is)`);
 
   } catch (err) {
-    console.error('[Scheduler] Erro no resumo semanal:', err.message);
+    logger.error('[Scheduler] Erro no resumo semanal:', err.message);
   }
 }
 
@@ -190,15 +201,15 @@ function scheduleTask() {
   const notificationsEnabled = getConfig('notifications_enabled') === 'true';
 
   if (!notificationsEnabled) {
-    console.log('[Scheduler] Notificações desativadas — agendamento pausado');
+    logger.info('[Scheduler] Notificações desativadas — agendamento pausado');
     return;
   }
 
-  console.log(`[Scheduler] Agendado com: "${schedule}"`);
+  logger.info(`[Scheduler] Agendado com: "${schedule}"`);
   currentTask = cron.schedule(schedule, runCheck, { timezone: 'America/Sao_Paulo' });
 
   // Resumo semanal para admins: toda sexta às 11h
-  console.log('[Scheduler] Resumo semanal agendado: sextas às 11h');
+  logger.info('[Scheduler] Resumo semanal agendado: sextas às 11h');
   weeklyTask = cron.schedule('0 11 * * 5', runWeeklySummary, { timezone: 'America/Sao_Paulo' });
 }
 
@@ -232,4 +243,10 @@ async function runCheckOnly() {
     }));
 }
 
-module.exports = { scheduleTask, runCheck, runCheckOnly, getStatus };
+// Para todos os agendamentos (usado no graceful shutdown).
+function stopTasks() {
+  if (currentTask) { currentTask.stop(); currentTask = null; }
+  if (weeklyTask) { weeklyTask.stop(); weeklyTask = null; }
+}
+
+module.exports = { scheduleTask, runCheck, runCheckOnly, getStatus, stopTasks };
