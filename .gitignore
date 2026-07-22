@@ -48,3 +48,9 @@ make_docx.js
 
 # Claude (configs locais com tokens)
 .claude/
+
+# Fixtures de teste — capturas BRUTAS (com PII/token) NUNCA sobem.
+# Só o *.sample.json ANONIMIZADO é versionado, e apenas após aprovação humana.
+# O AGENDOR_TOKEN é lido do ambiente pelo script de captura e nunca é gravado em disco.
+backend/test/fixtures/**/*.raw.json
+test/fixtures/**/*.raw.json
