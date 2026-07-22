@@ -104,41 +104,41 @@ Preenchido na criação do roadmap.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| TEST-01 | — | Pending |
-| TEST-02 | — | Pending |
-| TEST-03 | — | Pending |
-| TEST-04 | — | Pending |
-| TEST-05 | — | Pending |
-| QUAL-01 | — | Pending |
-| QUAL-02 | — | Pending |
-| QUAL-03 | — | Pending |
-| CI-01 | — | Pending |
-| CI-02 | — | Pending |
-| CFG-01 | — | Pending |
-| CFG-02 | — | Pending |
-| CFG-03 | — | Pending |
-| CFG-04 | — | Pending |
-| REL-01 | — | Pending |
-| REL-02 | — | Pending |
-| REL-03 | — | Pending |
-| REL-04 | — | Pending |
-| LOG-01 | — | Pending |
-| LOG-02 | — | Pending |
-| SEC-01 | — | Pending |
-| SEC-02 | — | Pending |
-| SEC-03 | — | Pending |
-| SEC-04 | — | Pending |
-| SEC-05 | — | Pending |
-| ARCH-01 | — | Pending |
-| ARCH-02 | — | Pending |
-| DOC-01 | — | Pending |
-| DOC-02 | — | Pending |
+| TEST-01 | Phase 1 | Pending |
+| TEST-02 | Phase 1 | Pending |
+| TEST-03 | Phase 1 | Pending |
+| TEST-04 | Phase 1 | Pending |
+| TEST-05 | Phase 1 | Pending |
+| QUAL-01 | Phase 2 | Pending |
+| QUAL-02 | Phase 2 | Pending |
+| QUAL-03 | Phase 2 | Pending |
+| CI-01 | Phase 2 | Pending |
+| CI-02 | Phase 2 | Pending |
+| CFG-01 | Phase 3 | Pending |
+| CFG-02 | Phase 3 | Pending |
+| CFG-03 | Phase 3 | Pending |
+| CFG-04 | Phase 3 | Pending |
+| REL-01 | Phase 4 | Pending |
+| REL-02 | Phase 4 | Pending |
+| REL-03 | Phase 4 | Pending |
+| REL-04 | Phase 4 | Pending |
+| LOG-01 | Phase 5 | Pending |
+| LOG-02 | Phase 5 | Pending |
+| SEC-01 | Phase 6 | Pending |
+| SEC-02 | Phase 6 | Pending |
+| SEC-03 | Phase 6 | Pending |
+| SEC-04 | Phase 6 | Pending |
+| SEC-05 | Phase 6 | Pending |
+| ARCH-01 | Phase 7 | Pending |
+| ARCH-02 | Phase 7 | Pending |
+| DOC-01 | Phase 8 | Pending |
+| DOC-02 | Phase 8 | Pending |
 
 **Coverage:**
 - v1 requirements: 29 total
-- Mapped to phases: 0 (roadmap pendente)
-- Unmapped: 29 ⚠️
+- Mapped to phases: 29 (100%)
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-07-22*
-*Last updated: 2026-07-22 after initial definition*
+*Last updated: 2026-07-22 after roadmap creation (traceability mapped to 8 phases)*
