@@ -64,6 +64,15 @@ function shouldNotifyOwner(deal) {
 // perdido, perdida, oportunidade perdida, ganho, ganha, congelado, congelada, etc.
 const EXCLUDED_STAGE_WORDS = ['perd', 'ganh', 'congelad', 'suspenso', 'suspend', 'arquivad', 'encerrad', 'cancelad'];
 
+// Retorna true se o nome da etapa indica encerramento/congelamento.
+// Extraído sem alterar a lógica: correspondência parcial (substring) sobre o
+// nome normalizado (minúsculo, sem acentos). O regex de marcas de combinação
+// (U+0300–U+036F) é copiado byte-a-byte do trecho inline original — NÃO reescrever.
+function isExcludedStage(rawStageName) {
+  const stageName = (rawStageName || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  return EXCLUDED_STAGE_WORDS.some(w => stageName.includes(w));
+}
+
 function getDealType(orgCategory) {
   if (!orgCategory || orgCategory === 'Lead') return 'Lead';
   if (NEGOCIO_CATEGORIES.includes(orgCategory)) return 'Negócio';
@@ -135,8 +144,7 @@ async function getStaleDeals(staleDays = 15) {
     const dealStatusId = deal.dealStatus?.id || deal.status?.id || null;
     if (dealStatusId && dealStatusId !== 1) continue;
 
-    const stageName = (deal.dealStage?.name || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
-    if (EXCLUDED_STAGE_WORDS.some(w => stageName.includes(w))) continue;
+    if (isExcludedStage(deal.dealStage?.name)) continue;
 
     allDeals.push({
       id: deal.id,
@@ -195,4 +203,4 @@ async function getDealsWithFutureTasks() {
   return dealIds;
 }
 
-module.exports = { getUsers, getStaleDeals, getDealsWithFutureTasks, shouldNotifyOwner };
+module.exports = { getUsers, getStaleDeals, getDealsWithFutureTasks, shouldNotifyOwner, getDealType, isExcludedStage };
