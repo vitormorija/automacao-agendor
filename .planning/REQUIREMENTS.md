@@ -9,7 +9,7 @@ Requisitos desta etapa de estabilização. A ordem reflete dependência: testes 
 
 ### Testes (Rede de Segurança)
 
-- [ ] **TEST-01**: Test runner configurado no backend com script `test` executável em CI e local
+- [x] **TEST-01**: Test runner configurado no backend com script `test` executável em CI e local
 - [ ] **TEST-02**: Testes de caracterização de `getStaleDeals()` fixam o comportamento atual das regras de inclusão/exclusão (threshold de dias, categoria, stage, owner, funil)
 - [ ] **TEST-03**: Testes de dedup fixam o "não reenviar o mesmo deal no mesmo dia" (`alreadyNotifiedToday`)
 - [ ] **TEST-04**: Testes de supressão por funil fixam `shouldNotifyOwner` / `NO_OWNER_NOTIFY_FUNNELS`
@@ -104,7 +104,7 @@ Preenchido na criação do roadmap.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| TEST-01 | Phase 1 | Pending |
+| TEST-01 | Phase 1 | Complete |
 | TEST-02 | Phase 1 | Pending |
 | TEST-03 | Phase 1 | Pending |
 | TEST-04 | Phase 1 | Pending |
