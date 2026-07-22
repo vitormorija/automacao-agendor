@@ -37,7 +37,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   5. Testes cobrem rate-limit de login e verificação de senha (TEST-05)
 **Plans**: 5 plans
 - [x] 01-01-PLAN.md — Test-runner foundation: node:test wiring, c8 coverage, shared setup, DB_PATH seam (TEST-01)
-- [ ] 01-02-PLAN.md — getStaleDeals characterization (threshold/category/stage/owner/status) + anonymized real-deal fixture (TEST-02)
+- [x] 01-02-PLAN.md — getStaleDeals characterization (threshold/category/stage/owner/status) + anonymized real-deal fixture (TEST-02)
 - [ ] 01-03-PLAN.md — Same-day dedup characterization: alreadyNotifiedToday incl. day boundary (TEST-03)
 - [ ] 01-04-PLAN.md — Beefor funnel suppression characterization: shouldNotifyOwner quirks (TEST-04)
 - [ ] 01-05-PLAN.md — Auth logic characterization: login rate-limit + verifyPassword (TEST-05)
@@ -125,7 +125,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Rede de Testes (Safety-Net) | 1/5 | In Progress|  |
+| 1. Rede de Testes (Safety-Net) | 2/5 | In Progress|  |
 | 2. Toolchain de Qualidade & CI | 0/TBD | Not started | - |
 | 3. Config & Segredos por Ambiente | 0/TBD | Not started | - |
 | 4. Confiabilidade das Integrações | 0/TBD | Not started | - |
