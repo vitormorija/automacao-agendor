@@ -7,7 +7,9 @@
   },
   "scripts": {
     "start": "node src/index.js",
-    "dev": "nodemon src/index.js"
+    "dev": "nodemon src/index.js",
+    "test": "node --test",
+    "test:coverage": "c8 --reporter=text --reporter=lcov node --test"
   },
   "dependencies": {
     "axios": "^1.7.2",
