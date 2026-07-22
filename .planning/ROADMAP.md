@@ -35,7 +35,12 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. Teste confirma que o mesmo deal não é notificado duas vezes no mesmo dia (`alreadyNotifiedToday`) (TEST-03)
   4. Teste fixa a supressão por funil (`shouldNotifyOwner` / `NO_OWNER_NOTIFY_FUNNELS` = "beefor") (TEST-04)
   5. Testes cobrem rate-limit de login e verificação de senha (TEST-05)
-**Plans**: TBD
+**Plans**: 5 plans
+- [ ] 01-01-PLAN.md — Test-runner foundation: node:test wiring, c8 coverage, shared setup, DB_PATH seam (TEST-01)
+- [ ] 01-02-PLAN.md — getStaleDeals characterization (threshold/category/stage/owner/status) + anonymized real-deal fixture (TEST-02)
+- [ ] 01-03-PLAN.md — Same-day dedup characterization: alreadyNotifiedToday incl. day boundary (TEST-03)
+- [ ] 01-04-PLAN.md — Beefor funnel suppression characterization: shouldNotifyOwner quirks (TEST-04)
+- [ ] 01-05-PLAN.md — Auth logic characterization: login rate-limit + verifyPassword (TEST-05)
 
 ### Phase 2: Toolchain de Qualidade & CI
 **Goal**: Qualidade de código é verificada automaticamente — lint, formatação, testes e build — localmente e como gate obrigatório em cada PR.
@@ -120,7 +125,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Rede de Testes (Safety-Net) | 0/TBD | Not started | - |
+| 1. Rede de Testes (Safety-Net) | 0/5 | Planned | - |
 | 2. Toolchain de Qualidade & CI | 0/TBD | Not started | - |
 | 3. Config & Segredos por Ambiente | 0/TBD | Not started | - |
 | 4. Confiabilidade das Integrações | 0/TBD | Not started | - |
