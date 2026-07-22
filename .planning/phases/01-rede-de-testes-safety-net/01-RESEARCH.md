@@ -504,18 +504,18 @@ Deal object shape consumed by `getStaleDeals` (verified from source, lines 114�
 | A4 | Temp-file `DB_PATH` allows a second better-sqlite3 connection to seed `sent_at=yesterday` rows | Pitfall 4 / TEST-03 | Low — standard SQLite file multi-connection; `:memory:` isolation already empirically confirmed as the reason to use a file here. |
 | A5 | `.gitignore` will be configured to exclude the Agendor token and raw fixture captures | Fixtures | Medium — if not, PII/token could leak. Planner must add a task to verify `.gitignore` before committing fixtures. |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Should an integrated `runCheck` golden test be in Phase 1 scope?**
+1. **Should an integrated `runCheck` golden test be in Phase 1 scope?** — **RESOLVED — DEFERRED.** The finalized plan set (01-01..01-05) covers TEST-01..05 via the two-lane strategy without a runCheck end-to-end test; no plan depends on a combined axios+nodemailer+DB smoke. A `runCheck` e2e is explicitly out of scope for Phase 1 and can be revisited in a later phase if wanted.
    - What we know: CONTEXT says "onde aplicável (runCheck)" — optional. TEST-01..05 do not require it.
    - What's unclear: whether the team wants an end-to-end dedup+funnel+notify smoke now vs. deferring.
    - Recommendation: Defer to keep the phase focused; the constituent rules are already covered. Add only if planner wants one smoke test (needs axios+nodemailer+DB mocks together).
 
-2. **Coverage threshold enforcement in CI?**
+2. **Coverage threshold enforcement in CI?** — **RESOLVED — REPORT-ONLY.** Plan 01-01 configures `c8` as report-only (`backend/.c8rc.json`, no `--check-coverage`/threshold in Phase 1). CI threshold policy is deferred to Phase 2, which owns CI.
    - What we know: c8 supports `--check-coverage --lines N`. Phase 2 owns CI.
    - Recommendation: Do NOT set a hard threshold in Phase 1 (would fail the mostly-untested codebase). Report coverage only; let Phase 2 decide thresholds.
 
-3. **Where do fixture `.gitignore` entries live** (root vs `backend/.gitignore`)?
+3. **Where do fixture `.gitignore` entries live** (root vs `backend/.gitignore`)? — **RESOLVED — ROOT `.gitignore`, TIED TO THE FIXTURE TASK.** Plan 01-02 Task 3 hardens the repo-root `.gitignore` (adds `test/fixtures/**/*.raw.json` + token ignores) BEFORE producing any capture output, and the anonymized `real-deals.sample.json` is committed only after the Task 4 human-verify approval (ties to A5).
    - Recommendation: planner adds explicit ignores for the token env and any `*.raw.json`, verified before the first fixture commit (ties to A5).
 
 ## Environment Availability
