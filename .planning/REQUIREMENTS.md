@@ -13,7 +13,7 @@ Requisitos desta etapa de estabilização. A ordem reflete dependência: testes 
 - [x] **TEST-02**: Testes de caracterização de `getStaleDeals()` fixam o comportamento atual das regras de inclusão/exclusão (threshold de dias, categoria, stage, owner, funil)
 - [x] **TEST-03**: Testes de dedup fixam o "não reenviar o mesmo deal no mesmo dia" (`alreadyNotifiedToday`)
 - [x] **TEST-04**: Testes de supressão por funil fixam `shouldNotifyOwner` / `NO_OWNER_NOTIFY_FUNNELS`
-- [ ] **TEST-05**: Testes da lógica de auth sensível: rate-limit de login e verificação de senha
+- [x] **TEST-05**: Testes da lógica de auth sensível: rate-limit de login e verificação de senha
 
 ### Qualidade (Toolchain)
 
@@ -108,7 +108,7 @@ Preenchido na criação do roadmap.
 | TEST-02 | Phase 1 | Complete |
 | TEST-03 | Phase 1 | Complete |
 | TEST-04 | Phase 1 | Complete |
-| TEST-05 | Phase 1 | Pending |
+| TEST-05 | Phase 1 | Complete |
 | QUAL-01 | Phase 2 | Pending |
 | QUAL-02 | Phase 2 | Pending |
 | QUAL-03 | Phase 2 | Pending |
