@@ -450,17 +450,19 @@ gh pr create --fill --base main
 
 **Nota:** A maioria das assumptions é auto-verificável em segundos durante a execução (exit codes, respostas de API). Nenhuma envolve comportamento de produto.
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Valor do threshold de cobertura (WR-03)**
+Ambas são valores medidos em tempo de execução (Claude's Discretion no CONTEXT); resolvidas por tasks measure-first no plano.
+
+1. **Valor do threshold de cobertura (WR-03)** — RESOLVED: medido na execução (ver 02-03 Task 2).
    - What we know: c8 já reporta; `check-coverage` + `lines` são as chaves.
    - What's unclear: o número exato só pode ser escolhido DEPOIS de rodar cobertura com o teste WR-02 já presente.
-   - Recommendation: o PLAN deve ter uma task "medir cobertura pós-WR-02, escolher threshold logo abaixo do observado" antes de flipar `check-coverage: true`.
+   - Recommendation: o PLAN deve ter uma task "medir cobertura pós-WR-02, escolher threshold logo abaixo do observado" antes de flipar `check-coverage: true`. → implementado em 02-03 Task 2.
 
-2. **Escopo do baseline warn (D-06) — quais regras**
+2. **Escopo do baseline warn (D-06) — quais regras** — RESOLVED: medido na execução (ver 02-02 Task 3).
    - What we know: `recommended: true` e rebaixar as ofensoras para `warn`.
    - What's unclear: o conjunto exato de regras que o código atual viola só se conhece rodando `biome lint` uma vez.
-   - Recommendation: task "rodar `biome lint .`, listar diagnostics, gerar overrides `warn`" antes de fechar QUAL-01.
+   - Recommendation: task "rodar `biome lint .`, listar diagnostics, gerar overrides `warn`" antes de fechar QUAL-01. → implementado em 02-02 Task 3.
 
 ## Environment Availability
 
