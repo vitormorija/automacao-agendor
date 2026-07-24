@@ -18,7 +18,9 @@ const path = require('path');
 
 const TOKEN = process.env.AGENDOR_TOKEN;
 if (!TOKEN) {
-  console.error('[capture] Defina AGENDOR_TOKEN no ambiente (nunca commite o token). Abortando.');
+  console.error(
+    '[capture] Defina AGENDOR_TOKEN no ambiente (nunca commite o token). Abortando.',
+  );
   process.exit(1);
 }
 
@@ -54,10 +56,20 @@ function anonymize(deal, i) {
     params: { page: 1, per_page: 10, deal_status_id: 1 },
   });
   const sample = (data.data || []).slice(0, 8).map(anonymize);
-  const out = path.join(__dirname, '..', 'test', 'fixtures', 'real-deals.sample.json');
+  const out = path.join(
+    __dirname,
+    '..',
+    'test',
+    'fixtures',
+    'real-deals.sample.json',
+  );
   fs.writeFileSync(out, JSON.stringify(sample, null, 2) + '\n');
-  console.log(`[capture] Gravados ${sample.length} deals ANONIMIZADOS em ${out}`);
-  console.log('[capture] Revise o arquivo e siga o checkpoint de aprovação antes de commitar.');
+  console.log(
+    `[capture] Gravados ${sample.length} deals ANONIMIZADOS em ${out}`,
+  );
+  console.log(
+    '[capture] Revise o arquivo e siga o checkpoint de aprovação antes de commitar.',
+  );
 })().catch((err) => {
   console.error('[capture] Falha na captura:', err.message);
   process.exit(1);

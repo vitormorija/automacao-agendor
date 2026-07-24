@@ -23,11 +23,19 @@ const dealsPage = require('./fixtures/synthetic/deals-page.json');
 // Instala o stub ANTES de exigir agendor.js (a instância `api` é criada no load).
 installFakeAxios((url) => {
   if (url === '/deals') {
-    return { data: { data: dealsPage, meta: { totalCount: dealsPage.length }, links: {} } };
+    return {
+      data: {
+        data: dealsPage,
+        meta: { totalCount: dealsPage.length },
+        links: {},
+      },
+    };
   }
   if (url.startsWith('/organizations/')) {
     const id = Number(url.split('/').pop());
-    return { data: { data: { category: { name: ORG_CATEGORY[id] || 'Lead' } } } };
+    return {
+      data: { data: { category: { name: ORG_CATEGORY[id] || 'Lead' } } },
+    };
   }
   return { data: { data: [] } };
 });
@@ -44,7 +52,7 @@ after(() => {
 
 test('getStaleDeals(15): golden do conjunto incluído — documenta comportamento ATUAL', async () => {
   const result = await getStaleDeals(15);
-  const ids = result.map(d => d.id);
+  const ids = result.map((d) => d.id);
   // Somente 101 (stale base) e 103 (cutoff - 1ms) sobrevivem a TODAS as regras.
   // Prova em uma única rodada determinística:
   //  - pre-2026 (108) excluído; fresh (109) excluído; boundary+1ms (104) excluído
@@ -54,11 +62,11 @@ test('getStaleDeals(15): golden do conjunto incluído — documenta comportament
 });
 
 test('getStaleDeals(15): fronteira estrita do dia (`<`) — boundary golden (D-09)', async () => {
-  const ids = (await getStaleDeals(15)).map(d => d.id);
+  const ids = (await getStaleDeals(15)).map((d) => d.id);
   // documenta o comportamento ATUAL: comparação `<` estrita — updatedAt igual ao
   // cutoff é EXCLUÍDO; um `<=` faria falhar este teste.
   assert.equal(ids.includes(102), false); // updatedAt == cutoffDate -> EXCLUÍDO
-  assert.equal(ids.includes(103), true);  // updatedAt == cutoffDate - 1ms -> INCLUÍDO
+  assert.equal(ids.includes(103), true); // updatedAt == cutoffDate - 1ms -> INCLUÍDO
   // Blindagem extra contra flip de operador: se `<` virar `<=`, 102 entraria e o golden acima quebra.
 });
 

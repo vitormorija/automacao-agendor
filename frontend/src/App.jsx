@@ -1,13 +1,21 @@
-import { useState, useEffect } from 'react'
-import { Toaster } from 'react-hot-toast'
-import { LayoutDashboard, AlertTriangle, Bell, Settings, BarChart2, LogOut, KeyRound } from 'lucide-react'
-import Dashboard from './components/Dashboard'
-import DealsList from './components/DealsList'
-import NotificationHistory from './components/NotificationHistory'
-import ConfigPanel from './components/ConfigPanel'
-import ReportPanel from './components/ReportPanel'
-import LoginPage from './components/LoginPage'
-import ChangePasswordModal from './components/ChangePasswordModal'
+import { useState, useEffect } from 'react';
+import { Toaster } from 'react-hot-toast';
+import {
+  LayoutDashboard,
+  AlertTriangle,
+  Bell,
+  Settings,
+  BarChart2,
+  LogOut,
+  KeyRound,
+} from 'lucide-react';
+import Dashboard from './components/Dashboard';
+import DealsList from './components/DealsList';
+import NotificationHistory from './components/NotificationHistory';
+import ConfigPanel from './components/ConfigPanel';
+import ReportPanel from './components/ReportPanel';
+import LoginPage from './components/LoginPage';
+import ChangePasswordModal from './components/ChangePasswordModal';
 
 const TABS = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -15,46 +23,50 @@ const TABS = [
   { id: 'report', label: 'Relatório', icon: BarChart2 },
   { id: 'history', label: 'Histórico', icon: Bell },
   { id: 'config', label: 'Configurações', icon: Settings },
-]
+];
 
 // Intercepta todos os fetch para incluir o token automaticamente
-const originalFetch = window.fetch
+const originalFetch = window.fetch;
 window.fetch = function (url, options = {}) {
-  const token = localStorage.getItem('auth_token')
+  const token = localStorage.getItem('auth_token');
   if (token && typeof url === 'string' && url.startsWith('/api/')) {
     options.headers = {
       ...options.headers,
       Authorization: `Bearer ${token}`,
-    }
+    };
   }
-  return originalFetch(url, options)
-}
+  return originalFetch(url, options);
+};
 
 export default function App() {
-  const [tab, setTab] = useState('dashboard')
-  const [token, setToken] = useState(() => localStorage.getItem('auth_token'))
-  const [username, setUsername] = useState(() => localStorage.getItem('auth_user') || '')
-  const [showChangePass, setShowChangePass] = useState(false)
+  const [tab, setTab] = useState('dashboard');
+  const [token, setToken] = useState(() => localStorage.getItem('auth_token'));
+  const [username, setUsername] = useState(
+    () => localStorage.getItem('auth_user') || '',
+  );
+  const [showChangePass, setShowChangePass] = useState(false);
 
   // Verifica se o token ainda é válido ao carregar
   useEffect(() => {
-    if (!token) return
+    if (!token) return;
     fetch('/api/auth/verify', { method: 'POST' })
-      .then(r => r.json())
-      .then(d => { if (!d.ok) handleLogout() })
-      .catch(() => handleLogout())
-  }, [])
+      .then((r) => r.json())
+      .then((d) => {
+        if (!d.ok) handleLogout();
+      })
+      .catch(() => handleLogout());
+  }, []);
 
   function handleLogin(newToken, newUsername) {
-    setToken(newToken)
-    setUsername(newUsername)
+    setToken(newToken);
+    setUsername(newUsername);
   }
 
   function handleLogout() {
-    localStorage.removeItem('auth_token')
-    localStorage.removeItem('auth_user')
-    setToken(null)
-    setUsername('')
+    localStorage.removeItem('auth_token');
+    localStorage.removeItem('auth_user');
+    setToken(null);
+    setUsername('');
   }
 
   if (!token) {
@@ -63,7 +75,7 @@ export default function App() {
         <Toaster position="top-right" toastOptions={{ duration: 4000 }} />
         <LoginPage onLogin={handleLogin} />
       </>
-    )
+    );
   }
 
   return (
@@ -79,15 +91,20 @@ export default function App() {
                 <Bell size={16} className="text-white" />
               </div>
               <div>
-                <span className="font-semibold text-gray-900 text-sm">Automação Agendor</span>
-                <span className="text-xs text-gray-400 ml-2 hidden sm:inline">Monitor de negócios parados</span>
+                <span className="font-semibold text-gray-900 text-sm">
+                  Automação Agendor
+                </span>
+                <span className="text-xs text-gray-400 ml-2 hidden sm:inline">
+                  Monitor de negócios parados
+                </span>
               </div>
             </div>
 
             {/* Usuário + Ações */}
             <div className="flex items-center gap-2">
               <span className="text-xs text-gray-500 hidden sm:block">
-                Logado como <strong className="text-gray-700">{username}</strong>
+                Logado como{' '}
+                <strong className="text-gray-700">{username}</strong>
               </span>
               <button
                 onClick={() => setShowChangePass(true)}
@@ -134,7 +151,10 @@ export default function App() {
 
       {/* Modal de troca de senha */}
       {showChangePass && (
-        <ChangePasswordModal username={username} onClose={() => setShowChangePass(false)} />
+        <ChangePasswordModal
+          username={username}
+          onClose={() => setShowChangePass(false)}
+        />
       )}
 
       {/* Content */}
@@ -146,5 +166,5 @@ export default function App() {
         {tab === 'config' && <ConfigPanel />}
       </main>
     </div>
-  )
+  );
 }

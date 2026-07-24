@@ -17,7 +17,8 @@ const bcrypt = require('bcryptjs');
 
 // auth.js exporta o router (function) com os seams anexados como props.
 const auth = require('../src/routes/auth');
-const { checkRateLimit, recordFailedAttempt, clearAttempts, verifyPassword } = auth;
+const { checkRateLimit, recordFailedAttempt, clearAttempts, verifyPassword } =
+  auth;
 
 // Zera o Map em memória entre casos para isolar o estado de rate-limit por teste.
 beforeEach(() => {

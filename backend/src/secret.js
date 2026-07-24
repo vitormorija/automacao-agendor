@@ -9,7 +9,7 @@ const JWT_SECRET = process.env.JWT_SECRET;
 if (!JWT_SECRET || JWT_SECRET.length < 16) {
   throw new Error(
     'JWT_SECRET ausente ou muito curto. Defina a variável de ambiente JWT_SECRET ' +
-    'com pelo menos 16 caracteres (ex.: gere com `openssl rand -hex 32`).'
+      'com pelo menos 16 caracteres (ex.: gere com `openssl rand -hex 32`).',
   );
 }
 

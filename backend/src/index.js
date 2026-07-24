@@ -10,24 +10,28 @@ const logger = require('./logger');
 const app = express();
 
 // ── Segurança: cabeçalhos HTTP ───────────────────────────────────
-app.use(helmet({
-  contentSecurityPolicy: false, // desativado pois o frontend usa CDN/inline
-  crossOriginEmbedderPolicy: false,
-}));
+app.use(
+  helmet({
+    contentSecurityPolicy: false, // desativado pois o frontend usa CDN/inline
+    crossOriginEmbedderPolicy: false,
+  }),
+);
 
 // ── CORS: em produção, aceita só a origin do servidor ───────────
 const allowedOrigins = process.env.ALLOWED_ORIGINS
-  ? process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim())
+  ? process.env.ALLOWED_ORIGINS.split(',').map((o) => o.trim())
   : ['http://localhost:5173', 'http://localhost:3001'];
 
-app.use(cors({
-  origin: (origin, cb) => {
-    // Permite requisições sem origin (curl, Postman, mesmo servidor)
-    if (!origin || allowedOrigins.includes(origin)) return cb(null, true);
-    cb(new Error(`CORS bloqueado: ${origin}`));
-  },
-  credentials: true,
-}));
+app.use(
+  cors({
+    origin: (origin, cb) => {
+      // Permite requisições sem origin (curl, Postman, mesmo servidor)
+      if (!origin || allowedOrigins.includes(origin)) return cb(null, true);
+      cb(new Error(`CORS bloqueado: ${origin}`));
+    },
+    credentials: true,
+  }),
+);
 
 app.use(express.json());
 
@@ -37,8 +41,12 @@ if (!fs.existsSync(logDir)) fs.mkdirSync(logDir, { recursive: true });
 
 // Log em arquivo (produção) + console (desenvolvimento)
 // Streams abertos UMA vez (evita leak de file descriptors sob carga).
-const accessLogStream = fs.createWriteStream(path.join(logDir, 'access.log'), { flags: 'a' });
-const errorLogStream = fs.createWriteStream(path.join(logDir, 'error.log'), { flags: 'a' });
+const accessLogStream = fs.createWriteStream(path.join(logDir, 'access.log'), {
+  flags: 'a',
+});
+const errorLogStream = fs.createWriteStream(path.join(logDir, 'error.log'), {
+  flags: 'a',
+});
 app.use(morgan('combined', { stream: accessLogStream }));
 if (process.env.NODE_ENV !== 'production') {
   app.use(morgan('dev'));
@@ -54,7 +62,11 @@ app.use('/api/track', require('./routes/track'));
 
 // ── Health check ─────────────────────────────────────────────────
 app.get('/api/health', (req, res) => {
-  res.json({ ok: true, time: new Date().toISOString(), env: process.env.NODE_ENV || 'development' });
+  res.json({
+    ok: true,
+    time: new Date().toISOString(),
+    env: process.env.NODE_ENV || 'development',
+  });
 });
 
 // ── Rotas protegidas ─────────────────────────────────────────────
@@ -82,9 +94,10 @@ app.use((err, req, res, next) => {
 
   // Em produção não vaza detalhes internos (stack/mensagem) ao cliente.
   const status = err.status || 500;
-  const clientMessage = process.env.NODE_ENV === 'production'
-    ? 'Erro interno do servidor.'
-    : (err.message || 'Erro interno do servidor.');
+  const clientMessage =
+    process.env.NODE_ENV === 'production'
+      ? 'Erro interno do servidor.'
+      : err.message || 'Erro interno do servidor.';
   res.status(status).json({ error: clientMessage });
 });
 
@@ -92,25 +105,40 @@ app.use((err, req, res, next) => {
 function checkBaseUrl() {
   const raw = (process.env.BASE_URL || '').trim();
   if (!raw) {
-    logger.info('BASE_URL não configurado — botões nos emails apontarão direto para o Agendor (sem tracking de cliques).');
+    logger.info(
+      'BASE_URL não configurado — botões nos emails apontarão direto para o Agendor (sem tracking de cliques).',
+    );
     return;
   }
   try {
     const host = new URL(raw).hostname.toLowerCase();
-    if (host === 'localhost' || host === '127.0.0.1' || host === '0.0.0.0' || host.endsWith('.local')) {
-      logger.warn(`BASE_URL=${raw} aponta para localhost — botões nos emails NÃO funcionariam em outras máquinas. Usando link direto para o Agendor.`);
+    if (
+      host === 'localhost' ||
+      host === '127.0.0.1' ||
+      host === '0.0.0.0' ||
+      host.endsWith('.local')
+    ) {
+      logger.warn(
+        `BASE_URL=${raw} aponta para localhost — botões nos emails NÃO funcionariam em outras máquinas. Usando link direto para o Agendor.`,
+      );
     } else {
-      logger.info(`BASE_URL=${raw} — botões nos emails usarão tracking de cliques.`);
+      logger.info(
+        `BASE_URL=${raw} — botões nos emails usarão tracking de cliques.`,
+      );
     }
   } catch (_) {
-    logger.warn(`BASE_URL=${raw} inválido — botões nos emails usarão link direto para o Agendor.`);
+    logger.warn(
+      `BASE_URL=${raw} inválido — botões nos emails usarão link direto para o Agendor.`,
+    );
   }
 }
 
 // ── Inicia servidor ──────────────────────────────────────────────
 const PORT = process.env.PORT || 3001;
 const server = app.listen(PORT, () => {
-  logger.info(`Backend rodando em http://localhost:${PORT} [${process.env.NODE_ENV || 'development'}]`);
+  logger.info(
+    `Backend rodando em http://localhost:${PORT} [${process.env.NODE_ENV || 'development'}]`,
+  );
   checkBaseUrl();
   const { scheduleTask } = require('./scheduler');
   scheduleTask();
@@ -136,7 +164,10 @@ function shutdown(signal) {
   });
 
   // Failsafe: força saída se algo travar o close.
-  setTimeout(() => { logger.warn('Shutdown forçado após timeout.'); process.exit(1); }, 10000).unref();
+  setTimeout(() => {
+    logger.warn('Shutdown forçado após timeout.');
+    process.exit(1);
+  }, 10000).unref();
 }
 process.on('SIGTERM', () => shutdown('SIGTERM'));
 process.on('SIGINT', () => shutdown('SIGINT'));

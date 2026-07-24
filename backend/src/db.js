@@ -86,7 +86,11 @@ const migrations = [
   `ALTER TABLE notification_log ADD COLUMN clicked_at TEXT`,
 ];
 for (const sql of migrations) {
-  try { db.exec(sql); } catch (_) { /* coluna já existe */ }
+  try {
+    db.exec(sql);
+  } catch (_) {
+    /* coluna já existe */
+  }
 }
 
 // Índices para as colunas mais consultadas/filtradas no notification_log.
@@ -111,7 +115,9 @@ const defaults = {
 };
 
 for (const [key, value] of Object.entries(defaults)) {
-  const existing = db.prepare('SELECT value FROM config WHERE key = ?').get(key);
+  const existing = db
+    .prepare('SELECT value FROM config WHERE key = ?')
+    .get(key);
   if (!existing) {
     db.prepare('INSERT INTO config (key, value) VALUES (?, ?)').run(key, value);
   }
@@ -123,38 +129,84 @@ function getConfig(key) {
 }
 
 function setConfig(key, value) {
-  db.prepare('INSERT OR REPLACE INTO config (key, value) VALUES (?, ?)').run(key, String(value));
+  db.prepare('INSERT OR REPLACE INTO config (key, value) VALUES (?, ?)').run(
+    key,
+    String(value),
+  );
 }
 
 function getAllConfig() {
   const rows = db.prepare('SELECT key, value FROM config').all();
-  return Object.fromEntries(rows.map(r => [r.key, r.value]));
+  return Object.fromEntries(rows.map((r) => [r.key, r.value]));
 }
 
-function logNotification({ deal_id, deal_title, owner_name, owner_email, admin_email, days_stale, status, error, deal_updated_at, deal_type, web_url }) {
-  return db.prepare(`
+function logNotification({
+  deal_id,
+  deal_title,
+  owner_name,
+  owner_email,
+  admin_email,
+  days_stale,
+  status,
+  error,
+  deal_updated_at,
+  deal_type,
+  web_url,
+}) {
+  return db
+    .prepare(`
     INSERT INTO notification_log (deal_id, deal_title, owner_name, owner_email, admin_email, sent_at, days_stale, status, error, deal_updated_at, deal_type, web_url)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(deal_id, deal_title, owner_name, owner_email, admin_email, new Date().toISOString(), days_stale, status, error || null, deal_updated_at || null, deal_type || null, web_url || null);
+  `)
+    .run(
+      deal_id,
+      deal_title,
+      owner_name,
+      owner_email,
+      admin_email,
+      new Date().toISOString(),
+      days_stale,
+      status,
+      error || null,
+      deal_updated_at || null,
+      deal_type || null,
+      web_url || null,
+    );
 }
 
 function getNotificationLogs({ limit = 100, offset = 0 } = {}) {
-  const rows = db.prepare('SELECT * FROM notification_log ORDER BY sent_at DESC LIMIT ? OFFSET ?').all(limit, offset);
-  const total = db.prepare('SELECT COUNT(*) as count FROM notification_log').get().count;
+  const rows = db
+    .prepare(
+      'SELECT * FROM notification_log ORDER BY sent_at DESC LIMIT ? OFFSET ?',
+    )
+    .all(limit, offset);
+  const total = db
+    .prepare('SELECT COUNT(*) as count FROM notification_log')
+    .get().count;
   return { logs: rows, total };
 }
 
 // Verifica se já enviamos notificação hoje para este deal
 function alreadyNotifiedToday(deal_id) {
   const today = new Date().toISOString().split('T')[0];
-  const row = db.prepare(`
+  const row = db
+    .prepare(`
     SELECT id FROM notification_log
     WHERE deal_id = ? AND sent_at LIKE ? AND status = 'sent'
-  `).get(deal_id, `${today}%`);
+  `)
+    .get(deal_id, `${today}%`);
   return !!row;
 }
 
-function saveWeeklySnapshot({ week_label, total_stale, avg_days, max_days, by_owner, by_category, by_funnel }) {
+function saveWeeklySnapshot({
+  week_label,
+  total_stale,
+  avg_days,
+  max_days,
+  by_owner,
+  by_category,
+  by_funnel,
+}) {
   db.prepare(`
     INSERT INTO weekly_snapshots (week_label, snapshot_at, total_stale, avg_days, max_days, by_owner, by_category, by_funnel)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
@@ -166,15 +218,16 @@ function saveWeeklySnapshot({ week_label, total_stale, avg_days, max_days, by_ow
     max_days,
     JSON.stringify(by_owner),
     JSON.stringify(by_category),
-    JSON.stringify(by_funnel)
+    JSON.stringify(by_funnel),
   );
 }
 
 function getWeeklySnapshots(limit = 12) {
-  return db.prepare('SELECT * FROM weekly_snapshots ORDER BY snapshot_at DESC LIMIT ?')
+  return db
+    .prepare('SELECT * FROM weekly_snapshots ORDER BY snapshot_at DESC LIMIT ?')
     .all(limit)
     .reverse()
-    .map(row => ({
+    .map((row) => ({
       ...row,
       by_owner: JSON.parse(row.by_owner),
       by_category: JSON.parse(row.by_category),
@@ -183,31 +236,54 @@ function getWeeklySnapshots(limit = 12) {
 }
 
 function getNotificationStats() {
-  const total = db.prepare(`SELECT COUNT(*) as count FROM notification_log WHERE status = 'sent'`).get().count;
-  const clicked = db.prepare(`SELECT COUNT(*) as count FROM notification_log WHERE status = 'sent' AND clicked_at IS NOT NULL`).get().count;
-  const lastSent = db.prepare(`SELECT sent_at FROM notification_log WHERE status = 'sent' ORDER BY sent_at DESC LIMIT 1`).get();
+  const total = db
+    .prepare(
+      `SELECT COUNT(*) as count FROM notification_log WHERE status = 'sent'`,
+    )
+    .get().count;
+  const clicked = db
+    .prepare(
+      `SELECT COUNT(*) as count FROM notification_log WHERE status = 'sent' AND clicked_at IS NOT NULL`,
+    )
+    .get().count;
+  const lastSent = db
+    .prepare(
+      `SELECT sent_at FROM notification_log WHERE status = 'sent' ORDER BY sent_at DESC LIMIT 1`,
+    )
+    .get();
   return {
     totalSent: total,
     totalClicked: clicked,
     clickRate: total > 0 ? Math.round((clicked / total) * 100) : 0,
-    lastSentAt: lastSent?.sent_at || null
+    lastSentAt: lastSent?.sent_at || null,
   };
 }
 
 function getClickedDealIds() {
-  const rows = db.prepare(`SELECT DISTINCT deal_id FROM notification_log WHERE clicked_at IS NOT NULL`).all();
-  return new Set(rows.map(r => r.deal_id));
+  const rows = db
+    .prepare(
+      `SELECT DISTINCT deal_id FROM notification_log WHERE clicked_at IS NOT NULL`,
+    )
+    .all();
+  return new Set(rows.map((r) => r.deal_id));
 }
 
 function getNotifiedDealIds() {
-  const rows = db.prepare(`SELECT deal_id, MAX(clicked_at) as clicked_at FROM notification_log WHERE status = 'sent' GROUP BY deal_id`).all();
+  const rows = db
+    .prepare(
+      `SELECT deal_id, MAX(clicked_at) as clicked_at FROM notification_log WHERE status = 'sent' GROUP BY deal_id`,
+    )
+    .all();
   const map = {};
-  rows.forEach(r => { map[r.deal_id] = { clicked: !!r.clicked_at, clicked_at: r.clicked_at }; });
+  rows.forEach((r) => {
+    map[r.deal_id] = { clicked: !!r.clicked_at, clicked_at: r.clicked_at };
+  });
   return map;
 }
 
 function getNotifiedDeals() {
-  return db.prepare(`
+  return db
+    .prepare(`
     SELECT deal_id, deal_title, owner_name, owner_email, MAX(sent_at) as last_notified_at,
            deal_updated_at, deal_type, web_url, resolved, resolved_at,
            COUNT(*) as notification_count
@@ -215,17 +291,21 @@ function getNotifiedDeals() {
     WHERE status = 'sent'
     GROUP BY deal_id
     ORDER BY last_notified_at DESC
-  `).all();
+  `)
+    .all();
 }
 
 function markResolved(deal_id, resolved_at) {
-  db.prepare(`UPDATE notification_log SET resolved = 1, resolved_at = ? WHERE deal_id = ?`)
-    .run(resolved_at, deal_id);
+  db.prepare(
+    `UPDATE notification_log SET resolved = 1, resolved_at = ? WHERE deal_id = ?`,
+  ).run(resolved_at, deal_id);
 }
 
 function recordClick(log_id) {
-  db.prepare(`UPDATE notification_log SET clicked_at = ? WHERE id = ?`)
-    .run(new Date().toISOString(), log_id);
+  db.prepare(`UPDATE notification_log SET clicked_at = ? WHERE id = ?`).run(
+    new Date().toISOString(),
+    log_id,
+  );
 }
 
 function getLogById(id) {
@@ -239,7 +319,11 @@ function getUser(username) {
 }
 
 function createUser(username, password) {
-  return db.prepare('INSERT OR REPLACE INTO app_users (username, password) VALUES (?, ?)').run(username, password);
+  return db
+    .prepare(
+      'INSERT OR REPLACE INTO app_users (username, password) VALUES (?, ?)',
+    )
+    .run(username, password);
 }
 
 function listUsers() {
@@ -251,7 +335,9 @@ function deleteUser(username) {
 }
 
 function updateUserPassword(username, hashedPassword) {
-  return db.prepare('UPDATE app_users SET password = ? WHERE username = ?').run(hashedPassword, username);
+  return db
+    .prepare('UPDATE app_users SET password = ? WHERE username = ?')
+    .run(hashedPassword, username);
 }
 
 // ── Reset de senha ───────────────────────────────────────────────
@@ -259,44 +345,75 @@ function updateUserPassword(username, hashedPassword) {
 function saveResetToken(username, token, expiresAt) {
   // Limpa tokens anteriores deste usuário
   db.prepare('DELETE FROM reset_tokens WHERE username = ?').run(username);
-  return db.prepare(
-    'INSERT INTO reset_tokens (username, token, expires_at) VALUES (?, ?, ?)'
-  ).run(username, token, expiresAt);
+  return db
+    .prepare(
+      'INSERT INTO reset_tokens (username, token, expires_at) VALUES (?, ?, ?)',
+    )
+    .run(username, token, expiresAt);
 }
 
 function getResetToken(token) {
-  return db.prepare('SELECT * FROM reset_tokens WHERE token = ? AND used = 0').get(token);
+  return db
+    .prepare('SELECT * FROM reset_tokens WHERE token = ? AND used = 0')
+    .get(token);
 }
 
 function markTokenUsed(token) {
-  return db.prepare('UPDATE reset_tokens SET used = 1 WHERE token = ?').run(token);
+  return db
+    .prepare('UPDATE reset_tokens SET used = 1 WHERE token = ?')
+    .run(token);
 }
 
 // ── Log de acessos ───────────────────────────────────────────────
 
 function logLogin({ username, success, ip, reason }) {
-  return db.prepare(
-    'INSERT INTO login_logs (username, success, ip, reason) VALUES (?, ?, ?, ?)'
-  ).run(username, success ? 1 : 0, ip || null, reason || null);
+  return db
+    .prepare(
+      'INSERT INTO login_logs (username, success, ip, reason) VALUES (?, ?, ?, ?)',
+    )
+    .run(username, success ? 1 : 0, ip || null, reason || null);
 }
 
 function getLoginLogs(limit = 50) {
-  return db.prepare('SELECT * FROM login_logs ORDER BY created_at DESC LIMIT ?').all(limit);
+  return db
+    .prepare('SELECT * FROM login_logs ORDER BY created_at DESC LIMIT ?')
+    .all(limit);
 }
 
 // Fecha a conexão com o banco (usado no graceful shutdown).
 function closeDb() {
-  try { db.close(); } catch (_) { /* já fechado */ }
+  try {
+    db.close();
+  } catch (_) {
+    /* já fechado */
+  }
 }
 
 module.exports = {
   closeDb,
-  getConfig, setConfig, getAllConfig,
-  logNotification, getNotificationLogs, alreadyNotifiedToday,
-  saveWeeklySnapshot, getWeeklySnapshots,
-  getNotificationStats, getNotifiedDeals, markResolved,
-  recordClick, getLogById, getClickedDealIds, getNotifiedDealIds,
-  getUser, createUser, listUsers, deleteUser, updateUserPassword,
-  saveResetToken, getResetToken, markTokenUsed,
-  logLogin, getLoginLogs,
+  getConfig,
+  setConfig,
+  getAllConfig,
+  logNotification,
+  getNotificationLogs,
+  alreadyNotifiedToday,
+  saveWeeklySnapshot,
+  getWeeklySnapshots,
+  getNotificationStats,
+  getNotifiedDeals,
+  markResolved,
+  recordClick,
+  getLogById,
+  getClickedDealIds,
+  getNotifiedDealIds,
+  getUser,
+  createUser,
+  listUsers,
+  deleteUser,
+  updateUserPassword,
+  saveResetToken,
+  getResetToken,
+  markTokenUsed,
+  logLogin,
+  getLoginLogs,
 };
