@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: planning
+status: executing
 stopped_at: Phase 2 context gathered
-last_updated: "2026-07-24T19:46:39.935Z"
-last_activity: 2026-07-24 -- Quick task 260724-lea (WR-01 fix, 28/28 verde); WR-02/WR-03 dobrados na Phase 2
+last_updated: "2026-07-24T20:58:04.961Z"
+last_activity: 2026-07-24
 progress:
   total_phases: 8
   completed_phases: 1
-  total_plans: 5
-  completed_plans: 5
+  total_plans: 9
+  completed_plans: 6
   percent: 13
 ---
 
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-22)
 
 **Core value:** Rede de testes automatizados sobre a lógica crítica de notificação (quem recebe / quem não recebe) — para nunca mais uma regressão silenciosa.
-**Current focus:** Phase 2 — toolchain de qualidade & ci
+**Current focus:** Phase 02 — toolchain-de-qualidade-ci
 
 ## Current Position
 
-Phase: 2
-Plan: Not started
-Status: Ready to plan
-Last activity: 2026-07-24 -- Quick task 260724-lea (WR-01 fix, 28/28 verde); WR-02/WR-03 dobrados na Phase 2
+Phase: 02 (toolchain-de-qualidade-ci) — EXECUTING
+Plan: 2 of 4
+Status: Ready to execute
+Last activity: 2026-07-24
 
-Progress: [██████████] 100%
+Progress: [███████░░░] 67%
 
 ## Performance Metrics
 
@@ -57,6 +57,7 @@ Progress: [██████████] 100%
 | Phase 01 P03 | 12 | 2 tasks | 2 files |
 | Phase 01 P04 | 6 | 1 tasks | 1 files |
 | Phase 01 P05 | 10 | 2 tasks | 2 files |
+| Phase 02 P01 | 4 | 1 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -75,6 +76,7 @@ Recent decisions affecting current work:
 - [Phase 01]: Fixture real-deal anonimizada commitada so apos aprovacao humana, sem reescrita de historico git — D-10: token/PII nunca entram no historico antes da revisao (checkpoint blocking-human)
 - [Phase 01]: [01-03]: SQLite real em tempfile (nao :memory:) para o caso day-boundary da dedup via segunda conexao ao mesmo arquivo — D-08: viabiliza semear sent_at do passado sem tocar backend/agendor.db
 - [Phase ?]: [01-04]: Quirk de match exato do funil beefor (near-miss NAO suprimido) pinado como comportamento ATUAL
+- [Phase ?]: 02-01: getDealsWithFutureTasks caracterizado (a-e), comportamento atual pinado, WR-02 fechado
 
 ### Pending Todos
 
@@ -106,6 +108,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-24T19:46:39.926Z
+Last session: 2026-07-24T20:57:32.144Z
 Stopped at: Phase 2 context gathered
-Resume file: .planning/phases/02-toolchain-de-qualidade-ci/02-CONTEXT.md
+Resume file: None

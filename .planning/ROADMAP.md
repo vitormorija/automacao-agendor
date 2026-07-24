@@ -56,7 +56,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   - WR-02 — adicionar cobertura de caracterização para `getDealsWithFutureTasks` (agendor.js:171-204), 0% coberto e usado pelo scheduler para decidir quem é notificado
   - WR-03 — impor thresholds de cobertura (c8 `check-coverage`) integrados ao CI, para a rede de segurança não erodir em silêncio
 **Plans**: 4 plans
-  - [ ] 02-01-PLAN.md — Teste de caracterização WR-02 (`getDealsWithFutureTasks`)
+  - [x] 02-01-PLAN.md — Teste de caracterização WR-02 (`getDealsWithFutureTasks`)
   - [ ] 02-02-PLAN.md — Biome: config + scripts + commit de formatação + guard + baseline lint (QUAL-01/02/03)
   - [ ] 02-03-PLAN.md — CI workflow `ci.yml` (CI-01) + flip do gate de cobertura c8 (WR-03)
   - [ ] 02-04-PLAN.md — Branch protection required checks + prova de PR falho (CI-02)
@@ -133,7 +133,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Rede de Testes (Safety-Net) | 5/5 | Complete   | 2026-07-24 |
-| 2. Toolchain de Qualidade & CI | 0/4 | Planned | - |
+| 2. Toolchain de Qualidade & CI | 1/4 | In Progress|  |
 | 3. Config & Segredos por Ambiente | 0/TBD | Not started | - |
 | 4. Confiabilidade das Integrações | 0/TBD | Not started | - |
 | 5. Logging & Padronização de Erros | 0/TBD | Not started | - |
