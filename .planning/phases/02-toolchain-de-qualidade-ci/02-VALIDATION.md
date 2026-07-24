@@ -38,13 +38,12 @@ created: 2026-07-24
 
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| WR-02 test | 01 | 0 | WR-02 | — | N/A | unit (characterization) | `cd backend && node --test test/agendor.futureTasks.test.js` | ❌ W0 | ⬜ pending |
-| Biome config | 02 | 0 | QUAL-01, QUAL-02 | T-2-V14 | Versão pinada (`-E`), sem postinstall | tooling | `biome format --check .` | ❌ W0 | ⬜ pending |
-| Lint scripts | 02 | 1 | QUAL-03 | — | N/A | tooling | `cd backend && npm run lint` / `cd frontend && npm run lint` | ❌ W0 | ⬜ pending |
-| Format guard | 02 | 1 | QUAL-01 (D-05) | — | Reformatação preserva comportamento | regression | `cd backend && npm test` → 28/28 | ✅ | ⬜ pending |
-| CI workflow | 03 | 2 | CI-01 | T-2-V14 | `permissions: contents:read`, tags pinadas | integration | `gh pr checks` (PR real) | ❌ W0 | ⬜ pending |
-| Branch protection | 03 | 3 | CI-02 | T-2-bypass | Required checks + enforce_admins | integration | PR de falha proposital barrado | ❌ W0 | ⬜ pending |
-| Coverage gate | 01 | 3 | WR-03 | — | Cobertura não erode sob threshold | coverage gate | `cd backend && npm run test:coverage` (`check-coverage:true`) | ⚠️ config edit | ⬜ pending |
+| WR-02 test | 02-01 | 1 | WR-02 | — | N/A | unit (characterization) | `cd backend && node --test test/agendor.futureTasks.test.js` | ❌ W0 | ⬜ pending |
+| Biome config + scripts | 02-02 | 2 | QUAL-01, QUAL-02, QUAL-03 | T-2-02-01 | Versão pinada (`-E`), sem postinstall | tooling | `biome format --check .` / `npm run lint` | ❌ W0 | ⬜ pending |
+| Format guard | 02-02 | 2 | QUAL-01 (D-05) | T-2-02-03 | Reformatação preserva comportamento | regression | `cd backend && npm test` → verde | ✅ | ⬜ pending |
+| CI workflow | 02-03 | 3 | CI-01 | T-2-03-01/02 | `permissions: contents:read`, tags pinadas | integration | `gh pr checks` (PR real, prova em 02-04) | ❌ W0 | ⬜ pending |
+| Coverage gate | 02-03 | 3 | WR-03 | T-2-03-04 | Cobertura não erode sob threshold | coverage gate | `cd backend && npm run test:coverage` (`check-coverage:true`) | ⚠️ config edit | ⬜ pending |
+| Branch protection | 02-04 | 4 | CI-02 | T-2-04-01 | Required checks + enforce_admins | integration | PR de falha proposital barrado | ❌ W0 | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
