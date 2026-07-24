@@ -23,12 +23,12 @@ Antes de qualquer mudança, existir uma **rede de testes automatizados sobre a l
 - ✓ Auth: login com bcrypt, rate-limit por IP, reset de senha, CRUD de usuários — existing (`routes/auth.js`)
 - ✓ Config runtime como key-value em SQLite, editável pela UI (SMTP, cron, threshold) — existing (`db.js`, `routes/config.js`)
 - ✓ Boot falha rápido se `JWT_SECRET` ausente/fraco — existing (`secret.js`)
+- ✓ Rede de testes de caracterização sobre a lógica crítica de notificação (getStaleDeals, dedup, supressão por funil, auth) — Validado na Phase 1 (`backend/test/`, 28 testes via `node:test`)
 
 ### Active
 
 <!-- Metas desta etapa de estabilização. Ordem reflete dependência: testes primeiro. -->
 
-- [ ] Rede de testes de caracterização sobre a lógica crítica de notificação (filtragem de deals, dedup, supressão por funil) — cobrindo o comportamento **atual** antes de qualquer mudança
 - [ ] Toolchain de qualidade: lint, formatação e runner de testes configurados no backend e frontend
 - [ ] CI: pipeline (lint + testes + build) rodando e passando em cada PR
 - [ ] Remover segredos e config hardcoded do código (token Agendor, credenciais SMTP, etc.) → env por ambiente, fora do git
@@ -99,4 +99,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-07-22 after initialization*
+*Last updated: 2026-07-24 — Phase 1 (Rede de Testes / Safety-Net) completa*
