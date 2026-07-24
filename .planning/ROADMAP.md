@@ -52,6 +52,9 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. Scripts `lint`, `format` e `test` estão presentes em ambos os `package.json` (backend e frontend) (QUAL-03)
   4. Pipeline de CI roda lint + testes + build a cada PR e fica verde no estado atual (CI-01)
   5. Um PR com lint, teste ou build falhando é bloqueado de merge via status check obrigatório (CI-02)
+**Carried from Phase 1 review** (`01-REVIEW.md`; ver `.planning/todos/pending/`):
+  - WR-02 — adicionar cobertura de caracterização para `getDealsWithFutureTasks` (agendor.js:171-204), 0% coberto e usado pelo scheduler para decidir quem é notificado
+  - WR-03 — impor thresholds de cobertura (c8 `check-coverage`) integrados ao CI, para a rede de segurança não erodir em silêncio
 **Plans**: TBD
 
 ### Phase 3: Config & Segredos por Ambiente

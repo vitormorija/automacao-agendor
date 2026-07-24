@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-07-22)
 Phase: 2
 Plan: Not started
 Status: Ready to plan
-Last activity: 2026-07-24
+Last activity: 2026-07-24 -- Quick task 260724-lea (WR-01 fix, 28/28 verde); WR-02/WR-03 dobrados na Phase 2
 
 Progress: [██████████] 100%
 
@@ -80,7 +80,8 @@ Recent decisions affecting current work:
 
 [From .planning/todos/pending/ — ideas captured during sessions]
 
-None yet.
+- `wr-02-cover-getdealswithfuturetasks` (→ Phase 2) — caracterização de `getDealsWithFutureTasks` (0% coberto; usado pelo scheduler para decidir quem é notificado)
+- `wr-03-enforce-coverage-thresholds` (→ Phase 2) — thresholds de cobertura (c8 `check-coverage`) integrados ao CI
 
 ### Blockers/Concerns
 
@@ -88,6 +89,12 @@ None yet.
 
 - Node.js não está instalado no sistema (binários em `/tmp`, wrappers em `~/bin`); considerar ao configurar test runner/CI localmente
 - Frontend e backend têm `package.json` separados (sem workspaces); toolchain (Phase 2) precisa cobrir os dois
+
+### Quick Tasks Completed
+
+| # | Description | Date | Commit | Directory |
+|---|-------------|------|--------|-----------|
+| 260724-lea | Fix WR-01: neutralizar SMTP_PASS/ADMIN_EMAIL no setup de testes | 2026-07-24 | cd050e1 | [260724-lea-fix-wr-01-neutralize-smtp-pass-and-admin](./quick/260724-lea-fix-wr-01-neutralize-smtp-pass-and-admin/) |
 
 ## Deferred Items
 
