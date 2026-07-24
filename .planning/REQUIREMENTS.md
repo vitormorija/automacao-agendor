@@ -17,9 +17,9 @@ Requisitos desta etapa de estabilização. A ordem reflete dependência: testes 
 
 ### Qualidade (Toolchain)
 
-- [ ] **QUAL-01**: Linter configurado em backend e frontend, com script `lint` executável e regras versionadas
-- [ ] **QUAL-02**: Formatador (ex.: Prettier) configurado com script `format` e config versionada
-- [ ] **QUAL-03**: Scripts npm padronizados (`lint`, `format`, `test`) presentes em backend e frontend
+- [x] **QUAL-01**: Linter configurado em backend e frontend, com script `lint` executável e regras versionadas
+- [x] **QUAL-02**: Formatador (ex.: Prettier) configurado com script `format` e config versionada
+- [x] **QUAL-03**: Scripts npm padronizados (`lint`, `format`, `test`) presentes em backend e frontend
 
 ### Integração Contínua
 
@@ -109,9 +109,9 @@ Preenchido na criação do roadmap.
 | TEST-03 | Phase 1 | Complete |
 | TEST-04 | Phase 1 | Complete |
 | TEST-05 | Phase 1 | Complete |
-| QUAL-01 | Phase 2 | Pending |
-| QUAL-02 | Phase 2 | Pending |
-| QUAL-03 | Phase 2 | Pending |
+| QUAL-01 | Phase 2 | Complete |
+| QUAL-02 | Phase 2 | Complete |
+| QUAL-03 | Phase 2 | Complete |
 | CI-01 | Phase 2 | Pending |
 | CI-02 | Phase 2 | Pending |
 | CFG-01 | Phase 3 | Pending |
