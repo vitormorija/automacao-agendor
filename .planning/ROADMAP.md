@@ -58,7 +58,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Plans**: 4 plans
   - [x] 02-01-PLAN.md — Teste de caracterização WR-02 (`getDealsWithFutureTasks`)
   - [x] 02-02-PLAN.md — Biome: config + scripts + commit de formatação + guard + baseline lint (QUAL-01/02/03)
-  - [ ] 02-03-PLAN.md — CI workflow `ci.yml` (CI-01) + flip do gate de cobertura c8 (WR-03)
+  - [x] 02-03-PLAN.md — CI workflow `ci.yml` (CI-01) + flip do gate de cobertura c8 (WR-03)
   - [ ] 02-04-PLAN.md — Branch protection required checks + prova de PR falho (CI-02)
 
 ### Phase 3: Config & Segredos por Ambiente
@@ -133,7 +133,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Rede de Testes (Safety-Net) | 5/5 | Complete   | 2026-07-24 |
-| 2. Toolchain de Qualidade & CI | 2/4 | In Progress|  |
+| 2. Toolchain de Qualidade & CI | 3/4 | In Progress|  |
 | 3. Config & Segredos por Ambiente | 0/TBD | Not started | - |
 | 4. Confiabilidade das Integrações | 0/TBD | Not started | - |
 | 5. Logging & Padronização de Erros | 0/TBD | Not started | - |

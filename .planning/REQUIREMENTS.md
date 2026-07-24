@@ -23,7 +23,7 @@ Requisitos desta etapa de estabilização. A ordem reflete dependência: testes 
 
 ### Integração Contínua
 
-- [ ] **CI-01**: Pipeline de CI roda lint + testes + build a cada PR
+- [x] **CI-01**: Pipeline de CI roda lint + testes + build a cada PR
 - [ ] **CI-02**: CI bloqueia o merge do PR quando lint, teste ou build falham
 
 ### Config & Segredos por Ambiente
@@ -112,7 +112,7 @@ Preenchido na criação do roadmap.
 | QUAL-01 | Phase 2 | Complete |
 | QUAL-02 | Phase 2 | Complete |
 | QUAL-03 | Phase 2 | Complete |
-| CI-01 | Phase 2 | Pending |
+| CI-01 | Phase 2 | Complete |
 | CI-02 | Phase 2 | Pending |
 | CFG-01 | Phase 3 | Pending |
 | CFG-02 | Phase 3 | Pending |
