@@ -13,7 +13,8 @@
       "!**/dist",
       "!**/coverage",
       "!backend/agendor.db",
-      "!backend/test/fixtures/**"
+      "!backend/test/fixtures/**",
+      "!**/*.css"
     ]
   },
   "formatter": {
