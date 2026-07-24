@@ -66,6 +66,17 @@ function clearAttempts(ip) {
   loginAttempts.delete(ip);
 }
 
+// ── Verificação de senha (bcrypt + texto puro legado) ────────────
+// Fator comum extraído do login e do change-password: suporta hash bcrypt
+// (prefixo '$2') e, por compatibilidade, senhas legadas em texto puro. O
+// discriminador '$2' é preservado EXATAMENTE — qualquer mudança nesse caminho
+// é decisão de segurança de fase futura, coberta por teste próprio.
+async function verifyPassword(storedHash, plain) {
+  return storedHash.startsWith('$2')
+    ? bcrypt.compare(plain, storedHash)
+    : plain === storedHash;
+}
+
 // ── Garante usuário administrador inicial ────────────────────────
 // Em vez de credenciais hardcoded no código, o usuário inicial é semeado a
 // partir de variáveis de ambiente (SEED_ADMIN_EMAIL / SEED_ADMIN_PASSWORD) e
@@ -121,9 +132,7 @@ router.post('/login', async (req, res) => {
   }
 
   // Compara senha (suporta hash bcrypt e texto puro legado)
-  const match = user.password.startsWith('$2')
-    ? await bcrypt.compare(password, user.password)
-    : password === user.password;
+  const match = await verifyPassword(user.password, password);
 
   if (!match) {
     const result = recordFailedAttempt(ip);
@@ -190,9 +199,7 @@ router.post('/change-password', async (req, res) => {
   const user = getUser(username);
   if (!user) return res.status(404).json({ ok: false, message: 'Usuário não encontrado.' });
 
-  const match = user.password.startsWith('$2')
-    ? await bcrypt.compare(currentPassword, user.password)
-    : currentPassword === user.password;
+  const match = await verifyPassword(user.password, currentPassword);
 
   if (!match) return res.status(401).json({ ok: false, message: 'Senha atual incorreta.' });
 
@@ -289,3 +296,13 @@ router.get('/logs', requireAdmin, (req, res) => {
 });
 
 module.exports = router;
+
+// ── Seams de teste (não afetam o roteamento do Express) ──────────
+// app.use() só precisa que module.exports seja a função router; estas props
+// extras são ignoradas pelo Express e existem para caracterizar o rate-limit e
+// a verificação de senha, além de permitir reset do Map em memória entre casos.
+module.exports.checkRateLimit = checkRateLimit;
+module.exports.recordFailedAttempt = recordFailedAttempt;
+module.exports.clearAttempts = clearAttempts;
+module.exports.verifyPassword = verifyPassword;
+module.exports._loginAttempts = loginAttempts;
