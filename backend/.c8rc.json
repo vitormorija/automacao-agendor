@@ -2,5 +2,11 @@
   "all": true,
   "include": ["src/**/*.js"],
   "exclude": ["test/**", "src/index.js"],
-  "reporter": ["text", "lcov"]
+  "reporter": ["text", "lcov"],
+  "check-coverage": true,
+  "per-file": false,
+  "lines": 20,
+  "statements": 20,
+  "functions": 20,
+  "branches": 60
 }
