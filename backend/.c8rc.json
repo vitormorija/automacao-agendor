@@ -1,14 +1,6 @@
 {
   "all": true,
-  "include": [
-    "src/**/*.js"
-  ],
-  "exclude": [
-    "test/**",
-    "src/index.js"
-  ],
-  "reporter": [
-    "text",
-    "lcov"
-  ]
+  "include": ["src/**/*.js"],
+  "exclude": ["test/**", "src/index.js"],
+  "reporter": ["text", "lcov"]
 }

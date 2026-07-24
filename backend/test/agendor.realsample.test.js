@@ -14,7 +14,13 @@ const realSample = require('./fixtures/real-deals.sample.json');
 
 installFakeAxios((url) => {
   if (url === '/deals') {
-    return { data: { data: realSample, meta: { totalCount: realSample.length }, links: {} } };
+    return {
+      data: {
+        data: realSample,
+        meta: { totalCount: realSample.length },
+        links: {},
+      },
+    };
   }
   if (url.startsWith('/organizations/')) {
     // Categoria genérica não-excluída para o smoke de realismo.

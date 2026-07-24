@@ -12,14 +12,24 @@ function emit(level, args) {
   if (LEVELS[level] > currentLevel) return;
   const time = new Date().toISOString();
   const message = args
-    .map(a => (a instanceof Error ? (a.stack || a.message) : typeof a === 'object' ? JSON.stringify(a) : String(a)))
+    .map((a) =>
+      a instanceof Error
+        ? a.stack || a.message
+        : typeof a === 'object'
+          ? JSON.stringify(a)
+          : String(a),
+    )
     .join(' ');
 
   const line = isProd
     ? JSON.stringify({ time, level, message })
     : `${time} [${level.toUpperCase()}] ${message}`;
 
-  (level === 'error' ? console.error : level === 'warn' ? console.warn : console.log)(line);
+  (level === 'error'
+    ? console.error
+    : level === 'warn'
+      ? console.warn
+      : console.log)(line);
 }
 
 module.exports = {

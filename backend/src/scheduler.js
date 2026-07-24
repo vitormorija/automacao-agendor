@@ -1,7 +1,21 @@
 const cron = require('node-cron');
-const { getConfig, logNotification, alreadyNotifiedToday, saveWeeklySnapshot } = require('./db');
-const { getStaleDeals, getUsers, getDealsWithFutureTasks, shouldNotifyOwner } = require('./agendor');
-const { sendStaleNotification, sendWeeklySummary, sendOwnerWeeklySummary } = require('./emailer');
+const {
+  getConfig,
+  logNotification,
+  alreadyNotifiedToday,
+  saveWeeklySnapshot,
+} = require('./db');
+const {
+  getStaleDeals,
+  getUsers,
+  getDealsWithFutureTasks,
+  shouldNotifyOwner,
+} = require('./agendor');
+const {
+  sendStaleNotification,
+  sendWeeklySummary,
+  sendOwnerWeeklySummary,
+} = require('./emailer');
 const logger = require('./logger');
 
 let currentTask = null;
@@ -10,20 +24,32 @@ let lastRunResult = null;
 let isRunning = false;
 
 async function runCheck() {
-  if (isRunning) return { skipped: true, reason: 'Verificação já em andamento' };
+  if (isRunning)
+    return { skipped: true, reason: 'Verificação já em andamento' };
   isRunning = true;
 
   const startTime = new Date();
-  const results = { checked: 0, stale: 0, notified: 0, skipped: 0, errors: [], deals: [] };
+  const results = {
+    checked: 0,
+    stale: 0,
+    notified: 0,
+    skipped: 0,
+    errors: [],
+    deals: [],
+  };
 
   try {
     const staleDays = parseInt(getConfig('stale_days')) || 15;
     const adminEmails = (getConfig('admin_email') || '')
-      .split(',').map(e => e.trim()).filter(Boolean);
+      .split(',')
+      .map((e) => e.trim())
+      .filter(Boolean);
     const notifyAuthor = getConfig('notify_author') !== 'false';
     const notificationsEnabled = getConfig('notifications_enabled') === 'true';
 
-    logger.info(`[Scheduler] Iniciando verificação — threshold: ${staleDays} dias`);
+    logger.info(
+      `[Scheduler] Iniciando verificação — threshold: ${staleDays} dias`,
+    );
 
     const [staleDeals, users, futureTasks] = await Promise.all([
       getStaleDeals(staleDays),
@@ -32,10 +58,12 @@ async function runCheck() {
     ]);
 
     // Remove deals que têm tarefa futura agendada (não precisam de notificação agora)
-    const dealsToNotify = staleDeals.filter(d => !futureTasks.has(d.id));
+    const dealsToNotify = staleDeals.filter((d) => !futureTasks.has(d.id));
     const skippedFutureTasks = staleDeals.length - dealsToNotify.length;
     if (skippedFutureTasks > 0) {
-      logger.info(`[Scheduler] ${skippedFutureTasks} deal(s) ignorado(s) por terem tarefa futura agendada`);
+      logger.info(
+        `[Scheduler] ${skippedFutureTasks} deal(s) ignorado(s) por terem tarefa futura agendada`,
+      );
     }
 
     results.stale = dealsToNotify.length;
@@ -46,7 +74,7 @@ async function runCheck() {
       const owner = users[deal.ownerId];
       const ownerEmail = owner?.email || null;
       const author = users[deal.authorId];
-      const authorEmail = notifyAuthor ? (author?.email || null) : null;
+      const authorEmail = notifyAuthor ? author?.email || null : null;
 
       const dealResult = {
         id: deal.id,
@@ -97,9 +125,16 @@ async function runCheck() {
           });
           const logId = logEntry.lastInsertRowid;
 
-          const emailResults = await sendStaleNotification({ deal, ownerEmail, authorEmail, logId });
-          const allOk = emailResults.every(r => r.success);
-          const errors = emailResults.filter(r => !r.success).map(r => r.error);
+          const emailResults = await sendStaleNotification({
+            deal,
+            ownerEmail,
+            authorEmail,
+            logId,
+          });
+          const allOk = emailResults.every((r) => r.success);
+          const errors = emailResults
+            .filter((r) => !r.success)
+            .map((r) => r.error);
 
           dealResult.notified = allOk;
           if (!allOk) results.errors.push(...errors);
@@ -130,7 +165,9 @@ async function runCheck() {
 
     results.duration = Date.now() - startTime;
     results.ranAt = startTime.toISOString();
-    logger.info(`[Scheduler] Concluído: ${results.stale} negócios parados, ${results.notified} notificações enviadas`);
+    logger.info(
+      `[Scheduler] Concluído: ${results.stale} negócios parados, ${results.notified} notificações enviadas`,
+    );
   } catch (err) {
     results.error = err.message;
     logger.error('[Scheduler] Erro na verificação:', err);
@@ -146,12 +183,21 @@ async function runWeeklySummary() {
   logger.info('[Scheduler] Iniciando resumo semanal...');
   try {
     const staleDays = parseInt(getConfig('stale_days')) || 15;
-    const adminEmails = (getConfig('admin_email') || '').split(',').map(e => e.trim()).filter(Boolean);
+    const adminEmails = (getConfig('admin_email') || '')
+      .split(',')
+      .map((e) => e.trim())
+      .filter(Boolean);
     const notificationsEnabled = getConfig('notifications_enabled') === 'true';
     if (!notificationsEnabled) return;
 
-    const [deals, users] = await Promise.all([getStaleDeals(staleDays), getUsers()]);
-    const enriched = deals.map(d => ({ ...d, ownerEmail: users[d.ownerId]?.email || null }));
+    const [deals, users] = await Promise.all([
+      getStaleDeals(staleDays),
+      getUsers(),
+    ]);
+    const enriched = deals.map((d) => ({
+      ...d,
+      ownerEmail: users[d.ownerId]?.email || null,
+    }));
 
     // Salva snapshot semanal no banco
     const byOwner = {};
@@ -171,7 +217,9 @@ async function runWeeklySummary() {
       week_label: `Semana ${now.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })}`,
       total_stale: enriched.length,
       avg_days: enriched.length ? totalDays / enriched.length : 0,
-      max_days: enriched.length ? Math.max(...enriched.map(d => d.daysSinceUpdate)) : 0,
+      max_days: enriched.length
+        ? Math.max(...enriched.map((d) => d.daysSinceUpdate))
+        : 0,
       by_owner: byOwner,
       by_category: byCategory,
       by_funnel: byFunnel,
@@ -180,22 +228,31 @@ async function runWeeklySummary() {
     // 1. Resumo consolidado para admins
     if (adminEmails.length) {
       await sendWeeklySummary({ deals: enriched, adminEmails });
-      logger.info(`[Scheduler] Resumo admin enviado para: ${adminEmails.join(', ')}`);
+      logger.info(
+        `[Scheduler] Resumo admin enviado para: ${adminEmails.join(', ')}`,
+      );
     }
 
     // 2. Relatório individualizado para cada comercial responsável
     const results = await sendOwnerWeeklySummary({ deals: enriched, users });
-    const sent = results.filter(r => r.success).length;
-    logger.info(`[Scheduler] Relatórios individuais enviados para ${sent} comercial(is)`);
-
+    const sent = results.filter((r) => r.success).length;
+    logger.info(
+      `[Scheduler] Relatórios individuais enviados para ${sent} comercial(is)`,
+    );
   } catch (err) {
     logger.error('[Scheduler] Erro no resumo semanal:', err.message);
   }
 }
 
 function scheduleTask() {
-  if (currentTask) { currentTask.stop(); currentTask = null; }
-  if (weeklyTask) { weeklyTask.stop(); weeklyTask = null; }
+  if (currentTask) {
+    currentTask.stop();
+    currentTask = null;
+  }
+  if (weeklyTask) {
+    weeklyTask.stop();
+    weeklyTask = null;
+  }
 
   const schedule = getConfig('cron_schedule') || '0 8 * * *';
   const notificationsEnabled = getConfig('notifications_enabled') === 'true';
@@ -206,11 +263,15 @@ function scheduleTask() {
   }
 
   logger.info(`[Scheduler] Agendado com: "${schedule}"`);
-  currentTask = cron.schedule(schedule, runCheck, { timezone: 'America/Sao_Paulo' });
+  currentTask = cron.schedule(schedule, runCheck, {
+    timezone: 'America/Sao_Paulo',
+  });
 
   // Resumo semanal para admins: toda sexta às 11h
   logger.info('[Scheduler] Resumo semanal agendado: sextas às 11h');
-  weeklyTask = cron.schedule('0 11 * * 5', runWeeklySummary, { timezone: 'America/Sao_Paulo' });
+  weeklyTask = cron.schedule('0 11 * * 5', runWeeklySummary, {
+    timezone: 'America/Sao_Paulo',
+  });
 }
 
 function getStatus() {
@@ -234,8 +295,8 @@ async function runCheckOnly() {
 
   // Separa os deals com tarefa futura dos que realmente precisam de notificação
   return staleDeals
-    .filter(deal => !futureTasks.has(deal.id))
-    .map(deal => ({
+    .filter((deal) => !futureTasks.has(deal.id))
+    .map((deal) => ({
       ...deal,
       ownerEmail: users[deal.ownerId]?.email || null,
       authorEmail: users[deal.authorId]?.email || null,
@@ -245,8 +306,14 @@ async function runCheckOnly() {
 
 // Para todos os agendamentos (usado no graceful shutdown).
 function stopTasks() {
-  if (currentTask) { currentTask.stop(); currentTask = null; }
-  if (weeklyTask) { weeklyTask.stop(); weeklyTask = null; }
+  if (currentTask) {
+    currentTask.stop();
+    currentTask = null;
+  }
+  if (weeklyTask) {
+    weeklyTask.stop();
+    weeklyTask = null;
+  }
 }
 
 module.exports = { scheduleTask, runCheck, runCheckOnly, getStatus, stopTasks };

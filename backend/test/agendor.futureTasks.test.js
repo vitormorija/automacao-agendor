@@ -26,7 +26,11 @@ const TASKS_SIGNIFICATIVAS = [
   // (a) aberta + dueDate futuro -> deal 501 ENTRA no Set
   { finishedAt: null, dueDate: FUTURO, deal: { id: 501 } },
   // (b) finalizada (finishedAt preenchido), dueDate futuro -> deal 502 EXCLUÍDO
-  { finishedAt: '2026-05-20T00:00:00.000Z', dueDate: FUTURO, deal: { id: 502 } },
+  {
+    finishedAt: '2026-05-20T00:00:00.000Z',
+    dueDate: FUTURO,
+    deal: { id: 502 },
+  },
   // (c) aberta, mas dueDate no passado -> deal 503 EXCLUÍDO
   { finishedAt: null, dueDate: PASSADO, deal: { id: 503 } },
   // (c2) aberta, dueDate === FIXED_NOW exato -> deal 504 EXCLUÍDO (`>` estrito exclui igualdade)
@@ -39,11 +43,14 @@ const TASKS_SIGNIFICATIVAS = [
 
 // Preenche a página 1 até EXATAMENTE 100 tarefas (gatilho da paginação: SUT só faz
 // page++ quando tasks.length === 100). O recheio são tarefas finalizadas -> inertes.
-const RECHEIO = Array.from({ length: 100 - TASKS_SIGNIFICATIVAS.length }, (_, i) => ({
-  finishedAt: '2026-05-20T00:00:00.000Z',
-  dueDate: FUTURO,
-  deal: { id: 700 + i },
-}));
+const RECHEIO = Array.from(
+  { length: 100 - TASKS_SIGNIFICATIVAS.length },
+  (_, i) => ({
+    finishedAt: '2026-05-20T00:00:00.000Z',
+    dueDate: FUTURO,
+    deal: { id: 700 + i },
+  }),
+);
 
 const PAGE_1 = [...TASKS_SIGNIFICATIVAS, ...RECHEIO]; // 100 tarefas -> força página 2
 // (d) P2 da paginação: página 2 traz < 100 tarefas (aqui 1) -> SUT para após processá-la.
@@ -115,7 +122,10 @@ test('(e) tarefa sem deal.id -> guard t.deal?.id não adiciona nada; Set final �
   // Por quê: a única saída observável de getDealsWithFutureTasks é o conjunto de ids.
   // Só sobrevivem os abertos + futuros + com deal.id: 501 (pág.1), 601 (pág.1), 602 (pág.2).
   // A tarefa sem deal (caso e) e as finalizadas/passadas/iguais não geram entradas.
-  assert.deepStrictEqual([...result].sort((a, b) => a - b), [501, 601, 602]);
+  assert.deepStrictEqual(
+    [...result].sort((a, b) => a - b),
+    [501, 601, 602],
+  );
 });
 
 test('não faz chamada de rede real (axios.create stubado)', async () => {

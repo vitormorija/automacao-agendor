@@ -7,7 +7,9 @@ const axios = require('axios');
 
 // routeHandler(url, config) => payload no formato do axios: { data: <envelope Agendor> }
 function installFakeAxios(routeHandler) {
-  const fakeInstance = { get: mock.fn(async (url, config) => routeHandler(url, config)) };
+  const fakeInstance = {
+    get: mock.fn(async (url, config) => routeHandler(url, config)),
+  };
   mock.method(axios, 'create', () => fakeInstance);
   return fakeInstance;
 }

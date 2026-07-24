@@ -29,7 +29,12 @@ function getPublicBaseUrl() {
   if (!raw) return null;
   try {
     const host = new URL(raw).hostname.toLowerCase();
-    if (host === 'localhost' || host === '127.0.0.1' || host === '0.0.0.0' || host.endsWith('.local')) {
+    if (
+      host === 'localhost' ||
+      host === '127.0.0.1' ||
+      host === '0.0.0.0' ||
+      host.endsWith('.local')
+    ) {
       return null;
     }
     return raw.replace(/\/+$/, '');
@@ -43,17 +48,19 @@ function dealEmailHtml({ deal, ownerName, role, logId }) {
   // Usa tracking apenas quando temos BASE_URL pública E logId — caso contrário,
   // link direto para o card no Agendor (garante que sempre abre, sem depender do nosso servidor).
   // O parâmetro `u` serve de fallback se o log_id for perdido (DB resetado, log antigo).
-  const trackUrl = (publicBase && logId && deal.webUrl)
-    ? `${publicBase}/api/track/click?log_id=${logId}&u=${encodeURIComponent(deal.webUrl)}`
-    : deal.webUrl;
+  const trackUrl =
+    publicBase && logId && deal.webUrl
+      ? `${publicBase}/api/track/click?log_id=${logId}&u=${encodeURIComponent(deal.webUrl)}`
+      : deal.webUrl;
   const updatedDate = new Date(deal.updatedAt).toLocaleDateString('pt-BR');
   const createdDate = new Date(deal.createdAt).toLocaleDateString('pt-BR');
   const color = urgencyColor(deal.daysSinceUpdate);
 
   const tipoLabel = deal.dealType === 'Lead' ? 'lead' : 'negócio';
-  const greeting = role === 'author'
-    ? `Olá, <strong>${ownerName}</strong>! Um ${tipoLabel} que você criou está sem atualização há <strong style="color:${color};">${deal.daysSinceUpdate} dias</strong>.`
-    : `Olá, <strong>${ownerName}</strong>! Um ${tipoLabel} sob sua responsabilidade está sem atualização há <strong style="color:${color};">${deal.daysSinceUpdate} dias</strong>.`;
+  const greeting =
+    role === 'author'
+      ? `Olá, <strong>${ownerName}</strong>! Um ${tipoLabel} que você criou está sem atualização há <strong style="color:${color};">${deal.daysSinceUpdate} dias</strong>.`
+      : `Olá, <strong>${ownerName}</strong>! Um ${tipoLabel} sob sua responsabilidade está sem atualização há <strong style="color:${color};">${deal.daysSinceUpdate} dias</strong>.`;
 
   return `<!DOCTYPE html>
 <html>
@@ -167,13 +174,18 @@ async function sendMailWithRetry(transporter, mailOptions, retries = 3) {
       await transporter.sendMail(mailOptions);
       return { success: true };
     } catch (err) {
-      const isNetworkError = err.code === 'ECONNRESET' || err.code === 'ETIMEDOUT' ||
-        err.message?.toLowerCase().includes('timeout') || err.message?.toLowerCase().includes('econnreset');
+      const isNetworkError =
+        err.code === 'ECONNRESET' ||
+        err.code === 'ETIMEDOUT' ||
+        err.message?.toLowerCase().includes('timeout') ||
+        err.message?.toLowerCase().includes('econnreset');
 
       if (isNetworkError && attempt < retries) {
         const wait = attempt * 3000; // 3s, 6s entre tentativas
-        console.warn(`[Emailer] Tentativa ${attempt} falhou (${err.message}). Aguardando ${wait / 1000}s antes de retentar...`);
-        await new Promise(r => setTimeout(r, wait));
+        console.warn(
+          `[Emailer] Tentativa ${attempt} falhou (${err.message}). Aguardando ${wait / 1000}s antes de retentar...`,
+        );
+        await new Promise((r) => setTimeout(r, wait));
         // Cria novo transporter para limpar a conexão antiga
         transporter = createTransporter();
         continue;
@@ -193,8 +205,15 @@ async function sendStaleNotification({ deal, ownerEmail, authorEmail, logId }) {
   // Email para o dono do card
   if (ownerEmail) {
     const result = await sendMailWithRetry(transporter, {
-      from, to: ownerEmail, subject,
-      html: dealEmailHtml({ deal, ownerName: deal.ownerName, role: 'owner', logId }),
+      from,
+      to: ownerEmail,
+      subject,
+      html: dealEmailHtml({
+        deal,
+        ownerName: deal.ownerName,
+        role: 'owner',
+        logId,
+      }),
     });
     results.push({ to: ownerEmail, ...result });
   }
@@ -202,8 +221,15 @@ async function sendStaleNotification({ deal, ownerEmail, authorEmail, logId }) {
   // Email para o criador (se diferente do dono)
   if (authorEmail && authorEmail !== ownerEmail) {
     const result = await sendMailWithRetry(transporter, {
-      from, to: authorEmail, subject,
-      html: dealEmailHtml({ deal, ownerName: deal.authorName, role: 'author', logId }),
+      from,
+      to: authorEmail,
+      subject,
+      html: dealEmailHtml({
+        deal,
+        ownerName: deal.authorName,
+        role: 'author',
+        logId,
+      }),
     });
     results.push({ to: authorEmail, ...result });
   }
@@ -221,7 +247,9 @@ function buildOwnerBlocks(deals) {
   return Object.entries(byOwner)
     .sort((a, b) => b[1].length - a[1].length)
     .map(([owner, ownerDeals]) => {
-      const rows = ownerDeals.map(d => `
+      const rows = ownerDeals
+        .map(
+          (d) => `
         <tr>
           <td style="padding:8px 10px;border-bottom:1px solid #f3f4f6;">${d.title}</td>
           <td style="padding:8px 10px;border-bottom:1px solid #f3f4f6;">${d.organization || '—'}</td>
@@ -237,7 +265,9 @@ function buildOwnerBlocks(deals) {
             <a href="${d.webUrl}" style="color:#1a56db;text-decoration:none;font-size:12px;">Abrir →</a>
           </td>
         </tr>
-      `).join('');
+      `,
+        )
+        .join('');
       return `
         <div style="margin-bottom:20px;">
           <div style="background:#f8fafc;border-left:3px solid #1a56db;padding:8px 14px;margin-bottom:8px;">
@@ -257,15 +287,18 @@ function buildOwnerBlocks(deals) {
             <tbody>${rows}</tbody>
           </table>
         </div>`;
-    }).join('');
+    })
+    .join('');
 }
 
 function weeklySummaryHtml({ deals, weekLabel }) {
-  const leads = deals.filter(d => d.dealType === 'Lead');
-  const negocios = deals.filter(d => d.dealType === 'Negócio');
+  const leads = deals.filter((d) => d.dealType === 'Lead');
+  const negocios = deals.filter((d) => d.dealType === 'Negócio');
   const total = deals.length;
-  const avgDays = total ? Math.round(deals.reduce((s, d) => s + d.daysSinceUpdate, 0) / total) : 0;
-  const maxDays = total ? Math.max(...deals.map(d => d.daysSinceUpdate)) : 0;
+  const avgDays = total
+    ? Math.round(deals.reduce((s, d) => s + d.daysSinceUpdate, 0) / total)
+    : 0;
+  const maxDays = total ? Math.max(...deals.map((d) => d.daysSinceUpdate)) : 0;
 
   return `
     <!DOCTYPE html>
@@ -303,22 +336,30 @@ function weeklySummaryHtml({ deals, weekLabel }) {
         </div>
 
         <!-- Seção Leads -->
-        ${leads.length > 0 ? `
+        ${
+          leads.length > 0
+            ? `
         <div style="margin-bottom:28px;">
           <div style="display:flex;align-items:center;gap:10px;border-bottom:2px solid #bfdbfe;padding-bottom:10px;margin-bottom:16px;">
             <span style="background:#1d4ed8;color:white;padding:3px 12px;border-radius:99px;font-size:13px;font-weight:700;">🔵 Leads parados — ${leads.length}</span>
           </div>
           ${buildOwnerBlocks(leads)}
-        </div>` : ''}
+        </div>`
+            : ''
+        }
 
         <!-- Seção Negócios -->
-        ${negocios.length > 0 ? `
+        ${
+          negocios.length > 0
+            ? `
         <div style="margin-bottom:28px;">
           <div style="display:flex;align-items:center;gap:10px;border-bottom:2px solid #bbf7d0;padding-bottom:10px;margin-bottom:16px;">
             <span style="background:#15803d;color:white;padding:3px 12px;border-radius:99px;font-size:13px;font-weight:700;">🟢 Negócios parados — ${negocios.length}</span>
           </div>
           ${buildOwnerBlocks(negocios)}
-        </div>` : ''}
+        </div>`
+            : ''
+        }
 
         <p style="color:#94a3b8;font-size:12px;border-top:1px solid #e5e7eb;padding-top:16px;margin-top:8px;">
           Este resumo é enviado automaticamente toda sexta-feira às 11h pelo sistema de monitoramento do Agendor.<br>
@@ -413,19 +454,31 @@ async function sendResetPasswordEmail({ to, resetUrl }) {
 // ─── Relatório semanal personalizado por comercial ───────────────
 
 function ownerWeeklyHtml({ ownerName, deals, weekLabel, staleDays }) {
-  const leads    = deals.filter(d => d.dealType === 'Lead');
-  const negocios = deals.filter(d => d.dealType !== 'Lead');
-  const total    = deals.length;
-  const avgDays  = total ? Math.round(deals.reduce((s, d) => s + d.daysSinceUpdate, 0) / total) : 0;
-  const critical = deals.filter(d => d.daysSinceUpdate >= 45).length;
-  const warning  = deals.filter(d => d.daysSinceUpdate >= 30 && d.daysSinceUpdate < 45).length;
+  const leads = deals.filter((d) => d.dealType === 'Lead');
+  const negocios = deals.filter((d) => d.dealType !== 'Lead');
+  const total = deals.length;
+  const avgDays = total
+    ? Math.round(deals.reduce((s, d) => s + d.daysSinceUpdate, 0) / total)
+    : 0;
+  const critical = deals.filter((d) => d.daysSinceUpdate >= 45).length;
+  const warning = deals.filter(
+    (d) => d.daysSinceUpdate >= 30 && d.daysSinceUpdate < 45,
+  ).length;
 
-  function urgBg(days)   { return days >= 45 ? '#fef2f2' : days >= 30 ? '#fff7ed' : '#fefce8'; }
-  function urgColor(days){ return days >= 45 ? '#dc2626' : days >= 30 ? '#d97706' : '#ca8a04'; }
-  function urgLabel(days){ return days >= 45 ? '🔴 Crítico' : days >= 30 ? '🟠 Urgente' : '🟡 Atenção'; }
+  function urgBg(days) {
+    return days >= 45 ? '#fef2f2' : days >= 30 ? '#fff7ed' : '#fefce8';
+  }
+  function urgColor(days) {
+    return days >= 45 ? '#dc2626' : days >= 30 ? '#d97706' : '#ca8a04';
+  }
+  function urgLabel(days) {
+    return days >= 45 ? '🔴 Crítico' : days >= 30 ? '🟠 Urgente' : '🟡 Atenção';
+  }
 
   function buildDealRows(list) {
-    return list.map(d => `
+    return list
+      .map(
+        (d) => `
       <tr>
         <td style="padding:12px 14px;border-bottom:1px solid #f1f5f9;vertical-align:top;">
           <a href="${d.webUrl}" style="font-size:14px;font-weight:700;color:#1e3a5f;text-decoration:none;">${d.title}</a>
@@ -446,7 +499,9 @@ function ownerWeeklyHtml({ ownerName, deals, weekLabel, staleDays }) {
           </a>
         </td>
       </tr>
-    `).join('');
+    `,
+      )
+      .join('');
   }
 
   const firstName = ownerName.split(' ')[0];
@@ -476,15 +531,18 @@ function ownerWeeklyHtml({ ownerName, deals, weekLabel, staleDays }) {
       Olá, <strong>${firstName}</strong>! 👋
     </p>
     <p style="margin:10px 0 0 0;font-size:14px;color:#475569;line-height:1.6;">
-      ${total === 0
-        ? 'Ótimas notícias! 🎉 Você não tem nenhum card parado no momento. Continue assim!'
-        : `Você tem <strong style="color:#dc2626;">${total} card${total > 1 ? 's' : ''} sem atualização</strong> há mais de ${staleDays} dias.
+      ${
+        total === 0
+          ? 'Ótimas notícias! 🎉 Você não tem nenhum card parado no momento. Continue assim!'
+          : `Você tem <strong style="color:#dc2626;">${total} card${total > 1 ? 's' : ''} sem atualização</strong> há mais de ${staleDays} dias.
            Dá uma olhada abaixo e atualiza o que tiver andamento — isso ajuda muito o time!`
       }
     </p>
   </td></tr>
 
-  ${total > 0 ? `
+  ${
+    total > 0
+      ? `
   <!-- RESUMO EM CARDS -->
   <tr><td style="background:#ffffff;border-left:1px solid #e2e8f0;border-right:1px solid #e2e8f0;padding:20px 32px;">
     <table width="100%" cellpadding="0" cellspacing="0">
@@ -536,7 +594,9 @@ function ownerWeeklyHtml({ ownerName, deals, weekLabel, staleDays }) {
     </table>
   </td></tr>
 
-  ${negocios.length > 0 ? `
+  ${
+    negocios.length > 0
+      ? `
   <!-- NEGÓCIOS -->
   <tr><td style="background:#ffffff;border-left:1px solid #e2e8f0;border-right:1px solid #e2e8f0;padding:0 32px 8px 32px;">
     <div style="background:#f0fdf4;border-left:4px solid #16a34a;border-radius:4px;padding:10px 14px;margin-bottom:12px;">
@@ -550,11 +610,15 @@ function ownerWeeklyHtml({ ownerName, deals, weekLabel, staleDays }) {
           <th style="padding:10px 14px;text-align:center;font-size:12px;color:#64748b;font-weight:600;border-bottom:2px solid #e2e8f0;">Ação</th>
         </tr>
       </thead>
-      <tbody>${buildDealRows(negocios.sort((a,b) => b.daysSinceUpdate - a.daysSinceUpdate))}</tbody>
+      <tbody>${buildDealRows(negocios.sort((a, b) => b.daysSinceUpdate - a.daysSinceUpdate))}</tbody>
     </table>
-  </td></tr>` : ''}
+  </td></tr>`
+      : ''
+  }
 
-  ${leads.length > 0 ? `
+  ${
+    leads.length > 0
+      ? `
   <!-- LEADS -->
   <tr><td style="background:#ffffff;border-left:1px solid #e2e8f0;border-right:1px solid #e2e8f0;padding:16px 32px 8px 32px;">
     <div style="background:#eff6ff;border-left:4px solid #1d4ed8;border-radius:4px;padding:10px 14px;margin-bottom:12px;">
@@ -568,9 +632,11 @@ function ownerWeeklyHtml({ ownerName, deals, weekLabel, staleDays }) {
           <th style="padding:10px 14px;text-align:center;font-size:12px;color:#64748b;font-weight:600;border-bottom:2px solid #e2e8f0;">Ação</th>
         </tr>
       </thead>
-      <tbody>${buildDealRows(leads.sort((a,b) => b.daysSinceUpdate - a.daysSinceUpdate))}</tbody>
+      <tbody>${buildDealRows(leads.sort((a, b) => b.daysSinceUpdate - a.daysSinceUpdate))}</tbody>
     </table>
-  </td></tr>` : ''}
+  </td></tr>`
+      : ''
+  }
 
   <!-- DICA -->
   <tr><td style="background:#ffffff;border-left:1px solid #e2e8f0;border-right:1px solid #e2e8f0;padding:20px 32px;">
@@ -581,7 +647,9 @@ function ownerWeeklyHtml({ ownerName, deals, weekLabel, staleDays }) {
       </p>
     </div>
   </td></tr>
-  ` : ''}
+  `
+      : ''
+  }
 
   <!-- FOOTER -->
   <tr><td style="background:#f8fafc;border:1px solid #e2e8f0;border-top:none;border-radius:0 0 12px 12px;padding:20px 32px;">
@@ -605,7 +673,9 @@ async function sendOwnerWeeklySummary({ deals, users }) {
   const notifiable = deals.filter(shouldNotifyOwner);
   const skippedByFunnel = deals.length - notifiable.length;
   if (skippedByFunnel > 0) {
-    console.log(`[Emailer] Relatório semanal: ${skippedByFunnel} card(s) ignorado(s) por funil sem notificação ao responsável`);
+    console.log(
+      `[Emailer] Relatório semanal: ${skippedByFunnel} card(s) ignorado(s) por funil sem notificação ao responsável`,
+    );
   }
   if (!notifiable.length) return [];
 
@@ -621,17 +691,30 @@ async function sendOwnerWeeklySummary({ deals, users }) {
   for (const d of notifiable) {
     const owner = users[d.ownerId];
     if (!owner?.email) continue;
-    if (!byOwner[owner.email]) byOwner[owner.email] = { name: d.ownerName, deals: [] };
+    if (!byOwner[owner.email])
+      byOwner[owner.email] = { name: d.ownerName, deals: [] };
     byOwner[owner.email].deals.push(d);
   }
 
   for (const [email, { name, deals: ownerDeals }] of Object.entries(byOwner)) {
     const subject = `📋 Seus ${ownerDeals.length} card${ownerDeals.length > 1 ? 's' : ''} parado${ownerDeals.length > 1 ? 's' : ''} — Relatório semanal`;
-    const html = ownerWeeklyHtml({ ownerName: name, deals: ownerDeals, weekLabel, staleDays });
+    const html = ownerWeeklyHtml({
+      ownerName: name,
+      deals: ownerDeals,
+      weekLabel,
+      staleDays,
+    });
     try {
       await transporter.sendMail({ from, to: email, subject, html });
-      console.log(`[Emailer] Relatório semanal enviado para ${name} <${email}> — ${ownerDeals.length} card(s)`);
-      results.push({ to: email, name, count: ownerDeals.length, success: true });
+      console.log(
+        `[Emailer] Relatório semanal enviado para ${name} <${email}> — ${ownerDeals.length} card(s)`,
+      );
+      results.push({
+        to: email,
+        name,
+        count: ownerDeals.length,
+        success: true,
+      });
     } catch (err) {
       console.error(`[Emailer] Erro ao enviar para ${email}:`, err.message);
       results.push({ to: email, name, success: false, error: err.message });
@@ -641,4 +724,10 @@ async function sendOwnerWeeklySummary({ deals, users }) {
   return results;
 }
 
-module.exports = { sendStaleNotification, sendWeeklySummary, sendOwnerWeeklySummary, verifySmtp, sendResetPasswordEmail };
+module.exports = {
+  sendStaleNotification,
+  sendWeeklySummary,
+  sendOwnerWeeklySummary,
+  verifySmtp,
+  sendResetPasswordEmail,
+};

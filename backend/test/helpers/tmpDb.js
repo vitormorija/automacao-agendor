@@ -21,7 +21,10 @@ const Database = require('better-sqlite3');
 // ignorando erros (o arquivo pode nem ter sido criado ainda).
 function makeTmpDbPath() {
   const suffix = crypto.randomBytes(8).toString('hex');
-  const dbPath = path.join(os.tmpdir(), `agendor-test-${process.pid}-${suffix}.db`);
+  const dbPath = path.join(
+    os.tmpdir(),
+    `agendor-test-${process.pid}-${suffix}.db`,
+  );
 
   function cleanup() {
     for (const ext of ['', '-journal', '-wal', '-shm']) {

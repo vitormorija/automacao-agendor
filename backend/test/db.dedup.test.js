@@ -65,9 +65,18 @@ test('alreadyNotifiedToday: deal notificado ONTEM -> false (fronteira do dia pin
       .prepare(
         `INSERT INTO notification_log
            (deal_id, deal_title, owner_name, owner_email, admin_email, sent_at, days_stale, status)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       )
-      .run(dealId, 'Deal notificado ontem', 'Beltrano', 'beltrano@example.com', 'admin@example.com', yesterday, 30, 'sent');
+      .run(
+        dealId,
+        'Deal notificado ontem',
+        'Beltrano',
+        'beltrano@example.com',
+        'admin@example.com',
+        yesterday,
+        30,
+        'sent',
+      );
   } finally {
     seed.close();
   }
