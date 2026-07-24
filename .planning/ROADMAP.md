@@ -14,7 +14,7 @@ Etapa de estabilização de um sistema já em produção (monitor de deals parad
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: Rede de Testes (Safety-Net)** - Testes de caracterização fixam o comportamento atual da lógica crítica de notificação antes de qualquer mudança
+- [x] **Phase 1: Rede de Testes (Safety-Net)** - Testes de caracterização fixam o comportamento atual da lógica crítica de notificação antes de qualquer mudança (completed 2026-07-24)
 - [ ] **Phase 2: Toolchain de Qualidade & CI** - Lint, formatação, scripts npm e pipeline de CI que bloqueia PRs com falha
 - [ ] **Phase 3: Config & Segredos por Ambiente** - Segredos fora do código, `.env.example`, separação dev/prod e validação no boot
 - [ ] **Phase 4: Confiabilidade das Integrações** - Timeouts em Agendor/SMTP, cron resiliente a falhas e cache com TTL
@@ -40,7 +40,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] 01-02-PLAN.md — getStaleDeals characterization (threshold/category/stage/owner/status) + anonymized real-deal fixture (TEST-02)
 - [x] 01-03-PLAN.md — Same-day dedup characterization: alreadyNotifiedToday incl. day boundary (TEST-03)
 - [x] 01-04-PLAN.md — Beefor funnel suppression characterization: shouldNotifyOwner quirks (TEST-04)
-- [ ] 01-05-PLAN.md — Auth logic characterization: login rate-limit + verifyPassword (TEST-05)
+- [x] 01-05-PLAN.md — Auth logic characterization: login rate-limit + verifyPassword (TEST-05)
 
 ### Phase 2: Toolchain de Qualidade & CI
 **Goal**: Qualidade de código é verificada automaticamente — lint, formatação, testes e build — localmente e como gate obrigatório em cada PR.
@@ -125,7 +125,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Rede de Testes (Safety-Net) | 4/5 | In Progress|  |
+| 1. Rede de Testes (Safety-Net) | 5/5 | Complete   | 2026-07-24 |
 | 2. Toolchain de Qualidade & CI | 0/TBD | Not started | - |
 | 3. Config & Segredos por Ambiente | 0/TBD | Not started | - |
 | 4. Confiabilidade das Integrações | 0/TBD | Not started | - |
