@@ -22,3 +22,11 @@ if (!process.env.DB_PATH) {
 if (!process.env.AGENDOR_TOKEN) {
   process.env.AGENDOR_TOKEN = 'test';
 }
+
+// DIFERENTEMENTE dos presets guardados acima, estas duas variáveis são SEMPRE
+// sobrescritas (sem guarda). Nenhum teste precisa de valores reais de SMTP_PASS
+// ou ADMIN_EMAIL, e um segredo exportado no shell/CI jamais deve vazar para o
+// SQLite de teste que o db.js semeia a partir dessas variáveis (db.js:102,106).
+// String vazia é o valor inerte pretendido para ambas.
+process.env.SMTP_PASS = '';
+process.env.ADMIN_EMAIL = '';
