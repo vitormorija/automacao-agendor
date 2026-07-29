@@ -1,5 +1,5 @@
 const jwt = require('jsonwebtoken');
-const JWT_SECRET = process.env.JWT_SECRET || 'agendor-secret-key';
+const { JWT_SECRET } = require('../secret');
 
 // Rotas públicas que não precisam de autenticação
 const PUBLIC_PATHS = [
@@ -11,7 +11,7 @@ const PUBLIC_PATHS = [
 
 function authMiddleware(req, res, next) {
   // Libera rotas públicas
-  if (PUBLIC_PATHS.some(p => req.path.startsWith(p))) {
+  if (PUBLIC_PATHS.some((p) => req.path.startsWith(p))) {
     return next();
   }
 
@@ -25,7 +25,9 @@ function authMiddleware(req, res, next) {
     req.user = decoded;
     next();
   } catch {
-    return res.status(401).json({ error: 'Sessão expirada. Faça login novamente.' });
+    return res
+      .status(401)
+      .json({ error: 'Sessão expirada. Faça login novamente.' });
   }
 }
 

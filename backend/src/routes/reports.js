@@ -7,10 +7,13 @@ const { getConfig, getWeeklySnapshots } = require('../db');
 router.get('/current', async (req, res) => {
   try {
     const staleDays = parseInt(getConfig('stale_days')) || 15;
-    const [deals, users] = await Promise.all([getStaleDeals(staleDays), getUsers()]);
+    const [deals, users] = await Promise.all([
+      getStaleDeals(staleDays),
+      getUsers(),
+    ]);
 
     // Enriquece com email
-    const enriched = deals.map(d => ({
+    const enriched = deals.map((d) => ({
       ...d,
       ownerEmail: users[d.ownerId]?.email || null,
     }));
@@ -19,14 +22,15 @@ router.get('/current', async (req, res) => {
     const byOwner = {};
     for (const d of enriched) {
       const name = d.ownerName || 'Sem responsável';
-      if (!byOwner[name]) byOwner[name] = { name, count: 0, totalDays: 0, deals: [] };
+      if (!byOwner[name])
+        byOwner[name] = { name, count: 0, totalDays: 0, deals: [] };
       byOwner[name].count++;
       byOwner[name].totalDays += d.daysSinceUpdate;
       byOwner[name].deals.push(d);
     }
     const ownerData = Object.values(byOwner)
       .sort((a, b) => b.count - a.count)
-      .map(o => ({ ...o, avgDays: Math.round(o.totalDays / o.count) }));
+      .map((o) => ({ ...o, avgDays: Math.round(o.totalDays / o.count) }));
 
     // Agrupamento por categoria
     const byCategory = {};
@@ -54,11 +58,13 @@ router.get('/current', async (req, res) => {
       { label: '21–30 dias', min: 21, max: 30 },
       { label: '31–45 dias', min: 31, max: 45 },
       { label: '46–60 dias', min: 46, max: 60 },
-      { label: '60+ dias',   min: 61, max: Infinity },
+      { label: '60+ dias', min: 61, max: Infinity },
     ];
-    const urgencyData = urgencyBands.map(band => ({
+    const urgencyData = urgencyBands.map((band) => ({
       label: band.label,
-      count: enriched.filter(d => d.daysSinceUpdate >= band.min && d.daysSinceUpdate <= band.max).length,
+      count: enriched.filter(
+        (d) => d.daysSinceUpdate >= band.min && d.daysSinceUpdate <= band.max,
+      ).length,
     }));
 
     // Histórico semanal
@@ -69,13 +75,23 @@ router.get('/current', async (req, res) => {
     const summary = {
       total: enriched.length,
       avgDays: enriched.length ? Math.round(totalDays / enriched.length) : 0,
-      maxDays: enriched.length ? Math.max(...enriched.map(d => d.daysSinceUpdate)) : 0,
+      maxDays: enriched.length
+        ? Math.max(...enriched.map((d) => d.daysSinceUpdate))
+        : 0,
       topOwner: ownerData[0]?.name || '—',
       topOwnerCount: ownerData[0]?.count || 0,
       staleDays,
     };
 
-    res.json({ summary, ownerData, categoryData, funnelData, urgencyData, weeklyHistory, deals: enriched });
+    res.json({
+      summary,
+      ownerData,
+      categoryData,
+      funnelData,
+      urgencyData,
+      weeklyHistory,
+      deals: enriched,
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

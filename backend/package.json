@@ -2,16 +2,22 @@
   "name": "agendor-automation-backend",
   "version": "1.0.0",
   "type": "commonjs",
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "start": "node src/index.js",
-    "dev": "nodemon src/index.js"
+    "dev": "nodemon src/index.js",
+    "lint": "biome lint .",
+    "format": "biome format --write .",
+    "test": "node --test",
+    "test:coverage": "c8 --reporter=text --reporter=lcov node --test"
   },
   "dependencies": {
     "axios": "^1.7.2",
     "bcryptjs": "^3.0.3",
     "better-sqlite3": "^9.6.0",
     "cors": "^2.8.5",
-    "docx": "^9.6.1",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
     "helmet": "^8.1.0",
@@ -21,6 +27,8 @@
     "nodemailer": "^6.9.13"
   },
   "devDependencies": {
+    "@biomejs/biome": "2.5.5",
+    "c8": "^12.0.0",
     "nodemon": "^3.1.4",
     "pptxgenjs": "^4.0.1"
   }

@@ -3,7 +3,7 @@ module.exports = {
     {
       name: 'agendor-backend',
       script: './backend/src/index.js',
-      cwd: '/opt/agendor',           // ajuste para o caminho no servidor
+      cwd: '/opt/agendor', // ajuste para o caminho no servidor
       instances: 1,
       autorestart: true,
       watch: false,

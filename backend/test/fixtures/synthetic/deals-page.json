@@ -1,0 +1,122 @@
+[
+  {
+    "id": 101,
+    "title": "Incluido base (stale, Lead, status 1, owner ok, etapa benigna)",
+    "createdAt": "2026-02-01T00:00:00.000Z",
+    "updatedAt": "2026-04-01T00:00:00.000Z",
+    "owner": { "id": 11, "name": "Ana Vendas" },
+    "author": { "id": 21, "name": "Ana Vendas" },
+    "organization": { "id": 201, "name": "Org 201" },
+    "dealStatus": { "id": 1 },
+    "dealStage": { "name": "Negociação", "funnel": { "name": "Comercial" } },
+    "_webUrl": "https://web.agendor.com.br/deal/101"
+  },
+  {
+    "id": 102,
+    "title": "Boundary EXATO no cutoff (updatedAt == cutoffDate) -> EXCLUIDO pelo < estrito",
+    "createdAt": "2026-02-01T00:00:00.000Z",
+    "updatedAt": "2026-05-17T00:00:00.000Z",
+    "owner": { "id": 12, "name": "Ana Vendas" },
+    "author": { "id": 22, "name": "Ana Vendas" },
+    "organization": { "id": 202, "name": "Org 202" },
+    "dealStatus": { "id": 1 },
+    "dealStage": { "name": "Proposta", "funnel": { "name": "Comercial" } },
+    "_webUrl": "https://web.agendor.com.br/deal/102"
+  },
+  {
+    "id": 103,
+    "title": "Boundary cutoff - 1ms -> INCLUIDO (just stale)",
+    "createdAt": "2026-02-01T00:00:00.000Z",
+    "updatedAt": "2026-05-16T23:59:59.999Z",
+    "owner": { "id": 13, "name": "Bruno Vendas" },
+    "author": { "id": 23, "name": "Bruno Vendas" },
+    "organization": { "id": 203, "name": "Org 203" },
+    "dealStatus": { "id": 1 },
+    "dealStage": { "name": "Qualificação", "funnel": { "name": "Comercial" } },
+    "_webUrl": "https://web.agendor.com.br/deal/103"
+  },
+  {
+    "id": 104,
+    "title": "Boundary cutoff + 1ms -> EXCLUIDO (just fresh)",
+    "createdAt": "2026-02-01T00:00:00.000Z",
+    "updatedAt": "2026-05-17T00:00:00.001Z",
+    "owner": { "id": 14, "name": "Bruno Vendas" },
+    "author": { "id": 24, "name": "Bruno Vendas" },
+    "organization": { "id": 204, "name": "Org 204" },
+    "dealStatus": { "id": 1 },
+    "dealStage": { "name": "Qualificação", "funnel": { "name": "Comercial" } },
+    "_webUrl": "https://web.agendor.com.br/deal/104"
+  },
+  {
+    "id": 105,
+    "title": "Categoria excluida (Parceiro) -> EXCLUIDO",
+    "createdAt": "2026-01-15T00:00:00.000Z",
+    "updatedAt": "2026-03-01T00:00:00.000Z",
+    "owner": { "id": 15, "name": "Ana Vendas" },
+    "author": { "id": 25, "name": "Ana Vendas" },
+    "organization": { "id": 205, "name": "Org 205" },
+    "dealStatus": { "id": 1 },
+    "dealStage": { "name": "Negociação", "funnel": { "name": "Comercial" } },
+    "_webUrl": "https://web.agendor.com.br/deal/105"
+  },
+  {
+    "id": 106,
+    "title": "Owner excluido (Maria Lobato) -> EXCLUIDO",
+    "createdAt": "2026-01-15T00:00:00.000Z",
+    "updatedAt": "2026-03-01T00:00:00.000Z",
+    "owner": { "id": 16, "name": "Maria Lobato" },
+    "author": { "id": 26, "name": "Maria Lobato" },
+    "organization": { "id": 206, "name": "Org 206" },
+    "dealStatus": { "id": 1 },
+    "dealStage": { "name": "Negociação", "funnel": { "name": "Comercial" } },
+    "_webUrl": "https://web.agendor.com.br/deal/106"
+  },
+  {
+    "id": 107,
+    "title": "Status != 1 (dealStatus.id 3) -> EXCLUIDO",
+    "createdAt": "2026-01-15T00:00:00.000Z",
+    "updatedAt": "2026-03-01T00:00:00.000Z",
+    "owner": { "id": 17, "name": "Ana Vendas" },
+    "author": { "id": 27, "name": "Ana Vendas" },
+    "organization": { "id": 207, "name": "Org 207" },
+    "dealStatus": { "id": 3 },
+    "dealStage": { "name": "Negociação", "funnel": { "name": "Comercial" } },
+    "_webUrl": "https://web.agendor.com.br/deal/107"
+  },
+  {
+    "id": 108,
+    "title": "Criado antes de 2026-01-01 -> EXCLUIDO pelo threshold de data",
+    "createdAt": "2025-12-15T00:00:00.000Z",
+    "updatedAt": "2026-03-01T00:00:00.000Z",
+    "owner": { "id": 18, "name": "Ana Vendas" },
+    "author": { "id": 28, "name": "Ana Vendas" },
+    "organization": { "id": 208, "name": "Org 208" },
+    "dealStatus": { "id": 1 },
+    "dealStage": { "name": "Negociação", "funnel": { "name": "Comercial" } },
+    "_webUrl": "https://web.agendor.com.br/deal/108"
+  },
+  {
+    "id": 109,
+    "title": "Recente (updatedAt dentro dos 15d) -> EXCLUIDO (fresh)",
+    "createdAt": "2026-02-01T00:00:00.000Z",
+    "updatedAt": "2026-05-30T00:00:00.000Z",
+    "owner": { "id": 19, "name": "Ana Vendas" },
+    "author": { "id": 29, "name": "Ana Vendas" },
+    "organization": { "id": 209, "name": "Org 209" },
+    "dealStatus": { "id": 1 },
+    "dealStage": { "name": "Negociação", "funnel": { "name": "Comercial" } },
+    "_webUrl": "https://web.agendor.com.br/deal/109"
+  },
+  {
+    "id": 110,
+    "title": "Etapa excluida (Oportunidade Perdida) -> EXCLUIDO por stage",
+    "createdAt": "2026-01-15T00:00:00.000Z",
+    "updatedAt": "2026-03-01T00:00:00.000Z",
+    "owner": { "id": 110, "name": "Ana Vendas" },
+    "author": { "id": 210, "name": "Ana Vendas" },
+    "organization": { "id": 210, "name": "Org 210" },
+    "dealStatus": { "id": 1 },
+    "dealStage": { "name": "Oportunidade Perdida", "funnel": { "name": "Comercial" } },
+    "_webUrl": "https://web.agendor.com.br/deal/110"
+  }
+]
