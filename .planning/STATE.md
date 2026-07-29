@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: Fase concluída; pronta para Phase 03
-stopped_at: Phase 3 context gathered
-last_updated: "2026-07-29T18:15:21.778Z"
+status: executing
+stopped_at: Completed 03-01-PLAN.md
+last_updated: "2026-07-29T22:28:37.955Z"
 last_activity: 2026-07-29
 progress:
   total_phases: 8
   completed_phases: 2
-  total_plans: 9
-  completed_plans: 9
+  total_plans: 16
+  completed_plans: 10
   percent: 25
 ---
 
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-22)
 
 **Core value:** Rede de testes automatizados sobre a lógica crítica de notificação (quem recebe / quem não recebe) — para nunca mais uma regressão silenciosa.
-**Current focus:** Phase 03 — config-e-segredos-por-ambiente (próxima; ainda não iniciada)
+**Current focus:** Phase 03 — config-segredos-por-ambiente
 
 ## Current Position
 
-Phase: 02 (toolchain-de-qualidade-ci) — COMPLETE
-Plan: 4 of 4 — todos concluídos
-Status: Fase concluída; pronta para Phase 03
+Phase: 03 (config-segredos-por-ambiente) — EXECUTING
+Plan: 2 of 7
+Status: Ready to execute
 Last activity: 2026-07-29
 
-Progress: [██░░░░░░░░] 25% (2 de 8 fases)
+Progress: [██████░░░░] 63%
 
 ## Performance Metrics
 
@@ -60,6 +60,7 @@ Progress: [██░░░░░░░░] 25% (2 de 8 fases)
 | Phase 02 P01 | 4 | 1 tasks | 1 files |
 | Phase 02 P02 | 22 | 3 tasks | 40 files |
 | Phase 02 P03 | 6 | 2 tasks | 2 files |
+| Phase 03 P01 | 34 | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -86,6 +87,8 @@ Recent decisions affecting current work:
 - [Phase ?]: [02-03]: gate de cobertura c8 flipado measure-first (check-coverage:true, per-file:false, pisos logo abaixo do observado) — WR-03
 - [Phase 02]: [02-04]: main protegida com required status checks [backend, frontend], strict:true e enforce_admins:true — CI-01 provado por PR verde (run 30474941235) e CI-02 por PR de falha proposital com mergeStateStatus BLOCKED (run 30475739903)
 - [Phase 02]: [02-04]: strict:true mantido conscientemente (exige branch atualizada com a main); custo baixo em repo single-maintainer
+- [Phase ?]: [03-01]: validador de env com a regra numa FUNÇÃO PURA (validateEnv(env)) em vez do throw-no-topo de secret.js — config.js com 100% de branches; gate global subiu de 65,48% para 68,80%
+- [Phase ?]: [03-01]: .env carregado por caminho absoluto derivado de __dirname (D-13/Pitfall 1) — sob PM2 (cwd /opt/agendor) o dotenv falhava em SILÊNCIO; fail-fast permanece DESLIGADO até o checkpoint humano de 03-02
 
 ### Pending Todos
 
@@ -127,6 +130,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-29T18:15:21.769Z
-Stopped at: Phase 3 context gathered
-Resume file: .planning/phases/03-config-segredos-por-ambiente/03-CONTEXT.md
+Last session: 2026-07-29T22:28:37.952Z
+Stopped at: Completed 03-01-PLAN.md
+Resume file: None
