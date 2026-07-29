@@ -1,0 +1,30 @@
+# Fingerprints suprimidos no gate de segredos (job `secrets` do CI, D-08).
+#
+# ⚠️ REGRA DESTE ARQUIVO: só entra aqui FALSO-POSITIVO comprovado.
+# O fingerprint do token real da Agendor
+# (13905d4ee95897b6af722529ea40ebe2592db8d9:backend/.env.example:generic-api-key:1)
+# NÃO está aqui e NÃO PODE ser adicionado: ele é o único aviso automático de uma
+# exposição que continua ATIVA até a rotação no painel da Agendor. Ver
+# .planning/todos/pending/sec-01-rotate-agendor-token.md.
+# Idem para 08840aa0…:backend/test/setup.js:generic-api-key:15 — é falso-positivo,
+# mas fica fora do range de PR por conta própria e não precisa de supressão.
+#
+# Formato: commit:caminho:ruleID:linha (fingerprint exato, não padrão amplo).
+# Deliberadamente NÃO se usa `.gitleaks.toml`: um config na raiz substitui o
+# conjunto de regras padrão se faltar `[extend] useDefault = true`, e o modo de
+# falha disso é um gate verde que não verifica nada. Este arquivo só consegue
+# suprimir os fingerprints listados — nunca desligar regra.
+#
+# ⚠️ Fingerprint inclui o SHA do commit: mesclar este PR com SQUASH invalidaria as
+# duas linhas abaixo (SHAs novos) e o gate voltaria vermelho na `main`. Usar MERGE
+# COMMIT, como já foi feito no PR #1 da Fase 2.
+
+# Falso-positivo 1/2 — a documentação de padrões da Fase 3 CITA o literal do fixture
+# de teste (`process.env.JWT_SECRET = 'test-jwt-secret-…'`, entropia 4,23) ao explicar
+# o Pitfall 10, que é justamente "cuidado com esse falso-positivo". Não é credencial:
+# é um valor descartável de suíte de testes, reproduzido dentro de um bloco de exemplo.
+dbd1c085b2193118b68bf28a3392a715a3ebaba0:.planning/phases/03-config-segredos-por-ambiente/03-PATTERNS.md:generic-api-key:700
+
+# Falso-positivo 2/2 — mesma causa: a pesquisa da Fase 3 cita o mesmo literal ao
+# classificar o achado #1 da varredura de histórico como "FALSO-POSITIVO".
+285bcf6b6331de05951ed7e5317ffa09f1a8bd0e:.planning/phases/03-config-segredos-por-ambiente/03-RESEARCH.md:generic-api-key:296
