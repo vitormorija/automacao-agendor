@@ -78,7 +78,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   - [ ] 03-02-PLAN.md — Ligar o fail-fast no boot, após checkpoint humano do `.env` de produção (CFG-04, D-13)
   - [x] 03-03-PLAN.md — Senha SMTP sai do banco: migração defensiva em `db.js` + `emailer` lê do ambiente (CFG-01, D-01/D-02)
   - [x] 03-04-PLAN.md — Fechar a escrita da senha: allowlist do PUT + campo removido do `ConfigPanel` (CFG-01, D-03)
-  - [ ] 03-05-PLAN.md — `.env.example` completo + meta-teste anti-drift + README sincronizado (CFG-02/CFG-03, D-07/D-10/D-12)
+  - [x] 03-05-PLAN.md — `.env.example` completo + meta-teste anti-drift + README sincronizado (CFG-02/CFG-03, D-07/D-10/D-12)
   - [ ] 03-06-PLAN.md — Job `secrets` (gitleaks) no CI + grep escopado como prova independente (CFG-01, D-08/D-15)
   - [ ] 03-07-PLAN.md — Gate real: required status check `secrets`, Secret Scanning nativo e runbook (CFG-01, D-09/D-11/D-14)
 
@@ -144,7 +144,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 |-------|----------------|--------|-----------|
 | 1. Rede de Testes (Safety-Net) | 5/5 | Complete   | 2026-07-24 |
 | 2. Toolchain de Qualidade & CI | 4/4 | Complete   | 2026-07-29 |
-| 3. Config & Segredos por Ambiente | 3/7 | In Progress|  |
+| 3. Config & Segredos por Ambiente | 4/7 | In Progress|  |
 | 4. Confiabilidade das Integrações | 0/TBD | Not started | - |
 | 5. Logging & Padronização de Erros | 0/TBD | Not started | - |
 | 6. Hardening de Segurança | 0/TBD | Not started | - |
