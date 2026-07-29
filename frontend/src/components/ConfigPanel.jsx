@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Save, TestTube, Eye, EyeOff } from 'lucide-react';
+import { Save, TestTube } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const CRON_PRESETS = [
@@ -15,7 +15,6 @@ export default function ConfigPanel() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
-  const [showPass, setShowPass] = useState(false);
   const [cronPreset, setCronPreset] = useState('0 8 * * *');
   const [customCron, setCustomCron] = useState('');
 
@@ -238,24 +237,14 @@ export default function ConfigPanel() {
             className="input w-full"
           />
         </Field>
-        <Field label="Senha / App Password">
-          <div className="relative">
-            <input
-              type={showPass ? 'text' : 'password'}
-              value={config.smtp_pass || ''}
-              onChange={(e) => handleChange('smtp_pass', e.target.value)}
-              placeholder="••••••••"
-              className="input w-full pr-10"
-            />
-            <button
-              type="button"
-              onClick={() => setShowPass((v) => !v)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-            >
-              {showPass ? <EyeOff size={15} /> : <Eye size={15} />}
-            </button>
-          </div>
-        </Field>
+        {/* D-01: a senha SMTP saiu do banco e vem só de SMTP_PASS no ambiente do
+            servidor. O campo foi removido de propósito — não é um bug de UI. */}
+        <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-600">
+          A senha SMTP é lida da variável de ambiente{' '}
+          <code className="font-mono">SMTP_PASS</code> no servidor e não pode
+          ser alterada por aqui. Para trocá-la, edite o{' '}
+          <code className="font-mono">.env</code> e reinicie o serviço.
+        </div>
         <Field
           label="Remetente (From)"
           help='Ex: "Automação Agendor" <seu-email@gmail.com>'
