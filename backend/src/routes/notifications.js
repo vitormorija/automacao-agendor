@@ -1,8 +1,20 @@
 const express = require('express');
 const router = express.Router();
-const { getNotificationLogs, getConfig, getNotificationStats, getNotifiedDeals, markResolved, logNotification, getNotifiedDealIds } = require('../db');
+const {
+  getNotificationLogs,
+  getConfig,
+  getNotificationStats,
+  getNotifiedDeals,
+  markResolved,
+  logNotification,
+  getNotifiedDealIds,
+} = require('../db');
 const { runCheck, runCheckOnly, getStatus } = require('../scheduler');
-const { sendStaleNotification, sendWeeklySummary, sendOwnerWeeklySummary } = require('../emailer');
+const {
+  sendStaleNotification,
+  sendWeeklySummary,
+  sendOwnerWeeklySummary,
+} = require('../emailer');
 const { getStaleDeals, getUsers } = require('../agendor');
 const axios = require('axios');
 
@@ -41,7 +53,17 @@ router.post('/run', async (req, res) => {
 
 // POST /api/notifications/test-card — envia email de card de teste para um email específico
 router.post('/test-card', async (req, res) => {
-  const { email, ownerName, title, organization, orgCategory, dealType, funnel, stage, daysSinceUpdate } = req.body;
+  const {
+    email,
+    ownerName,
+    title,
+    organization,
+    orgCategory,
+    dealType,
+    funnel,
+    stage,
+    daysSinceUpdate,
+  } = req.body;
   if (!email) return res.status(400).json({ error: 'Email obrigatório' });
   const mockDeal = {
     id: 0,
@@ -54,7 +76,9 @@ router.post('/test-card', async (req, res) => {
     funnel: funnel || 'Funil Principal',
     stage: stage || 'Proposta Enviada',
     createdAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
-    updatedAt: new Date(Date.now() - (daysSinceUpdate || 18) * 24 * 60 * 60 * 1000).toISOString(),
+    updatedAt: new Date(
+      Date.now() - (daysSinceUpdate || 18) * 24 * 60 * 60 * 1000,
+    ).toISOString(),
     daysSinceUpdate: daysSinceUpdate || 18,
     webUrl: `https://web.agendor.com.br/sistema/negocios/historico.php?id=${req.body.dealId || '5620'}`,
   };
@@ -74,7 +98,12 @@ router.post('/test-card', async (req, res) => {
       web_url: mockDeal.webUrl,
     });
     const logId = logEntry.lastInsertRowid;
-    await sendStaleNotification({ deal: mockDeal, ownerEmail: email, authorEmail: null, logId });
+    await sendStaleNotification({
+      deal: mockDeal,
+      ownerEmail: email,
+      authorEmail: null,
+      logId,
+    });
     res.json({ ok: true, message: `Email de card enviado para ${email}` });
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message });
@@ -87,10 +116,19 @@ router.post('/test-summary', async (req, res) => {
   if (!email) return res.status(400).json({ error: 'Email obrigatório' });
   try {
     const staleDays = parseInt(getConfig('stale_days')) || 15;
-    const [deals, users] = await Promise.all([getStaleDeals(staleDays), getUsers()]);
-    const enriched = deals.map(d => ({ ...d, ownerEmail: users[d.ownerId]?.email || null }));
+    const [deals, users] = await Promise.all([
+      getStaleDeals(staleDays),
+      getUsers(),
+    ]);
+    const enriched = deals.map((d) => ({
+      ...d,
+      ownerEmail: users[d.ownerId]?.email || null,
+    }));
     await sendWeeklySummary({ deals: enriched, adminEmails: [email] });
-    res.json({ ok: true, message: `Resumo semanal enviado para ${email} com ${enriched.length} negócio(s)` });
+    res.json({
+      ok: true,
+      message: `Resumo semanal enviado para ${email} com ${enriched.length} negócio(s)`,
+    });
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message });
   }
@@ -102,20 +140,33 @@ router.post('/test-owner-summary', async (req, res) => {
   if (!email) return res.status(400).json({ error: 'Email obrigatório' });
   try {
     const staleDays = parseInt(getConfig('stale_days')) || 15;
-    const [deals, users] = await Promise.all([getStaleDeals(staleDays), getUsers()]);
-    const enriched = deals.map(d => ({ ...d, ownerEmail: users[d.ownerId]?.email || null }));
+    const [deals, users] = await Promise.all([
+      getStaleDeals(staleDays),
+      getUsers(),
+    ]);
+    const enriched = deals.map((d) => ({
+      ...d,
+      ownerEmail: users[d.ownerId]?.email || null,
+    }));
 
     // Simula como se todos os deals fossem do email de teste
     const fakeOwnerId = '__test__';
     const mockUsers = { [fakeOwnerId]: { email } };
-    const mockDeals = enriched.map(d => ({
+    const mockDeals = enriched.map((d) => ({
       ...d,
       ownerId: fakeOwnerId,
       ownerName: ownerName || d.ownerName || 'Comercial Teste',
     }));
 
-    const results = await sendOwnerWeeklySummary({ deals: mockDeals, users: mockUsers });
-    res.json({ ok: true, message: `Relatório de teste enviado para ${email} com ${enriched.length} card(s)`, results });
+    const results = await sendOwnerWeeklySummary({
+      deals: mockDeals,
+      users: mockUsers,
+    });
+    res.json({
+      ok: true,
+      message: `Relatório de teste enviado para ${email} com ${enriched.length} card(s)`,
+      results,
+    });
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message });
   }
@@ -125,10 +176,16 @@ router.post('/test-owner-summary', async (req, res) => {
 router.post('/send-owner-summaries', async (req, res) => {
   try {
     const staleDays = parseInt(getConfig('stale_days')) || 15;
-    const [deals, users] = await Promise.all([getStaleDeals(staleDays), getUsers()]);
-    const enriched = deals.map(d => ({ ...d, ownerEmail: users[d.ownerId]?.email || null }));
+    const [deals, users] = await Promise.all([
+      getStaleDeals(staleDays),
+      getUsers(),
+    ]);
+    const enriched = deals.map((d) => ({
+      ...d,
+      ownerEmail: users[d.ownerId]?.email || null,
+    }));
     const results = await sendOwnerWeeklySummary({ deals: enriched, users });
-    const sent = results.filter(r => r.success).length;
+    const sent = results.filter((r) => r.success).length;
     res.json({ ok: true, sent, total: results.length, results });
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message });
@@ -146,7 +203,15 @@ router.get('/resolved', async (req, res) => {
     const TOKEN = process.env.AGENDOR_TOKEN;
 
     const notifiedDeals = getNotifiedDeals();
-    if (!notifiedDeals.length) return res.json({ resolved: [], pending: [], totalNotified: 0, resolvedCount: 0, pendingCount: 0, resolvedRate: 0 });
+    if (!notifiedDeals.length)
+      return res.json({
+        resolved: [],
+        pending: [],
+        totalNotified: 0,
+        resolvedCount: 0,
+        pendingCount: 0,
+        resolvedRate: 0,
+      });
 
     // Verifica status atual de cada deal na API do Agendor
     const results = await Promise.all(
@@ -154,10 +219,12 @@ router.get('/resolved', async (req, res) => {
         try {
           const { data } = await axios.get(
             `https://api.agendor.com.br/v3/deals/${d.deal_id}`,
-            { headers: { Authorization: `Token ${TOKEN}` } }
+            { headers: { Authorization: `Token ${TOKEN}` } },
           );
           const currentUpdatedAt = data.data?.updatedAt;
-          const isResolved = currentUpdatedAt && new Date(currentUpdatedAt) > new Date(d.last_notified_at);
+          const isResolved =
+            currentUpdatedAt &&
+            new Date(currentUpdatedAt) > new Date(d.last_notified_at);
 
           if (isResolved && !d.resolved) {
             markResolved(d.deal_id, currentUpdatedAt);
@@ -173,11 +240,11 @@ router.get('/resolved', async (req, res) => {
         } catch {
           return { ...d, resolved: d.resolved === 1 };
         }
-      })
+      }),
     );
 
-    const resolved = results.filter(d => d.resolved);
-    const pending = results.filter(d => !d.resolved);
+    const resolved = results.filter((d) => d.resolved);
+    const pending = results.filter((d) => !d.resolved);
 
     res.json({
       resolved,
@@ -185,7 +252,9 @@ router.get('/resolved', async (req, res) => {
       totalNotified: results.length,
       resolvedCount: resolved.length,
       pendingCount: pending.length,
-      resolvedRate: results.length ? Math.round((resolved.length / results.length) * 100) : 0,
+      resolvedRate: results.length
+        ? Math.round((resolved.length / results.length) * 100)
+        : 0,
     });
   } catch (err) {
     res.status(500).json({ error: err.message });

@@ -1,0 +1,66 @@
+{
+  "$schema": "./backend/node_modules/@biomejs/biome/configuration_schema.json",
+  "root": true,
+  "vcs": {
+    "enabled": true,
+    "clientKind": "git",
+    "useIgnoreFile": true
+  },
+  "files": {
+    "includes": [
+      "**",
+      "!**/node_modules",
+      "!**/dist",
+      "!**/coverage",
+      "!backend/agendor.db",
+      "!backend/test/fixtures/**",
+      "!**/*.css"
+    ]
+  },
+  "formatter": {
+    "enabled": true,
+    "indentStyle": "space",
+    "indentWidth": 2
+  },
+  "javascript": {
+    "formatter": {
+      "quoteStyle": "single"
+    }
+  },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "recommended": true,
+      "a11y": {
+        "useButtonType": "warn",
+        "noLabelWithoutControl": "warn",
+        "noAutofocus": "warn",
+        "useKeyWithClickEvents": "warn",
+        "noStaticElementInteractions": "warn"
+      },
+      "complexity": {
+        "useOptionalChain": "warn",
+        "useArrowFunction": "warn"
+      },
+      "correctness": {
+        "noUnusedFunctionParameters": "warn",
+        "useParseIntRadix": "warn",
+        "noUnusedVariables": "warn",
+        "useExhaustiveDependencies": "warn",
+        "noUnusedImports": "warn"
+      },
+      "style": {
+        "useNodejsImportProtocol": "warn",
+        "useTemplate": "warn",
+        "useConst": "warn"
+      },
+      "suspicious": {
+        "useIterableCallbackReturn": "warn",
+        "noArrayIndexKey": "warn"
+      }
+    }
+  },
+  "assist": {
+    "enabled": false
+  }
+}

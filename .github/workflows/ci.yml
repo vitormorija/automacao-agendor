@@ -1,0 +1,48 @@
+# Pipeline de CI (CI-01): dois jobs paralelos (backend, frontend).
+# Roda lint + testes(+coverage) + build a cada pull_request e push na main.
+# Node 20 fixado (D-09). Least-privilege: só leitura do repo (supply-chain, T-2-03-01).
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# Least-privilege: o workflow não precisa escrever nada (lint/test/build são públicos).
+permissions:
+  contents: read
+
+jobs:
+  # id do job = contexto do required status check (Pitfall 3) — NÃO adicionar name: custom.
+  backend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '20' # D-09 — alinhado ao alvo de produção
+          cache: npm
+          cache-dependency-path: backend/package-lock.json # lockfile por pacote (sem workspaces)
+      - run: npm ci
+      - run: npm run lint # biome lint . (warn-tolerante, D-06 — warnings não falham)
+      - run: npm run test:coverage # node --test sob c8 (gate WR-03 via .c8rc.json)
+
+  # id do job = contexto do required status check (Pitfall 3) — NÃO adicionar name: custom.
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '20' # D-09
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npm run lint # biome lint . (warn-tolerante)
+      - run: npm run build # vite build (gate do frontend — sem testes nesta fase)
