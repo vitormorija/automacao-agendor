@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: phase-complete
-stopped_at: Phase 02 concluída — CI é gate obrigatório e comprovado (CI-01/CI-02)
-last_updated: "2026-07-29"
+status: Fase concluída; pronta para Phase 03
+stopped_at: Phase 3 context gathered
+last_updated: "2026-07-29T18:15:21.778Z"
 last_activity: 2026-07-29
 progress:
   total_phases: 8
@@ -91,9 +91,10 @@ Recent decisions affecting current work:
 
 [From .planning/todos/pending/ — ideas captured during sessions]
 
-*(nenhum pendente)*
+- `sec-01-rotate-agendor-token` (**alta prioridade**, → ação operacional) — token real da API Agendor exposto no histórico do repositório **público**, commit `13905d4` (`.claude/settings.local.json` e `backend/.env.example`). Rotação adiada por decisão consciente em 2026-07-29 para preservar o gate de CI-02. Reescrever histórico NÃO resolve; tornar privado quebra a branch protection (testado). Só a rotação no painel da Agendor encerra a exposição.
 
 Resolvidos e arquivados em `.planning/todos/completed/`:
+
 - ~~`wr-02-cover-getdealswithfuturetasks`~~ — fechado em 02-01
 - ~~`wr-03-enforce-coverage-thresholds`~~ — fechado em 02-03
 
@@ -106,6 +107,7 @@ Resolvidos e arquivados em `.planning/todos/completed/`:
 - Token do `gh` precisou do escopo `workflow` para publicar `.github/workflows/` (concedido em 2026-07-29). Clone/máquina novos vão esbarrar nisso: `gh auth refresh -h github.com -s workflow`. Registrar no runbook de onboarding da Phase 8.
 - ~~PR #1 (`chore/production-readiness`) aberto~~ — **mesclado na `main` em 2026-07-29** (merge commit `2d1857f`, 64 commits, merge commit e não squash para preservar os hashes citados nos SUMMARYs). Branch de origem apagada local e remotamente.
 - **Push direto na `main` agora é RECUSADO** (`enforce_admins: true`). Todo trabalho exige branch + PR com `backend`/`frontend` verdes. Branch de trabalho da Phase 3: `chore/phase-03-config-segredos`.
+- **O repositório PRECISA continuar público para o gate existir.** Conta pessoal free: repo privado retorna `403 Upgrade to GitHub Pro` tanto na branch protection clássica quanto em rulesets. Testado e revertido em 2026-07-29. Tornar privado = perder CI-02.
 
 ### Quick Tasks Completed
 
@@ -123,6 +125,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-29
-Stopped at: Phase 02 concluída (02-04 fechado — branch protection ativa e gate comprovado). Próximo passo: Phase 03 (Config & Segredos por Ambiente), começando por discuss-phase.
-Resume file: None
+Last session: 2026-07-29T18:15:21.769Z
+Stopped at: Phase 3 context gathered
+Resume file: .planning/phases/03-config-segredos-por-ambiente/03-CONTEXT.md
