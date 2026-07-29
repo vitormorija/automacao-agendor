@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 2 context gathered
-last_updated: "2026-07-24T21:38:07.122Z"
-last_activity: 2026-07-24
+stopped_at: Sessão retomada — executando 02-04 (branch protection / CI-02)
+last_updated: "2026-07-29"
+last_activity: 2026-07-29
 progress:
   total_phases: 8
   completed_phases: 1
@@ -115,6 +115,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-24T21:37:39.080Z
-Stopped at: Phase 2 context gathered
+Last session: 2026-07-29
+Stopped at: Sessão retomada — retomando 02-04 (Task 1 feita; Tasks 2 e 3 são checkpoints humanos)
 Resume file: None
