@@ -79,7 +79,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   - [x] 03-03-PLAN.md — Senha SMTP sai do banco: migração defensiva em `db.js` + `emailer` lê do ambiente (CFG-01, D-01/D-02)
   - [x] 03-04-PLAN.md — Fechar a escrita da senha: allowlist do PUT + campo removido do `ConfigPanel` (CFG-01, D-03)
   - [x] 03-05-PLAN.md — `.env.example` completo + meta-teste anti-drift + README sincronizado (CFG-02/CFG-03, D-07/D-10/D-12)
-  - [ ] 03-06-PLAN.md — Job `secrets` (gitleaks) no CI + grep escopado como prova independente (CFG-01, D-08/D-15)
+  - [x] 03-06-PLAN.md — Job `secrets` (gitleaks) no CI + grep escopado como prova independente (CFG-01, D-08/D-15)
   - [ ] 03-07-PLAN.md — Gate real: required status check `secrets`, Secret Scanning nativo e runbook (CFG-01, D-09/D-11/D-14)
 
 ### Phase 4: Confiabilidade das Integrações
