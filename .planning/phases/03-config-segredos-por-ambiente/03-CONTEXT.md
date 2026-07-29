@@ -83,6 +83,30 @@ fail-fast para além do JWT, (c) completar o `.env.example`, e (d) automatizar a
   faltam três — `DB_PATH`, `LOG_LEVEL` e `BASE_URL_FRONTEND`. Completar, sem valores sensíveis, e
   marcar quais são obrigatórias (D-04) e quais mudam entre dev e prod (D-07).
 
+### Decisões adicionais pós-pesquisa (2026-07-29)
+- **D-11:** **Habilitar o GitHub Secret Scanning nativo, incluindo push protection.** Os 4 toggles
+  estão desabilitados hoje (verificado via `gh api`) e são gratuitos em repositório público. É camada
+  **complementar**, não substituta: o Secret Scanning age *antes* (recusa o push), o gitleaks age
+  *depois* (barra o merge) — e só o gitleaks vira status check, que é o que a branch protection exige.
+  Contrapartida aceita: abrirá alerta permanente sobre o token não rotacionado do `sec-01`.
+- **D-12:** **Remover `STALE_DAYS` do `.env.example`.** Nenhum código lê essa variável — o valor real
+  de `stale_days` vem da tabela `config` (default `'15'`). Manter a linha é documentação que mente.
+  Rejeitado fazer o código passar a lê-la: seria mudança de comportamento e ampliaria o escopo.
+- **D-13 (ordenação, derivada do RESEARCH — NÃO É OPCIONAL):** corrigir o carregamento do `dotenv`
+  e **verificar o `.env` de produção via checkpoint humano bloqueante** ANTES da task que liga o
+  fail-fast. `backend/src/index.js:1` faz `require('dotenv').config()` sem `path`, resolvendo a partir
+  do `process.cwd()`; `ecosystem.config.js:6` define `cwd: '/opt/agendor'` mas o arquivo está em
+  `/opt/agendor/backend/.env`. O dotenv **falha em silêncio** (`{ error: ENOENT }`, não lança).
+  Ligar o `throw` antes de corrigir isso derruba produção no próximo `pm2 restart`. Confirmado
+  também que o `.env` local não tem `ALLOWED_ORIGINS` nem `ADMIN_USERS`.
+- **D-14 (ordenação, derivada do RESEARCH — NÃO É OPCIONAL):** o job `secrets` do gitleaks precisa
+  ser **mesclado na `main` antes** de ser adicionado aos required status checks. Inverter trava o
+  merge permanentemente: com `enforce_admins: true`, um contexto exigido que ainda não existe nunca
+  fica verde e não há como destravar.
+- **D-15:** CFG-01 **não** é provado só pelo gitleaks — ele não detecta a exposição do token em
+  headers `Authorization: Token` (medido nos três modos de scan). A prova de CFG-01 exige também um
+  `git grep` escopado, documentado, como verificação independente.
+
 ### Claude's Discretion
 - Formato exato da mensagem de erro de boot (desde que diga qual variável e como obter o valor).
 - Se o gitleaks entra como job próprio ou step de job existente em `ci.yml`.
