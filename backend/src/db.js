@@ -1,5 +1,6 @@
 const Database = require('better-sqlite3');
 const path = require('path');
+const logger = require('./logger');
 
 const dbPath = process.env.DB_PATH || path.join(__dirname, '..', 'agendor.db');
 const db = new Database(dbPath);
@@ -107,7 +108,6 @@ const defaults = {
   smtp_host: process.env.SMTP_HOST || 'smtp.gmail.com',
   smtp_port: process.env.SMTP_PORT || '587',
   smtp_user: process.env.SMTP_USER || '',
-  smtp_pass: process.env.SMTP_PASS || '',
   smtp_from: process.env.SMTP_FROM || '',
   cron_schedule: '0 8 * * *', // 8h todo dia
   notifications_enabled: 'true',
@@ -121,6 +121,39 @@ for (const [key, value] of Object.entries(defaults)) {
   if (!existing) {
     db.prepare('INSERT INTO config (key, value) VALUES (?, ?)').run(key, value);
   }
+}
+
+// ── Migração: a senha SMTP sai do banco (D-01/D-02, CFG-01) ──────
+//
+// EXCEÇÃO DELIBERADA ao padrão "toda config runtime mora na tabela config":
+// smtp_pass é o único valor aqui que é de fato um segredo, e o backup diário
+// (deploy/backup.sh) copia o .db inteiro — ou seja, a senha ia parar em até 30
+// cópias em disco. A partir daqui ela vem só do ambiente, lida em emailer.js.
+// Host, porta, usuário e remetente continuam no banco e editáveis pela UI.
+//
+// A migração é DEFENSIVA (D-02): só zera o valor antigo se o ambiente realmente
+// tiver a senha. Um .env incompleto no deploy nunca deve derrubar o envio de e-mail —
+// nesse caso o valor do banco é preservado e um aviso é logado.
+// É idempotente: rodar N vezes tem o mesmo efeito de rodar uma. Zera (valor '')
+// em vez de DELETE de propósito: a linha continua existindo, então nem o seeder
+// acima nem nada mais a recria com a senha do ambiente.
+try {
+  const envPass = (process.env.SMTP_PASS || '').trim();
+  const dbPass = getConfig('smtp_pass');
+
+  if (envPass && dbPass) {
+    setConfig('smtp_pass', '');
+    logger.info(
+      '[DB] smtp_pass removida da tabela config — a senha SMTP agora vem de SMTP_PASS (D-01).',
+    );
+  } else if (!envPass && dbPass) {
+    logger.warn(
+      '[DB] SMTP_PASS ausente no ambiente — a senha antiga foi PRESERVADA no banco para não ' +
+        'interromper o envio de e-mail. Defina SMTP_PASS em backend/.env e reinicie para concluir a migração.',
+    );
+  }
+} catch (_) {
+  /* banco recém-criado ou chave inexistente — nada a migrar */
 }
 
 function getConfig(key) {
