@@ -46,3 +46,22 @@ jobs:
       - run: npm ci
       - run: npm run lint # biome lint . (warn-tolerante)
       - run: npm run build # vite build (gate do frontend — sem testes nesta fase)
+
+  # id do job = contexto do required status check (Pitfall 3) — NÃO adicionar name: custom.
+  # Gate de segredos (CFG-01, D-08/D-09). Escaneia APENAS o range de commits do PR/push:
+  # o token histórico do commit 13905d4 fica FORA do range, então este job não nasce vermelho.
+  secrets:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read # a action lista os commits do PR via API para calcular o range
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # OBRIGATÓRIO: --log-opts=base^..head precisa do histórico local
+      - uses: gitleaks/gitleaks-action@v3 # SHA da tag em 2026-07-29: e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # a action aborta sem esta variável
+          GITLEAKS_VERSION: '8.24.3' # fixo: 'latest' faria regra nova quebrar o gate sem mudança de código
+          GITLEAKS_ENABLE_COMMENTS: 'false' # comentar em PR exigiria pull-requests: write
+          GITLEAKS_ENABLE_UPLOAD_ARTIFACT: 'false' # artefato SARIF sem uso aqui
