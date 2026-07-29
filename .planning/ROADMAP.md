@@ -15,7 +15,7 @@ Etapa de estabilização de um sistema já em produção (monitor de deals parad
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Rede de Testes (Safety-Net)** - Testes de caracterização fixam o comportamento atual da lógica crítica de notificação antes de qualquer mudança (completed 2026-07-24)
-- [ ] **Phase 2: Toolchain de Qualidade & CI** - Lint, formatação, scripts npm e pipeline de CI que bloqueia PRs com falha
+- [x] **Phase 2: Toolchain de Qualidade & CI** - Lint, formatação, scripts npm e pipeline de CI que bloqueia PRs com falha (completed 2026-07-29)
 - [ ] **Phase 3: Config & Segredos por Ambiente** - Segredos fora do código, `.env.example`, separação dev/prod e validação no boot
 - [ ] **Phase 4: Confiabilidade das Integrações** - Timeouts em Agendor/SMTP, cron resiliente a falhas e cache com TTL
 - [ ] **Phase 5: Logging & Padronização de Erros** - `console.*` residual migrado para `logger` estruturado e resposta de erro consistente
@@ -59,7 +59,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   - [x] 02-01-PLAN.md — Teste de caracterização WR-02 (`getDealsWithFutureTasks`)
   - [x] 02-02-PLAN.md — Biome: config + scripts + commit de formatação + guard + baseline lint (QUAL-01/02/03)
   - [x] 02-03-PLAN.md — CI workflow `ci.yml` (CI-01) + flip do gate de cobertura c8 (WR-03)
-  - [ ] 02-04-PLAN.md — Branch protection required checks + prova de PR falho (CI-02)
+  - [x] 02-04-PLAN.md — Branch protection required checks + prova de PR falho (CI-02)
 
 ### Phase 3: Config & Segredos por Ambiente
 **Goal**: Nenhum segredo vive no código; todas as variáveis vêm do ambiente, documentadas e validadas no boot, com separação clara dev vs produção.
@@ -133,7 +133,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Rede de Testes (Safety-Net) | 5/5 | Complete   | 2026-07-24 |
-| 2. Toolchain de Qualidade & CI | 3/4 | In Progress|  |
+| 2. Toolchain de Qualidade & CI | 4/4 | Complete   | 2026-07-29 |
 | 3. Config & Segredos por Ambiente | 0/TBD | Not started | - |
 | 4. Confiabilidade das Integrações | 0/TBD | Not started | - |
 | 5. Logging & Padronização de Erros | 0/TBD | Not started | - |
