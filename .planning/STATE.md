@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-stopped_at: Sessão retomada — executando 02-04 (branch protection / CI-02)
+status: phase-complete
+stopped_at: Phase 02 concluída — CI é gate obrigatório e comprovado (CI-01/CI-02)
 last_updated: "2026-07-29"
 last_activity: 2026-07-29
 progress:
   total_phases: 8
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 9
-  completed_plans: 8
-  percent: 13
+  completed_plans: 9
+  percent: 25
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-22)
 
 **Core value:** Rede de testes automatizados sobre a lógica crítica de notificação (quem recebe / quem não recebe) — para nunca mais uma regressão silenciosa.
-**Current focus:** Phase 02 — toolchain-de-qualidade-ci
+**Current focus:** Phase 03 — config-e-segredos-por-ambiente (próxima; ainda não iniciada)
 
 ## Current Position
 
-Phase: 02 (toolchain-de-qualidade-ci) — EXECUTING
-Plan: 4 of 4
-Status: Ready to execute
-Last activity: 2026-07-24
+Phase: 02 (toolchain-de-qualidade-ci) — COMPLETE
+Plan: 4 of 4 — todos concluídos
+Status: Fase concluída; pronta para Phase 03
+Last activity: 2026-07-29
 
-Progress: [█████████░] 89%
+Progress: [██░░░░░░░░] 25% (2 de 8 fases)
 
 ## Performance Metrics
 
@@ -84,20 +84,27 @@ Recent decisions affecting current work:
 - [Phase ?]: [02-02]: CSS fora do escopo do Biome (parser 2.5.5 aborta em @apply do Tailwind); fase é JS/JSX/CJS/ESM/JSON
 - [Phase ?]: [02-03]: CI 2 jobs paralelos (backend/frontend), node 20, least-privilege (contents:read); actions pinadas @v7 (majors atuais, não @v4)
 - [Phase ?]: [02-03]: gate de cobertura c8 flipado measure-first (check-coverage:true, per-file:false, pisos logo abaixo do observado) — WR-03
+- [Phase 02]: [02-04]: main protegida com required status checks [backend, frontend], strict:true e enforce_admins:true — CI-01 provado por PR verde (run 30474941235) e CI-02 por PR de falha proposital com mergeStateStatus BLOCKED (run 30475739903)
+- [Phase 02]: [02-04]: strict:true mantido conscientemente (exige branch atualizada com a main); custo baixo em repo single-maintainer
 
 ### Pending Todos
 
 [From .planning/todos/pending/ — ideas captured during sessions]
 
-- `wr-02-cover-getdealswithfuturetasks` (→ Phase 2) — caracterização de `getDealsWithFutureTasks` (0% coberto; usado pelo scheduler para decidir quem é notificado)
-- `wr-03-enforce-coverage-thresholds` (→ Phase 2) — thresholds de cobertura (c8 `check-coverage`) integrados ao CI
+*(nenhum pendente)*
+
+Resolvidos e arquivados em `.planning/todos/completed/`:
+- ~~`wr-02-cover-getdealswithfuturetasks`~~ — fechado em 02-01
+- ~~`wr-03-enforce-coverage-thresholds`~~ — fechado em 02-03
 
 ### Blockers/Concerns
 
 [Issues that affect future work]
 
 - Node.js não está instalado no sistema (binários em `/tmp`, wrappers em `~/bin`); considerar ao configurar test runner/CI localmente
-- Frontend e backend têm `package.json` separados (sem workspaces); toolchain (Phase 2) precisa cobrir os dois
+- ~~Frontend e backend têm `package.json` separados (sem workspaces); toolchain (Phase 2) precisa cobrir os dois~~ — resolvido na Phase 2 (Biome na raiz + 2 jobs de CI com cache por lockfile)
+- Token do `gh` precisou do escopo `workflow` para publicar `.github/workflows/` (concedido em 2026-07-29). Clone/máquina novos vão esbarrar nisso: `gh auth refresh -h github.com -s workflow`. Registrar no runbook de onboarding da Phase 8.
+- PR #1 (`chore/production-readiness`, 54 commits) está **verde e mesclável, porém aberto**. Decidir quando mesclar na `main` — a partir de agora todo merge passa pelo gate de CI.
 
 ### Quick Tasks Completed
 
@@ -116,5 +123,5 @@ Items acknowledged and carried forward from previous milestone close:
 ## Session Continuity
 
 Last session: 2026-07-29
-Stopped at: Sessão retomada — retomando 02-04 (Task 1 feita; Tasks 2 e 3 são checkpoints humanos)
+Stopped at: Phase 02 concluída (02-04 fechado — branch protection ativa e gate comprovado). Próximo passo: Phase 03 (Config & Segredos por Ambiente), começando por discuss-phase.
 Resume file: None
