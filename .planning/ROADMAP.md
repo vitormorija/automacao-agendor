@@ -74,7 +74,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   - D-13 — corrigir o path do `dotenv` e auditar o `.env` de produção (checkpoint humano) ANTES de ligar o fail-fast; inverter derruba produção no próximo `pm2 restart`
   - D-14 — mesclar o job `secrets` na `main` ANTES de adicioná-lo aos required status checks; inverter trava o merge permanentemente (`enforce_admins: true`)
 **Plans**: 7 plans
-  - [ ] 03-01-PLAN.md — Fundação de config: `dotenv` determinístico + `validateEnv` puro e testável (CFG-03/CFG-04)
+  - [x] 03-01-PLAN.md — Fundação de config: `dotenv` determinístico + `validateEnv` puro e testável (CFG-03/CFG-04)
   - [ ] 03-02-PLAN.md — Ligar o fail-fast no boot, após checkpoint humano do `.env` de produção (CFG-04, D-13)
   - [ ] 03-03-PLAN.md — Senha SMTP sai do banco: migração defensiva em `db.js` + `emailer` lê do ambiente (CFG-01, D-01/D-02)
   - [ ] 03-04-PLAN.md — Fechar a escrita da senha: allowlist do PUT + campo removido do `ConfigPanel` (CFG-01, D-03)
@@ -144,7 +144,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 |-------|----------------|--------|-----------|
 | 1. Rede de Testes (Safety-Net) | 5/5 | Complete   | 2026-07-24 |
 | 2. Toolchain de Qualidade & CI | 4/4 | Complete   | 2026-07-29 |
-| 3. Config & Segredos por Ambiente | 0/TBD | Not started | - |
+| 3. Config & Segredos por Ambiente | 1/7 | In Progress|  |
 | 4. Confiabilidade das Integrações | 0/TBD | Not started | - |
 | 5. Logging & Padronização de Erros | 0/TBD | Not started | - |
 | 6. Hardening de Segurança | 0/TBD | Not started | - |
