@@ -1,9 +1,9 @@
 ---
 phase: 3
 slug: config-segredos-por-ambiente
-status: draft
-nyquist_compliant: false
-wave_0_complete: false
+status: mapped
+nyquist_compliant: true
+wave_0_complete: n/a (arquivos de teste criados pelas próprias tasks)
 created: 2026-07-29
 ---
 
@@ -57,16 +57,21 @@ Toda task que cria módulo novo deve entregar teste junto.
 
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| 03-01-xx | 01 | 1 | CFG-04 | — | `dotenv` carrega o `.env` correto independentemente do `cwd` do PM2 | unit | `cd backend && npm test` | ❌ W0 | ⬜ pending |
-| 03-01-xx | 01 | 1 | CFG-04 | — | `validateEnv(env)` retorna as faltantes sem lançar (função pura) | unit | `cd backend && npm test` | ❌ W0 | ⬜ pending |
-| 03-01-xx | 01 | 1 | CFG-04 | — | ausência de obrigatória em `production` derruba o boot; em `development` só avisa | unit | `cd backend && npm test` | ❌ W0 | ⬜ pending |
-| 03-02-xx | 02 | 2 | CFG-01 | T-3-SMTP | `emailer` lê a senha de `SMTP_PASS`, nunca da tabela `config` | unit | `cd backend && npm test` | ❌ W0 | ⬜ pending |
-| 03-02-xx | 02 | 2 | CFG-01 | T-3-SMTP | migração **não** apaga `smtp_pass` quando `SMTP_PASS` está ausente/vazio | unit | `cd backend && npm test` | ❌ W0 | ⬜ pending |
-| 03-02-xx | 02 | 2 | CFG-01 | T-3-SMTP | migração apaga `smtp_pass` quando `SMTP_PASS` está presente | unit | `cd backend && npm test` | ❌ W0 | ⬜ pending |
-| 03-02-xx | 02 | 2 | CFG-01 | T-3-SMTP | seeder de `db.js` **não** re-insere a senha no boot seguinte (regressão do bug de ordem) | unit | `cd backend && npm test` | ❌ W0 | ⬜ pending |
-| 03-02-xx | 02 | 2 | CFG-01 | T-3-SMTP | `PUT /api/config` rejeita/ignora `smtp_pass` (allowlist de `routes/config.js`) | unit | `cd backend && npm test` | ❌ W0 | ⬜ pending |
-| 03-03-xx | 03 | 3 | CFG-02 | — | `.env.example` contém as 18 variáveis lidas pelo código | unit | `cd backend && npm test` | ❌ W0 | ⬜ pending |
-| 03-04-xx | 04 | 4 | CFG-01 | T-3-LEAK | job `secrets` barra PR que adiciona segredo | CI | PR de prova (falha proposital) | n/a | ⬜ pending |
+| 03-01-T1 | 01 | 1 | CFG-04 | T-03-01 | `validateEnv(env)` é pura; production lança, dev avisa; mensagem lista TODAS as faltantes e não ecoa valores | unit | `cd backend && npm run test:coverage` (`test/config.validateEnv.test.js`) | ❌ criado pela task | ⬜ pending |
+| 03-01-T2 | 01 | 1 | CFG-03 | T-03-03 | `dotenv` carrega o `.env` do backend independentemente do `cwd`; falha silenciosa documentada | unit | `cd backend && node --test test/config.dotenvPath.test.js` | ❌ criado pela task | ⬜ pending |
+| 03-02-T1 | 02 | 2 | CFG-04 | T-03-06 | O `.env` de produção contém as 5 obrigatórias e é o arquivo realmente carregado | **manual (blocking-human)** | MISSING — não inspecionável a partir do repositório (D-13) | n/a | ⬜ pending |
+| 03-02-T2 | 02 | 2 | CFG-04 | T-03-07 | Boot valida antes de abrir o SQLite; production morre, development sobe | unit + subprocesso | `cd backend && npm run test:coverage` + `NODE_ENV=production node -e "require('./src/config')"` | ❌ criado pela task | ⬜ pending |
+| 03-03-T1 | 03 | 1 | CFG-01 | T-03-SMTP-01/02/03 | Migração preserva quando o env falta, zera quando presente, e o seeder não re-semeia | unit (1 arquivo por ramo) | `cd backend && node --test test/db.smtpPassMigration.keep.test.js test/db.smtpPassMigration.clear.test.js` | ❌ criado pela task | ⬜ pending |
+| 03-03-T2 | 03 | 1 | CFG-01 | T-03-SMTP-01 | `emailer` monta o transporte com `process.env.SMTP_PASS`, nunca com `getConfig('smtp_pass')` | unit (mock da borda nodemailer) | `cd backend && node --test test/emailer.smtpPass.test.js` | ❌ criado pela task | ⬜ pending |
+| 03-04-T1 | 04 | 1 | CFG-01 | T-03-SMTP-06 | `PUT /api/config` não aceita `smtp_pass` (fora de `ALLOWED_KEYS`) | unit (seam de router) | `cd backend && node --test test/config.route.smtpPass.test.js` | ❌ criado pela task | ⬜ pending |
+| 03-04-T2 | 04 | 1 | CFG-01 | T-03-SMTP-07 | Campo de senha removido da UI, sem `showPass`/`Eye`/`EyeOff` órfãos | build + grep | `cd frontend && npm run lint && npm run build` + greps do acceptance criteria | n/a | ⬜ pending |
+| 03-05-T1 | 05 | 1 | CFG-02, CFG-03 | T-03-09/10/11 | `.env.example` documenta exatamente as 18 variáveis lidas; sem fantasma; sem placeholder de alta entropia | unit (meta-teste anti-drift) | `cd backend && node --test test/envExample.test.js` | ❌ criado pela task | ⬜ pending |
+| 03-05-T2 | 05 | 1 | CFG-02 | T-03-11 | README não contradiz o `.env.example` | grep | `grep -c STALE_DAYS README.md` → 0 | n/a | ⬜ pending |
+| 03-06-T1 | 06 | 1 | CFG-01 | T-03-LEAK-01/03, T-03-SC | Job `secrets` escaneia o range do PR, com versão fixa e permissões mínimas; não nasce vermelho | CI | `gh pr checks` mostra `secrets` = success | n/a | ⬜ pending |
+| 03-06-T2 | 06 | 1 | CFG-01 | T-03-LEAK-06 | Grep escopado não encontra token/segredo em código e configuração (prova independente do gitleaks) | unit (subprocesso `git grep`) | `cd backend && node --test test/secrets.grep.test.js` | ❌ criado pela task | ⬜ pending |
+| 03-07-T1 | 07 | 2 | CFG-01 | T-03-GATE-02 | O contexto `secrets` já reportou na `main` antes de virar required check | **manual (blocking-human)** | MISSING — depende de merge fora do workflow (D-14) | n/a | ⬜ pending |
+| 03-07-T2 | 07 | 2 | CFG-01 | T-03-GATE-01/03 | `main` exige `[backend, frontend, secrets]` com `strict` e `enforce_admins` preservados | CLI | `gh api .../branches/main/protection --jq .required_status_checks` | n/a | ⬜ pending |
+| 03-07-T3 | 07 | 2 | CFG-01 | T-03-GATE-01/04/05 | PR com segredo fica BLOCKED; push protection e secret scanning habilitados | CI + CLI | PR de falha proposital + `gh api ... --jq .security_and_analysis` | n/a | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -78,11 +83,16 @@ Nenhuma instalação de framework é necessária — `node:test` + `c8` + `backe
 cobrem tudo. Os arquivos de teste abaixo são criados pelas próprias tasks (não há wave de
 scaffolding separada):
 
-- [ ] Arquivo de teste da validação de env — **um arquivo por variação de `NODE_ENV`**, dado o
-      isolamento por processo (`config.production.test.js`, `config.development.test.js`)
-- [ ] Arquivo de teste da migração SMTP — **um arquivo por ramo** (`SMTP_PASS` presente vs ausente),
-      pelo mesmo motivo
-- [ ] Teste de completude do `.env.example` (compara o conjunto lido do código com o declarado)
+- [x] Validação de env — resolvido por **função pura** (`validateEnv(env)` recebe objeto literal),
+      o que dispensa um arquivo por `NODE_ENV`: um único `config.validateEnv.test.js` cobre os dois
+      ramos. Entregue em 03-01 T1.
+- [x] Teste do path do `dotenv` — `config.dotenvPath.test.js`, entregue em 03-01 T2.
+- [x] Migração SMTP — **um arquivo por ramo** (`db.smtpPassMigration.keep.test.js` e
+      `db.smtpPassMigration.clear.test.js`), obrigatório pelo efeito colateral no `require` de
+      `db.js`. Entregues em 03-03 T1.
+- [x] `emailer.smtpPass.test.js` (03-03 T2) e `config.route.smtpPass.test.js` (03-04 T1).
+- [x] Completude do `.env.example` — `envExample.test.js`, entregue em 03-05 T1.
+- [x] Prova independente de CFG-01 — `secrets.grep.test.js`, entregue em 03-06 T2.
 
 **Restrição de design derivada:** preferir uma função pura `validateEnv(env)` a copiar o padrão
 `throw`-no-topo-do-módulo de `secret.js`. Motivo medido: o caminho de erro de `secret.js` nunca é
@@ -103,12 +113,16 @@ difícil de testar. Uma função pura é testável sem truques e não consome a 
 
 ## Validation Sign-Off
 
-- [ ] Toda task tem `<automated>` verify ou dependência declarada de Wave 0
-- [ ] Continuidade de amostragem: sem 3 tasks consecutivas sem verify automatizado
-- [ ] Wave 0 cobre todas as referências MISSING
-- [ ] Nenhuma flag de watch-mode
-- [ ] Latência de feedback < 2 s
-- [ ] Gate de cobertura continua verde após cada wave (folga de ~10 branches)
-- [ ] `nyquist_compliant: true` no frontmatter
+- [x] Toda task tem `<automated>` verify — as duas exceções são os checkpoints humanos (03-02 T1 e
+      03-07 T1), ambos marcados `MISSING` com a justificativa de por que nenhum teste os substitui
+- [x] Continuidade de amostragem: sem 3 tasks consecutivas sem verify automatizado (o maior intervalo
+      é 1 task — cada checkpoint é seguido por uma task com verify automatizado)
+- [x] Nenhuma wave de scaffolding necessária: cada arquivo de teste é criado pela própria task que o
+      exige, o que também é o que protege a folga do gate de cobertura
+- [x] Nenhuma flag de watch-mode em nenhum comando
+- [x] Latência de feedback < 2 s (`npm test` ~0,4 s; `npm run test:coverage` ~2 s)
+- [x] Toda task que cria arquivo em `src/` roda `npm run test:coverage` no verify (03-01 T1 é a única
+      que cria módulo novo — `config.js` — e entrega o teste junto)
+- [x] `nyquist_compliant: true` no frontmatter
 
-**Approval:** pending
+**Approval:** mapeado pelo planner em 2026-07-29 (7 planos, 15 tasks)
