@@ -31,6 +31,25 @@ const VALIDATORS = {
       : 'admin_email deve conter e-mails válidos separados por vírgula.',
 };
 
+// Chaves de configuração graváveis pelo PUT. É a superfície de escrita da API:
+// o que não está aqui simplesmente não chega ao banco.
+//
+// 'smtp_pass' está FORA de propósito (CFG-01/D-01): a senha SMTP saiu da tabela
+// config e vem só do ambiente. Se a chave continuasse gravável, a migração de
+// boot se desfaria na primeira vez que alguém salvasse a aba Configurações — o
+// save() do painel reenvia o objeto inteiro que veio do GET.
+const ALLOWED_KEYS = [
+  'stale_days',
+  'admin_email',
+  'notify_author',
+  'smtp_host',
+  'smtp_port',
+  'smtp_user',
+  'smtp_from',
+  'cron_schedule',
+  'notifications_enabled',
+];
+
 // GET /api/config
 router.get('/', (req, res) => {
   const config = getAllConfig();
@@ -41,22 +60,9 @@ router.get('/', (req, res) => {
 
 // PUT /api/config
 router.put('/', (req, res) => {
-  const allowed = [
-    'stale_days',
-    'admin_email',
-    'notify_author',
-    'smtp_host',
-    'smtp_port',
-    'smtp_user',
-    'smtp_pass',
-    'smtp_from',
-    'cron_schedule',
-    'notifications_enabled',
-  ];
-
   // Valida antes de gravar qualquer coisa (tudo ou nada).
   const updates = {};
-  for (const key of allowed) {
+  for (const key of ALLOWED_KEYS) {
     const value = req.body[key];
     if (value === undefined || value === '••••••••') continue;
     if (typeof value !== 'string' || value.length > 500) {
@@ -87,3 +93,9 @@ router.post('/test-smtp', async (req, res) => {
 });
 
 module.exports = router;
+
+// ── Seams de teste (não afetam o roteamento do Express) ──────────
+// app.use() só precisa que module.exports seja a função router; esta prop extra
+// é ignorada pelo Express e existe para fixar por asserção que 'smtp_pass' está
+// fora da superfície de escrita (CFG-01), sem subir servidor HTTP.
+module.exports.ALLOWED_KEYS = ALLOWED_KEYS;
