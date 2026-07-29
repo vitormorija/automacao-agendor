@@ -1,4 +1,7 @@
-require('dotenv').config();
+// Caminho explícito: o .env mora ao lado do package.json do backend. Sem isto o
+// carregamento depende do cwd — e sob PM2 (ecosystem.config.js: cwd '/opt/agendor')
+// o dotenv procuraria /opt/agendor/.env, que não existe, e falharia em SILÊNCIO (D-13).
+require('dotenv').config({ path: require('path').join(__dirname, '../.env') });
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
