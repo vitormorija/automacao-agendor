@@ -30,3 +30,11 @@ if (!process.env.AGENDOR_TOKEN) {
 // String vazia é o valor inerte pretendido para ambas.
 process.env.SMTP_PASS = '';
 process.env.ADMIN_EMAIL = '';
+
+// Também SEM guarda, e pelo mesmo motivo de segurança-por-inércia: a suíte tem
+// de rodar SEMPRE no ramo de "não-produção". A validação centralizada de
+// configuração (src/config.js, D-05) só derruba o processo quando
+// NODE_ENV === 'production'; um NODE_ENV=production exportado no shell do
+// desenvolvedor ou herdado do CI faria require('../src/config') LANÇAR e quebrar
+// testes que nada têm a ver com produção. 'test' é o valor inerte pretendido.
+process.env.NODE_ENV = 'test';

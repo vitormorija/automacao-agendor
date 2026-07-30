@@ -70,7 +70,17 @@ Decimal phases appear between their surrounding integers in numeric order.
   2. `.env.example` lista todas as variáveis necessárias, sem valores sensíveis (CFG-02)
   3. Configuração dev vs produção está separada, sem valores sensíveis versionados (CFG-03)
   4. Boot falha rápido, com mensagem clara, quando uma variável de ambiente obrigatória está ausente (CFG-04)
-**Plans**: TBD
+**Nota de ordenação (travas de uma via, derivadas do RESEARCH)**:
+  - D-13 — corrigir o path do `dotenv` e auditar o `.env` de produção (checkpoint humano) ANTES de ligar o fail-fast; inverter derruba produção no próximo `pm2 restart`
+  - D-14 — mesclar o job `secrets` na `main` ANTES de adicioná-lo aos required status checks; inverter trava o merge permanentemente (`enforce_admins: true`)
+**Plans**: 7 plans
+  - [x] 03-01-PLAN.md — Fundação de config: `dotenv` determinístico + `validateEnv` puro e testável (CFG-03/CFG-04)
+  - [ ] 03-02-PLAN.md — Ligar o fail-fast no boot, após checkpoint humano do `.env` de produção (CFG-04, D-13)
+  - [x] 03-03-PLAN.md — Senha SMTP sai do banco: migração defensiva em `db.js` + `emailer` lê do ambiente (CFG-01, D-01/D-02)
+  - [x] 03-04-PLAN.md — Fechar a escrita da senha: allowlist do PUT + campo removido do `ConfigPanel` (CFG-01, D-03)
+  - [x] 03-05-PLAN.md — `.env.example` completo + meta-teste anti-drift + README sincronizado (CFG-02/CFG-03, D-07/D-10/D-12)
+  - [x] 03-06-PLAN.md — Job `secrets` (gitleaks) no CI + grep escopado como prova independente (CFG-01, D-08/D-15)
+  - [ ] 03-07-PLAN.md — Gate real: required status check `secrets`, Secret Scanning nativo e runbook (CFG-01, D-09/D-11/D-14)
 
 ### Phase 4: Confiabilidade das Integrações
 **Goal**: Integrações de saída (Agendor HTTP, SMTP) e o agendador cron toleram lentidão e falhas sem travar ou derrubar o sistema.
@@ -134,7 +144,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 |-------|----------------|--------|-----------|
 | 1. Rede de Testes (Safety-Net) | 5/5 | Complete   | 2026-07-24 |
 | 2. Toolchain de Qualidade & CI | 4/4 | Complete   | 2026-07-29 |
-| 3. Config & Segredos por Ambiente | 0/TBD | Not started | - |
+| 3. Config & Segredos por Ambiente | 4/7 | In Progress|  |
 | 4. Confiabilidade das Integrações | 0/TBD | Not started | - |
 | 5. Logging & Padronização de Erros | 0/TBD | Not started | - |
 | 6. Hardening de Segurança | 0/TBD | Not started | - |

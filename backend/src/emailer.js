@@ -2,6 +2,13 @@ const nodemailer = require('nodemailer');
 const { getConfig } = require('./db');
 const { shouldNotifyOwner } = require('./agendor');
 
+// A senha SMTP é a ÚNICA credencial deste transporte que vem do ambiente, e não da
+// tabela `config` — exceção deliberada ao padrão do projeto (D-01, CFG-01). Host,
+// porta, usuário e remetente continuam no banco e editáveis pela UI, para que trocar
+// de servidor de e-mail não exija redeploy. A senha sai de lá porque é o único valor
+// aqui que é de fato um segredo, e o backup diário (deploy/backup.sh) copia o .db
+// inteiro — ela acabaria em até 30 cópias em disco. A migração que zera o valor
+// antigo mora em db.js, logo depois do seed dos defaults.
 function createTransporter() {
   return nodemailer.createTransport({
     host: getConfig('smtp_host'),
@@ -9,7 +16,7 @@ function createTransporter() {
     secure: parseInt(getConfig('smtp_port')) === 465,
     auth: {
       user: getConfig('smtp_user'),
-      pass: getConfig('smtp_pass'),
+      pass: (process.env.SMTP_PASS || '').trim(),
     },
   });
 }

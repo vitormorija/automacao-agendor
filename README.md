@@ -78,17 +78,26 @@ acompanhamento, histórico e relatórios.
 
    | Variável | Obrigatória | Descrição |
    |----------|:-----------:|-----------|
+   | `NODE_ENV` | — | `production` em produção (padrão `development`) |
    | `AGENDOR_TOKEN` | ✅ | Token da API do Agendor |
    | `JWT_SECRET` | ✅ | Segredo de assinatura dos tokens (mín. 16 caracteres) |
-   | `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD` | recomendado | Admin inicial, criado só no 1º boot sem usuários |
-   | `ADMIN_USERS` | recomendado | E-mails que podem gerenciar usuários (vírgula) |
-   | `SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_PASS` / `SMTP_FROM` | ✅ | Envio de e-mail |
-   | `ADMIN_EMAIL` | ✅ | Destinatário(s) do resumo semanal |
-   | `ALLOWED_ORIGINS` | prod | Origens liberadas no CORS |
-   | `BASE_URL` | prod | URL pública para links rastreáveis nos e-mails |
-   | `STALE_DAYS` | — | Limite de dias sem atualização (padrão 15) |
-   | `NODE_ENV` | prod | `production` em produção |
+   | `SMTP_PASS` | ✅ | Senha de app do SMTP — lida só do ambiente, nunca do banco |
+   | `ALLOWED_ORIGINS` | ✅ | Origens liberadas no CORS (vírgula); em branco, aceita localhost |
+   | `ADMIN_USERS` | ✅ | E-mails que podem gerenciar usuários (vírgula) |
+   | `PORT` | — | Porta do backend (padrão `3001`) |
    | `LOG_LEVEL` | — | `error`/`warn`/`info`/`debug` (padrão `info`) |
+   | `DB_PATH` | — | Caminho do SQLite (padrão `backend/agendor.db`) |
+   | `BASE_URL` | — | URL pública do backend, para links rastreáveis nos e-mails |
+   | `BASE_URL_FRONTEND` | — | Base do link de redefinição de senha (padrão `http://localhost:5173`) |
+   | `ADMIN_EMAIL` | — | Destinatário(s) do resumo semanal |
+   | `SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_FROM` | — | Ajustes de envio; editáveis pela aba Configurações |
+   | `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD` | recomendado | Admin inicial, criado só no 1º boot sem usuários |
+
+   Com `NODE_ENV=production`, a ausência de qualquer variável obrigatória **aborta o boot**
+   com uma mensagem dizendo qual falta e como obter o valor; em desenvolvimento vira apenas
+   um aviso no log. A senha SMTP **não** é mais editável pelo painel — ela vem exclusivamente
+   de `SMTP_PASS` no ambiente do servidor. A lista completa, com os defaults e as diferenças
+   entre dev e produção, está em `backend/.env.example`.
 
 ## Rodando em desenvolvimento
 
