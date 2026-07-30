@@ -6,7 +6,7 @@ GitHub — **não versionada no código** — por isso este passo-a-passo existe
 auditável e reproduzível em caso de reset/migração do repositório.
 
 Repositório: `github.com/vitormorija/automacao-agendor` · Branch: `main`
-Status checks obrigatórios: `backend` e `frontend` (ids dos jobs em `.github/workflows/ci.yml`).
+Status checks obrigatórios: `backend`, `frontend` e `secrets` (ids dos jobs em `.github/workflows/ci.yml`).
 
 ---
 
@@ -17,12 +17,33 @@ Status checks obrigatórios: `backend` e `frontend` (ids dos jobs em `.github/wo
   gh auth status          # deve listar a conta logada em github.com
   ```
 - O workflow `.github/workflows/ci.yml` já precisa ter **rodado ao menos uma vez** num PR
-  (assim o GitHub conhece os contextos `backend`/`frontend`). Se os contextos ainda não
+  (assim o GitHub conhece os contextos `backend`/`frontend`/`secrets`). Se os contextos ainda não
   existirem, abra primeiro um PR qualquer para `main` e deixe o CI rodar — ver §4.
 
 > ⚠️ **Pitfall 3 (crítico):** os nomes em `contexts` DEVEM casar exatamente com os **ids dos
-> jobs** do `ci.yml` (`backend`, `frontend`). Se você renomear um job, atualize aqui também,
+> jobs** do `ci.yml` (`backend`, `frontend`, `secrets`). Se você renomear um job, atualize aqui também,
 > senão o check requerido nunca fica "verde" e o merge fica travado para sempre.
+
+> ⚠️ **Ordem obrigatória ao adicionar um contexto novo (D-14):** **primeiro** mescle na `main` o PR
+> que adiciona o job, **depois** acrescente o contexto aos required status checks. Na ordem inversa
+> a `main` passa a exigir um check que nunca reportou — e como `enforce_admins: true` impede o
+> bypass, **todo PR fica travado permanentemente, sem saída**. Confirme antes com:
+> `gh api repos/vitormorija/automacao-agendor/commits/main/check-runs --jq '.check_runs[].name'`
+
+**O que o job `secrets` faz:** roda o gitleaks escopado ao **range do PR**, reportando apenas
+linhas *adicionadas*. Por isso o token histórico do commit `13905d4` não o deixa vermelho, e
+nenhum `.gitleaksignore` é necessário para ele. Duas limitações conhecidas, medidas:
+
+- **PR acima de 30 commits é escaneado parcialmente** — a action não pagina `listCommits`. Mantenha
+  os PRs curtos; o gate não é hermético acima disso.
+- **O gitleaks não detecta segredo em header `Authorization: Token`** (medido nos três modos de
+  scan). Por isso a prova de CFG-01 inclui também um `git grep` escopado, em
+  `backend/test/secrets.grep.test.js`, como verificação independente.
+
+O arquivo `.gitleaksignore` na raiz suprime **apenas falsos-positivos comprovados** (hoje: 2
+fingerprints de documentos de planejamento que citam um literal de fixture ao explicá-lo). O
+fingerprint do token real da Agendor **não pode** entrar ali — ele é o único aviso automático de
+uma exposição que segue ativa até a rotação.
 
 ---
 
@@ -40,7 +61,7 @@ gh api --method PUT \
 {
   "required_status_checks": {
     "strict": true,
-    "contexts": ["backend", "frontend"]
+    "contexts": ["backend", "frontend", "secrets"]
   },
   "enforce_admins": true,
   "required_pull_request_reviews": null,
@@ -57,7 +78,7 @@ JSON
 > **Se o `gh api` retornar `422`:** falta alguma das 4 chaves de topo, ou um `contexts` não casa
 > com job id existente. A mensagem de erro do GitHub aponta a chave. Corrija e re-rode.
 > Alternativa: configurar pela UI em **Settings → Branches → Add branch protection rule**
-> (padrão `main`, marcar "Require status checks to pass" → adicionar `backend` e `frontend`,
+> (padrão `main`, marcar "Require status checks to pass" → adicionar `backend`, `frontend` e `secrets`,
 > marcar "Do not allow bypassing the above settings").
 
 ---
@@ -68,7 +89,7 @@ JSON
 gh api /repos/vitormorija/automacao-agendor/branches/main/protection/required_status_checks
 ```
 
-Deve retornar `"contexts": ["backend", "frontend"]` (e `"strict": true`). Confirme também
+Deve retornar `"contexts": ["backend", "frontend", "secrets"]` (e `"strict": true`). Confirme também
 visualmente em **GitHub → Settings → Branches → main**.
 
 ---
@@ -107,7 +128,7 @@ Confirme que nada da falha entrou na `main`.
 
 ## Referência
 
-- Contextos requeridos = ids dos jobs em `.github/workflows/ci.yml` (`backend`, `frontend`).
+- Contextos requeridos = ids dos jobs em `.github/workflows/ci.yml` (`backend`, `frontend`, `secrets`).
 - Fonte técnica: `.planning/phases/02-toolchain-de-qualidade-ci/02-RESEARCH.md`
   (§ "Branch protection — required status checks", § "Verificação CI-02").
 - Docs GitHub: REST API → Branch protection (`PUT /repos/{owner}/{repo}/branches/{branch}/protection`).
