@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: phase-complete
-stopped_at: Phase 02 concluída — CI é gate obrigatório e comprovado (CI-01/CI-02)
-last_updated: "2026-07-29"
+status: executing
+stopped_at: Completed 03-04-PLAN.md
+last_updated: "2026-07-29T23:30:33.774Z"
 last_activity: 2026-07-29
 progress:
   total_phases: 8
   completed_phases: 2
-  total_plans: 9
-  completed_plans: 9
+  total_plans: 16
+  completed_plans: 13
   percent: 25
 ---
 
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-22)
 
 **Core value:** Rede de testes automatizados sobre a lógica crítica de notificação (quem recebe / quem não recebe) — para nunca mais uma regressão silenciosa.
-**Current focus:** Phase 03 — config-e-segredos-por-ambiente (próxima; ainda não iniciada)
+**Current focus:** Phase 03 — config-segredos-por-ambiente
 
 ## Current Position
 
-Phase: 02 (toolchain-de-qualidade-ci) — COMPLETE
-Plan: 4 of 4 — todos concluídos
-Status: Fase concluída; pronta para Phase 03
+Phase: 03 (config-segredos-por-ambiente) — EXECUTING
+Plan: 6 of 7
+Status: Ready to execute
 Last activity: 2026-07-29
 
-Progress: [██░░░░░░░░] 25% (2 de 8 fases)
+Progress: [████████░░] 81%
 
 ## Performance Metrics
 
@@ -60,6 +60,11 @@ Progress: [██░░░░░░░░] 25% (2 de 8 fases)
 | Phase 02 P01 | 4 | 1 tasks | 1 files |
 | Phase 02 P02 | 22 | 3 tasks | 40 files |
 | Phase 02 P03 | 6 | 2 tasks | 2 files |
+| Phase 03 P01 | 34 | 2 tasks | 5 files |
+| Phase 03 P03 | 22min | 2 tasks | 5 files |
+| Phase 03 P04 | 8min | 2 tasks | 3 files |
+| Phase 3 P05 | 15min | 2 tasks | 3 files |
+| Phase 03 P06 | 22min | 2 tasks tasks | 3 files files |
 
 ## Accumulated Context
 
@@ -86,14 +91,25 @@ Recent decisions affecting current work:
 - [Phase ?]: [02-03]: gate de cobertura c8 flipado measure-first (check-coverage:true, per-file:false, pisos logo abaixo do observado) — WR-03
 - [Phase 02]: [02-04]: main protegida com required status checks [backend, frontend], strict:true e enforce_admins:true — CI-01 provado por PR verde (run 30474941235) e CI-02 por PR de falha proposital com mergeStateStatus BLOCKED (run 30475739903)
 - [Phase 02]: [02-04]: strict:true mantido conscientemente (exige branch atualizada com a main); custo baixo em repo single-maintainer
+- [Phase ?]: [03-01]: validador de env com a regra numa FUNÇÃO PURA (validateEnv(env)) em vez do throw-no-topo de secret.js — config.js com 100% de branches; gate global subiu de 65,48% para 68,80%
+- [Phase ?]: [03-01]: .env carregado por caminho absoluto derivado de __dirname (D-13/Pitfall 1) — sob PM2 (cwd /opt/agendor) o dotenv falhava em SILÊNCIO; fail-fast permanece DESLIGADO até o checkpoint humano de 03-02
+- [Phase ?]: 03-03: senha SMTP vem só de process.env.SMTP_PASS; a migração de boot zera a chave do banco apenas quando o ambiente tem a senha (D-01/D-02)
+- [Phase ?]: 03-03: smtp_pass removida do objeto defaults de db.js — o seeder não pode mais reintroduzir a senha no SQLite (Pitfall 3)
+- [Phase 03]: [03-04]: allowlist do PUT içada para ALLOWED_KEYS sem smtp_pass e exposta como seam (padrão routes/auth.js) — fecha o caminho de escrita que desfazia a migração de 03-03 (Pitfall 4)
+- [Phase 03]: [03-04]: campo de senha SMTP removido do ConfigPanel, substituído por nota citando SMTP_PASS (D-03); save() intocado — o backend ignora a chave
+- [Phase 03]: [03-05]: CFG-02 fechado por meta-teste, não por revisão: backend/test/envExample.test.js compara as process.env lidas em src/ com o .env.example nas duas direções
+- [Phase 03]: [03-05]: Guarda de entropia de placeholder por corrida ininterrupta de alfanuméricos (16+), não por comprimento total — separa segredo real de frase hifenizada em PT
 
 ### Pending Todos
 
 [From .planning/todos/pending/ — ideas captured during sessions]
 
-*(nenhum pendente)*
+- `sec-01-rotate-agendor-token` (**alta prioridade**, → ação operacional) — token real da API Agendor exposto no histórico do repositório **público**, commit `13905d4` (`.claude/settings.local.json` e `backend/.env.example`). Rotação adiada por decisão consciente em 2026-07-29 para preservar o gate de CI-02. Reescrever histórico NÃO resolve; tornar privado quebra a branch protection (testado). Só a rotação no painel da Agendor encerra a exposição.
+
+- `sec-02-dependency-vulnerabilities` (**alta prioridade**, → Phase 4) — 12 advisories no backend (5 high) e 4 no frontend (2 high, todas devDependencies). As três que importam: `nodemailer` (e-mail para domínio não intencionado + injeção SMTP), `axios` (SSRF + bypass de auth) e `path-to-regexp` (ReDoS nas rotas). O CI **não roda `npm audit`** — nada detecta isso hoje. Corrigir em duas levas: as sem major primeiro, depois `nodemailer` 6→9 e `node-cron` 3→4 com teste do novo fluxo.
 
 Resolvidos e arquivados em `.planning/todos/completed/`:
+
 - ~~`wr-02-cover-getdealswithfuturetasks`~~ — fechado em 02-01
 - ~~`wr-03-enforce-coverage-thresholds`~~ — fechado em 02-03
 
@@ -104,7 +120,9 @@ Resolvidos e arquivados em `.planning/todos/completed/`:
 - Node.js não está instalado no sistema (binários em `/tmp`, wrappers em `~/bin`); considerar ao configurar test runner/CI localmente
 - ~~Frontend e backend têm `package.json` separados (sem workspaces); toolchain (Phase 2) precisa cobrir os dois~~ — resolvido na Phase 2 (Biome na raiz + 2 jobs de CI com cache por lockfile)
 - Token do `gh` precisou do escopo `workflow` para publicar `.github/workflows/` (concedido em 2026-07-29). Clone/máquina novos vão esbarrar nisso: `gh auth refresh -h github.com -s workflow`. Registrar no runbook de onboarding da Phase 8.
-- PR #1 (`chore/production-readiness`, 54 commits) está **verde e mesclável, porém aberto**. Decidir quando mesclar na `main` — a partir de agora todo merge passa pelo gate de CI.
+- ~~PR #1 (`chore/production-readiness`) aberto~~ — **mesclado na `main` em 2026-07-29** (merge commit `2d1857f`, 64 commits, merge commit e não squash para preservar os hashes citados nos SUMMARYs). Branch de origem apagada local e remotamente.
+- **Push direto na `main` agora é RECUSADO** (`enforce_admins: true`). Todo trabalho exige branch + PR com `backend`/`frontend` verdes. Branch de trabalho da Phase 3: `chore/phase-03-config-segredos`.
+- **O repositório PRECISA continuar público para o gate existir.** Conta pessoal free: repo privado retorna `403 Upgrade to GitHub Pro` tanto na branch protection clássica quanto em rulesets. Testado e revertido em 2026-07-29. Tornar privado = perder CI-02.
 
 ### Quick Tasks Completed
 
@@ -122,6 +140,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-29
-Stopped at: Phase 02 concluída (02-04 fechado — branch protection ativa e gate comprovado). Próximo passo: Phase 03 (Config & Segredos por Ambiente), começando por discuss-phase.
+Last session: 2026-07-29T23:30:33.770Z
+Stopped at: Completed 03-04-PLAN.md
 Resume file: None

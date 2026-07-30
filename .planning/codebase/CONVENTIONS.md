@@ -1,6 +1,6 @@
 # Coding Conventions
 
-**Analysis Date:** 2026-07-22
+**Analysis Date:** 2026-07-29
 
 ## Naming Patterns
 
@@ -9,12 +9,12 @@
 - Backend route files live in `backend/src/routes/` and are named after the resource, singular verb-free noun — `deals.js`, `notifications.js`, `config.js`, `reports.js`, `track.js`, `auth.js`.
 - Backend middleware in `backend/src/middleware/` — `auth.js`.
 - Frontend components: PascalCase `.jsx` — `Dashboard.jsx`, `DealsList.jsx`, `ConfigPanel.jsx`, `NotificationHistory.jsx`, `ReportPanel.jsx`, `LoginPage.jsx`, `ChangePasswordModal.jsx`.
-- No test files exist anywhere in the repo (see `TESTING.md`).
+- Backend test files live in `backend/test/` and are named `<module>.<aspect>.test.js` — `agendor.funnel.test.js`, `agendor.getStaleDeals.test.js`, `agendor.futureTasks.test.js`, `agendor.pure.test.js`, `agendor.realsample.test.js`, `auth.test.js`, `db.dedup.test.js`, `smoke.test.js`. Non-test support files under `backend/test/` are named without `.test.` — `setup.js`, `helpers/tmpDb.js`, `helpers/fakeAxios.js` — so `node --test`'s default file discovery (which matches `*.test.js`) does not pick them up as suites.
 
 **Functions:**
 - camelCase throughout, verb-first: `getUsers`, `getStaleDeals`, `runCheck`, `scheduleTask`, `sendStaleNotification`, `checkRateLimit`, `logNotification`.
 - Boolean-returning helpers prefixed with `is`/`should`/`has`: `isBool`, `shouldNotifyOwner`, `hasRecipient` (local var).
-- Internal/private helpers in the same module are not exported (e.g. `createTransporter`, `dealEmailHtml`, `urgencyColor` in `backend/src/emailer.js`) — only the public API surface is listed in `module.exports`.
+- Internal/private helpers in the same module are not exported (e.g. `createTransporter`, `dealEmailHtml`, `urgencyColor` in `backend/src/emailer.js`) — only the public API surface is listed in `module.exports`. Exception made deliberately for testability: `backend/src/routes/auth.js` attaches normally-private seams (`checkRateLimit`, `recordFailedAttempt`, `clearAttempts`, `verifyPassword`, `_loginAttempts`) as extra properties on the exported router function specifically so `backend/test/auth.test.js` can reach and reset them — follow this "attach seam to the existing export" pattern rather than exporting new top-level functions when a test needs to reach into a route module's internals.
 
 **Variables:**
 - camelCase for locals: `staleDays`, `adminEmails`, `notificationsEnabled`.
@@ -27,14 +27,19 @@
 ## Code Style
 
 **Formatting:**
-- No Prettier or formatting tool configured (no `.prettierrc*` found anywhere in the repo).
-- No trailing semicolons dropped consistently — semicolons ARE used throughout backend `.js` files; frontend `.jsx` largely omits semicolons at statement ends (`frontend/src/App.jsx`, `frontend/src/components/Dashboard.jsx`). Match the existing style per file/directory rather than imposing one convention repo-wide.
-- 2-space indentation throughout both backend and frontend.
-- Single quotes preferred for strings; template literals used heavily for interpolation (especially HTML email bodies in `backend/src/emailer.js`).
+- Biome is the single formatter, configured at the repo root in `biome.json` (`"root": true`), covering both `backend/` (CommonJS) and `frontend/` (ES modules) from one shared config — there is no per-package Biome config.
+- Formatter settings: 2-space indentation, single quotes for JS/JSX strings (`javascript.formatter.quoteStyle: "single"`).
+- Run `npm run format` (defined identically in `backend/package.json` and `frontend/package.json`, both aliasing `biome format --write .`) to auto-fix formatting before committing.
+- CSS files are explicitly excluded from Biome's scope (`files.includes: ["!**/*.css"]` in `biome.json`) — the Biome CSS parser aborts on Tailwind's `@apply` directive, so no formatter/linter runs against `.css` files in this repo.
+- Semicolons are used throughout backend `.js` files; frontend `.jsx` largely omits semicolons at statement ends (`frontend/src/App.jsx`, `frontend/src/components/Dashboard.jsx`). Biome's recommended rule set does not enforce a semicolon style here — match the existing style per file/directory rather than imposing one convention repo-wide.
+- Template literals used heavily for interpolation (especially HTML email bodies in `backend/src/emailer.js`).
 
 **Linting:**
-- No ESLint config found (no `.eslintrc*`, `eslint.config.*`, or `biome.json`). No lint script in either `backend/package.json` or `frontend/package.json`.
-- No linting is enforced — be extra careful with unused variables and consistent style since no automated check exists.
+- Biome is also the linter, `linter.enabled: true` in `biome.json`, built on `linter.rules.recommended: true` plus a short list of explicit overrides.
+- Both `backend/package.json` and `frontend/package.json` define `"lint": "biome lint ."`. This is run in CI (`.github/workflows/ci.yml`, both `backend` and `frontend` jobs) and **is a required check to merge** — do not treat linting as optional or unenforced.
+- **The lint baseline is deliberately warn-tolerant, not silent.** A specific set of rules that would require non-trivial code changes to satisfy have been explicitly downgraded from Biome's default `error` severity to `warn` in `biome.json`'s `linter.rules` block: `a11y.useButtonType`, `a11y.noLabelWithoutControl`, `a11y.noAutofocus`, `a11y.useKeyWithClickEvents`, `a11y.noStaticElementInteractions`, `complexity.useOptionalChain`, `complexity.useArrowFunction`, `correctness.noUnusedFunctionParameters`, `correctness.useParseIntRadix`, `correctness.noUnusedVariables`, `correctness.useExhaustiveDependencies`, `correctness.noUnusedImports`, `style.useNodejsImportProtocol`, `style.useTemplate`, `style.useConst`, `suspicious.useIterableCallbackReturn`, `suspicious.noArrayIndexKey`. This means `npm run lint` exits 0 with warnings currently present (44 in `backend/`, 60 in `frontend/`, observed 2026-07-29) — new code that trips one of these specific rules will not fail CI, but genuinely new `error`-level violations (anything NOT in the override list above) WILL fail the build.
+- Do not add new code that relies on the warn-tolerance to introduce sloppiness (unused vars, missing `useEffect` deps, etc.) — the downgrades exist to avoid a disruptive mass-rewrite of pre-existing code, not to license new violations. Prefer writing new code that would pass at `error` severity even where the baseline currently tolerates a warning.
+- `biome.json`'s `files.includes` explicitly excludes `node_modules`, `dist`, `coverage`, `backend/agendor.db`, `backend/test/fixtures/**`, and all `*.css` files from both lint and format.
 
 ## Import Organization
 
@@ -43,6 +48,7 @@
 - Route files typically require `express`, then instantiate `express.Router()` immediately, then require local `../db`, `../scheduler`, `../emailer`, `../secret`, `../logger` (see `backend/src/routes/config.js`, `backend/src/routes/auth.js`).
 - Some requires are deferred inline inside functions to avoid circular-dependency issues at module load time, e.g. `backend/src/index.js` requires `./scheduler` and `./db` inside `server.listen()` callback and `shutdown()` rather than at top of file.
 - `module.exports = { ... }` as a single object at the bottom of every backend module — never `exports.foo = ...` assignments.
+- Test files require `./setup` as their very first line, before any other require (see all files under `backend/test/`) — this ordering is load-bearing, not stylistic (see TESTING.md).
 
 **Frontend (ES modules):**
 - `import { useState, useEffect } from 'react'` first, then third-party libs (`lucide-react`, `react-hot-toast`), then local component imports last (see `frontend/src/App.jsx` lines 1-10).
@@ -55,8 +61,8 @@
 - Express routes wrap async work in `try/catch` and respond with `{ ok: false, message: '...' }` (Portuguese, user-facing) on failure, or `{ error: '...' }` from the global error middleware — the two response shapes coexist (`ok`/`message` in route handlers vs `error` in `backend/src/index.js`'s catch-all middleware). Follow whichever shape the specific route file already uses.
 - A global error-handling middleware in `backend/src/index.js` (lines 78-89) catches uncaught route errors, logs full stack to `logs/error.log`, and returns a generic message in production (`err.status || 500`) — never leaks stack traces to the client when `NODE_ENV=production`.
 - Network-flaky operations (SMTP send, Agendor API paging) use manual retry loops with exponential-ish backoff: `sendMailWithRetry()` in `backend/src/emailer.js` (3 attempts, 3s/6s wait) and `fetchDealsPage()` in `backend/src/agendor.js` (3 attempts, 5s/10s/15s wait, specifically on HTTP 429).
-- Silent-catch pattern (`catch (_) {}` or `catch {}`) used deliberately for non-critical/idempotent operations: migration `ALTER TABLE` statements in `backend/src/db.js` (columns may already exist), `closeDb()` (already closed), auth token parsing in `frontend/src/App.jsx`. When adding new idempotent operations, follow this pattern rather than adding new error propagation paths.
-- Auth failures never reveal whether a username exists (`backend/src/routes/auth.js` `forgot-password` handler always returns `{ ok: true }` regardless of whether the account was found) — preserve this behavior for any new auth-adjacent endpoint.
+- **Silent-catch pattern is deliberate, not an oversight.** `catch (_) {}` or `catch {}` is used intentionally for non-critical/idempotent operations: migration `ALTER TABLE` statements in `backend/src/db.js` (columns may already exist), `closeDb()` (already closed), auth token parsing in `frontend/src/App.jsx`, and `backend/test/helpers/tmpDb.js`'s `cleanup()` (temp file may not exist yet). When adding new idempotent operations, follow this pattern rather than adding new error propagation paths — do not "fix" an existing silent catch into a logged/thrown error without confirming the operation is actually not idempotent.
+- **Auth failures must never reveal account existence.** `backend/src/routes/auth.js`'s `forgot-password` handler always returns `{ ok: true }` regardless of whether the account was found. This is a security property, not an accident — preserve it for any new auth-adjacent endpoint. `backend/test/auth.test.js` documents the related brute-force rate-limiting behavior (5 attempts, 15-minute block) as a regression net specifically so this class of security behavior cannot be silently weakened.
 
 **Frontend:**
 - `fetch` calls wrapped in `try/catch` with `catch {}` (silently swallow) or a `toast.error(...)` call to surface failure to the user — see `fetchStatus()` vs `checkOnly()` in `frontend/src/components/Dashboard.jsx`. Non-critical background refreshes use silent catch; user-initiated actions (buttons) surface errors via `react-hot-toast`.
@@ -72,15 +78,16 @@
 - Errors passed as `Error` objects are automatically expanded to `.stack` (or `.message` if no stack) inside `emit()`.
 - Use `logger.info/warn/error/debug(...)` for all new backend code — do NOT use raw `console.log`/`console.error` in new modules. NOTE: some existing modules still use raw `console.*` directly (`backend/src/agendor.js` lines 189/194, `backend/src/emailer.js` lines 175, 608, 633, 636) — this is legacy and should not be replicated in new code; prefer `require('./logger')`.
 - HTTP access logs are handled separately via `morgan` (not the custom logger): `combined` format written to `logs/access.log` in all environments, plus `dev` format to console outside production (`backend/src/index.js` lines 40-45).
-- Log messages prefixed with a bracketed module tag in Portuguese, e.g. `[Scheduler]`, `[Auth]`, `[Emailer]`, `[Agendor]` — follow this tagging convention for any new logger call so log lines remain greppable by subsystem.
+- **Log messages are prefixed with a bracketed module tag in Portuguese** — e.g. `[Scheduler]`, `[Auth]`, `[Emailer]`, `[Agendor]` — follow this tagging convention for any new logger call so log lines remain greppable by subsystem.
 
 ## Comments
 
 **When to Comment:**
-- Comments are written in Portuguese throughout, matching all user-facing strings and log messages.
-- Section-header comments use a distinctive box-drawing style to delimit logical blocks within a file: `// ── Section Name ──────────────────────`  (see `backend/src/index.js`, `backend/src/routes/auth.js`, `backend/src/db.js`). Use this style when adding a new logical section to an existing file that already uses it.
+- Comments are written in Portuguese throughout, matching all user-facing strings and log messages. This extends to test files: every file under `backend/test/` uses Portuguese header comments and inline rationale.
+- Section-header comments use a distinctive box-drawing style to delimit logical blocks within a file: `// ── Section Name ──────────────────────`  (see `backend/src/index.js`, `backend/src/routes/auth.js`, `backend/src/db.js`, and `backend/test/auth.test.js`'s `// ── Rate limiting ──` / `// ── Verificação de senha ──`). Use this style when adding a new logical section to an existing file that already uses it.
 - Business-rule rationale is documented inline immediately above the code it explains, not in a separate doc — e.g. the `NO_OWNER_NOTIFY_FUNNELS` explanation in `backend/src/agendor.js` (lines 51-55) explains *why* the Beefor funnel is excluded, not just *what* the code does. Follow this "explain the why" style for any non-obvious business rule.
 - Security-sensitive code is heavily commented to explain the threat being mitigated, e.g. `backend/src/secret.js` (why no fallback for `JWT_SECRET`), `backend/src/routes/auth.js` (why rate limiting, why the `forgot-password` response is always generic).
+- Test files follow a "characterization test" comment convention worth reusing for any new test: a file-header comment states the test documents *current* behavior, not ideal behavior (Portuguese: "DOCUMENTA O COMPORTAMENTO ATUAL — não o ideal"), and individual `test()` names embed the same qualifier (e.g. `'isExcludedStage: QUIRK "Perdão de contrato" é EXCLUÍDO — documenta comportamento ATUAL'`). This makes it explicit in the test name itself that a failing assertion after a future code change is a deliberate prompt to make a conscious decision, not proof of a bug.
 
 **JSDoc/TSDoc:**
 - Not used anywhere in the codebase. No `@param`/`@returns` annotations found. Function documentation is a single-line `//` comment directly above the function signature at most.
@@ -108,4 +115,4 @@
 
 ---
 
-*Convention analysis: 2026-07-22*
+*Convention analysis: 2026-07-29*

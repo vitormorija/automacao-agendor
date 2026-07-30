@@ -38,7 +38,7 @@ Sistema interno que monitora negócios ("deals") parados no CRM Agendor e notifi
 - Express ^4.19.2 - HTTP server and routing, `backend/src/index.js`
 - React ^18.3.1 + ReactDOM ^18.3.1 - Frontend UI, `frontend/src/main.jsx`, `frontend/src/App.jsx`
 - Vite ^5.3.1 (`@vitejs/plugin-react` ^4.3.1) - Frontend dev server/bundler, `frontend/vite.config.js`
-- Not detected. No test runner, no `*.test.js`/`*.spec.js` files, no `test` script in any `package.json`.
+- `node:test` nativo (Node >= 20) + `c8` ^12 para cobertura — backend. 8 arquivos em `backend/test/` (35 testes). Scripts: `npm test` (`node --test`) e `npm run test:coverage`. Gate de cobertura ativo em `backend/.c8rc.json` (`check-coverage: true`, `per-file: false`; pisos lines/statements/functions 20, branches 60). Cada arquivo de teste roda em **processo próprio** — é a unidade de isolamento para variações de ambiente. Frontend não tem testes: seu gate é `vite build`.
 - Vite - frontend build (`npm run build` → `frontend/dist/`), dev server on port 5173 with `/api` proxy to `http://localhost:3001`
 - Tailwind CSS ^3.4.4 + PostCSS ^8.4.38 + Autoprefixer ^10.4.19 - CSS pipeline, `frontend/tailwind.config.js`, `frontend/postcss.config.js`
 - nodemon ^3.1.4 - backend dev auto-restart (`backend` `npm run dev` script), `backend/package.json`
@@ -96,12 +96,13 @@ Sistema interno que monitora negócios ("deals") parados no CRM Agendor e notifi
 - React state setters follow the `set<Noun>` pattern from `useState`: `setStatus`, `setRunning`, `setCheckResult` (`frontend/src/components/Dashboard.jsx`).
 - No TypeScript in the project — pure JavaScript (CommonJS backend, ES modules frontend). No type annotations; shapes are documented informally via destructuring and inline Portuguese comments.
 ## Code Style
-- No Prettier or formatting tool configured (no `.prettierrc*` found anywhere in the repo).
+- Formatação via **Biome** (`biome.json` na raiz do repo, cobrindo backend CJS e frontend ESM): `npm run format` = `biome format --write .`. Não há Prettier — não introduzir um segundo formatador.
 - No trailing semicolons dropped consistently — semicolons ARE used throughout backend `.js` files; frontend `.jsx` largely omits semicolons at statement ends (`frontend/src/App.jsx`, `frontend/src/components/Dashboard.jsx`). Match the existing style per file/directory rather than imposing one convention repo-wide.
 - 2-space indentation throughout both backend and frontend.
 - Single quotes preferred for strings; template literals used heavily for interpolation (especially HTML email bodies in `backend/src/emailer.js`).
-- No ESLint config found (no `.eslintrc*`, `eslint.config.*`, or `biome.json`). No lint script in either `backend/package.json` or `frontend/package.json`.
-- No linting is enforced — be extra careful with unused variables and consistent style since no automated check exists.
+- Lint via **Biome** (mesmo `biome.json` da raiz; não há ESLint): `npm run lint` = `biome lint .`, presente em `backend/package.json` e `frontend/package.json`.
+- O lint **é** verificado automaticamente: roda no CI (`.github/workflows/ci.yml`) e é status check obrigatório para mesclar na `main`. O baseline é deliberadamente tolerante a warnings — regras que exigiriam mudança de código foram rebaixadas a `warn` para que `npm run lint` saia 0 no código atual (44 warnings no backend, 60 no frontend). Corrigir esses warnings é trabalho de fases futuras, com teste cobrindo qualquer mudança de comportamento.
+- CSS está fora do escopo do Biome — o parser aborta no `@apply` do Tailwind.
 ## Import Organization
 - `require()` calls at the top of the file, ungrouped — no blank-line separation between "external package" and "local module" imports observed (see `backend/src/index.js` lines 1-8, mixing `dotenv`, `express`, `cors`, `helmet`, `morgan`, `fs`, `path`, then `./logger`).
 - Route files typically require `express`, then instantiate `express.Router()` immediately, then require local `../db`, `../scheduler`, `../emailer`, `../secret`, `../logger` (see `backend/src/routes/config.js`, `backend/src/routes/auth.js`).

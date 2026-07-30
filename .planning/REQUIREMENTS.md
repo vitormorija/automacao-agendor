@@ -28,9 +28,9 @@ Requisitos desta etapa de estabilização. A ordem reflete dependência: testes 
 
 ### Config & Segredos por Ambiente
 
-- [ ] **CFG-01**: Nenhum segredo/token hardcoded no repositório (token Agendor, credenciais SMTP, JWT_SECRET) — todos via variáveis de ambiente
-- [ ] **CFG-02**: `.env.example` documenta todas as variáveis necessárias, sem valores sensíveis
-- [ ] **CFG-03**: Separação clara de configuração dev vs produção, sem valores sensíveis versionados
+- [x] **CFG-01**: Nenhum segredo/token hardcoded no repositório (token Agendor, credenciais SMTP, JWT_SECRET) — todos via variáveis de ambiente
+- [x] **CFG-02**: `.env.example` documenta todas as variáveis necessárias, sem valores sensíveis
+- [x] **CFG-03**: Separação clara de configuração dev vs produção, sem valores sensíveis versionados
 - [ ] **CFG-04**: Boot valida a presença das variáveis de ambiente obrigatórias e falha rápido se faltarem
 
 ### Confiabilidade das Integrações
@@ -114,9 +114,9 @@ Preenchido na criação do roadmap.
 | QUAL-03 | Phase 2 | Complete |
 | CI-01 | Phase 2 | Complete |
 | CI-02 | Phase 2 | Complete |
-| CFG-01 | Phase 3 | Pending |
-| CFG-02 | Phase 3 | Pending |
-| CFG-03 | Phase 3 | Pending |
+| CFG-01 | Phase 3 | Complete |
+| CFG-02 | Phase 3 | Complete |
+| CFG-03 | Phase 3 | Complete |
 | CFG-04 | Phase 3 | Pending |
 | REL-01 | Phase 4 | Pending |
 | REL-02 | Phase 4 | Pending |

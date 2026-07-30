@@ -1,6 +1,6 @@
 # External Integrations
 
-**Analysis Date:** 2026-07-22
+**Analysis Date:** 2026-07-29
 
 ## APIs & External Services
 
@@ -22,7 +22,7 @@
 **Databases:**
 - SQLite (file-based, embedded, no server process)
   - Client/driver: `better-sqlite3` ^9.6.0 (synchronous API)
-  - File: `backend/agendor.db` (relative to `backend/src/db.js`, gitignored)
+  - File: `backend/agendor.db` (relative to `backend/src/db.js`, gitignored), overridable via `DB_PATH` env var (used by the test suite to force `:memory:`)
   - Schema and all queries defined inline in `backend/src/db.js` (no ORM, no migration framework — schema evolves via `ALTER TABLE ... ADD COLUMN` wrapped in try/catch for idempotency)
   - Tables: `config` (key/value app settings), `notification_log` (every email sent + click/resolution tracking), `weekly_snapshots` (historical weekly stats for charts), `app_users` (login credentials), `reset_tokens` (password-reset tokens, 1h expiry), `login_logs` (audit trail of login attempts)
 
@@ -47,6 +47,7 @@
   - Admin-only endpoints (user create/list/delete, login logs) gated by `requireAdmin` middleware, checking username against comma-separated `ADMIN_USERS` env var (if unset, any authenticated user is treated as admin — legacy/permissive default)
   - Public (unauthenticated) routes explicitly allowlisted in `backend/src/middleware/auth.js`: `/api/auth/login`, `/api/auth/verify`, `/api/track/click`, `/api/health`
   - Login rate limiting: in-memory per-IP counter, 5 failed attempts → 15-minute block (`backend/src/routes/auth.js`)
+  - `backend/test/auth.test.js` covers auth-critical behaviors (login, rate limiting, token verification) under `node:test`
 
 ## Monitoring & Observability
 
@@ -65,8 +66,11 @@
 - Single process serves both API and static frontend build in production (`backend/src/index.js` serves `frontend/dist/` when `NODE_ENV=production`)
 
 **CI Pipeline:**
-- Not detected. No `.github/workflows/`, no CI config files found in the repo.
-- Deployment is manual/scripted: `deploy/instalar.sh` (full server bootstrap: installs Node 22 via NodeSource, PM2, Nginx, clones repo from `https://github.com/vitormorija/automacao-agendor.git`, builds frontend, configures Nginx and PM2, sets up a cron-based DB backup)
+- GitHub Actions, `.github/workflows/ci.yml` — two parallel jobs, `backend` and `frontend`, triggered on every `pull_request` and on `push` to `main`. Node pinned to version `20` in both jobs (`actions/setup-node@v7`). `permissions: contents: read` (least-privilege, no write access).
+  - `backend` job: `npm ci` → `npm run lint` (Biome, warn-tolerant) → `npm run test:coverage` (`node --test` under `c8`, coverage gate enforced by `backend/.c8rc.json`)
+  - `frontend` job: `npm ci` → `npm run lint` (Biome, warn-tolerant) → `npm run build` (`vite build` — the only frontend gate; no frontend tests exist)
+  - Job IDs `backend`/`frontend` are the required-status-check contexts on branch protection for `main` (`deploy/branch-protection.md` documents the setup) — renaming these job keys would break branch protection.
+- Deployment itself remains manual/scripted, independent of the CI workflow: `deploy/instalar.sh` (full server bootstrap: installs Node 22 via NodeSource, PM2, Nginx, clones repo from `https://github.com/vitormorija/automacao-agendor.git`, builds frontend, configures Nginx and PM2, sets up a cron-based DB backup). CI does not currently deploy — it only gates merges to `main`.
 
 ## Environment Configuration
 
@@ -74,17 +78,21 @@
 - `AGENDOR_TOKEN` — Agendor CRM API token
 - `JWT_SECRET` — required at boot, ≥16 chars
 - `PORT`, `NODE_ENV`
+- `DB_PATH` — optional override of the SQLite file location (used by tests; not documented in `.env.example` since production doesn't need to override it)
 - `SEED_ADMIN_EMAIL`, `SEED_ADMIN_PASSWORD` — first-boot admin bootstrap
 - `ADMIN_USERS` — admin allowlist for user-management endpoints
 - `ALLOWED_ORIGINS` — CORS allowlist
 - `BASE_URL` — public backend URL for email click-tracking links
+- `BASE_URL_FRONTEND` — used to build password-reset links (`backend/src/routes/auth.js`)
 - `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` — outbound email (seeded into SQLite `config` table on first boot, then editable via the app's Config panel/API rather than requiring redeploy)
 - `ADMIN_EMAIL` — recipient(s) for admin summary emails (also seeded into DB config)
 - `STALE_DAYS` — default stale-deal threshold (seeded into DB config, default 15)
+- `LOG_LEVEL` — logger verbosity
 
 **Secrets location:**
-- `backend/.env` (gitignored) on each environment; `backend/.env.example` is the committed template with placeholder values only
+- `backend/.env` (gitignored, per-environment) — never committed; `backend/.env.example` is the committed template with placeholder values only
 - SMTP credentials and other operational config, once seeded, live in the `config` table of `backend/agendor.db` (editable at runtime via `PUT /api/config`, `backend/src/routes/config.js`) — the SMTP password is masked (`••••••••`) in `GET /api/config` responses and never echoed back in full
+- Test environment never touches real secrets: `backend/test/setup.js` sets throwaway `JWT_SECRET`/`AGENDOR_TOKEN` values and blanks `SMTP_PASS`/`ADMIN_EMAIL` unconditionally before any test runs, so a real secret exported in a developer's shell or CI environment cannot leak into the test SQLite database
 
 ## Webhooks & Callbacks
 
@@ -98,4 +106,4 @@
 
 ---
 
-*Integration audit: 2026-07-22*
+*Integration audit: 2026-07-29*
