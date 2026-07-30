@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-stopped_at: Completed 03-02-PLAN.md
+status: phase-complete
+stopped_at: Phase 03 concluída — gate de segredos obrigatório e comprovado
 last_updated: "2026-07-30T18:05:41.304Z"
 last_activity: 2026-07-30
 progress:
   total_phases: 8
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 16
-  completed_plans: 15
-  percent: 25
+  completed_plans: 16
+  percent: 38
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-22)
 
 **Core value:** Rede de testes automatizados sobre a lógica crítica de notificação (quem recebe / quem não recebe) — para nunca mais uma regressão silenciosa.
-**Current focus:** Phase 03 — config-segredos-por-ambiente
+**Current focus:** Phase 04 — confiabilidade-das-integracoes (próxima; ainda não iniciada)
 
 ## Current Position
 
-Phase: 03 (config-segredos-por-ambiente) — EXECUTING
-Plan: 7 of 7
-Status: Ready to execute
+Phase: 03 (config-segredos-por-ambiente) — COMPLETE
+Plan: 7 of 7 — todos concluídos
+Status: Fase concluída; pronta para Phase 04
 Last activity: 2026-07-30
 
-Progress: [█████████░] 94%
+Progress: [███░░░░░░░] 38% (3 de 8 fases)
 
 ## Performance Metrics
 
@@ -102,6 +102,9 @@ Recent decisions affecting current work:
 - [Phase 03]: [03-05]: Guarda de entropia de placeholder por corrida ininterrupta de alfanuméricos (16+), não por comprimento total — separa segredo real de frase hifenizada em PT
 - [Phase 03]: [03-02]: fail-fast de configuração ligado ao boot — index.js requer ./config antes de qualquer módulo local; produção não sobe sem as 5 obrigatórias (CFG-04)
 - [Phase 03]: [03-02]: checkpoint humano do .env de produção declarado N/A — não existe servidor de produção; verificação transferida para o todo OPS-01 (primeiro deploy)
+- [Phase 03]: [03-07]: `secrets` adicionado aos required status checks da main (agora [backend, frontend, secrets], strict + enforce_admins); provado por PR com chave sintética → mergeStateStatus BLOCKED
+- [Phase 03]: [03-07]: Secret Scanning nativo habilitado só pela metade — `secret_scanning` e `push_protection` ativos; `non_provider_patterns` e `validity_checks` são recusados EM SILÊNCIO (PATCH devolve 200 e ignora). Consequência: o token do sec-01 NÃO gera alerta nativo, contrariando o que se esperava ao decidir D-11 — nenhuma camada automática vai lembrar da rotação
+- [Phase 03]: [03-07]: a chave de exemplo da AWS (AKIAIOSFODNN7EXAMPLE) é allowlisted pelo gitleaks — testar um gate de segredo com exemplo canônico de documentação prova o oposto do pretendido
 
 ### Pending Todos
 
