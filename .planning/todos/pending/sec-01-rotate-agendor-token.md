@@ -53,6 +53,19 @@ rulesets retornam `403 Upgrade to GitHub Pro`. Tornar privado desativa CI-02.
 Depois disso, o histórico do git passa a conter apenas um segredo morto e deixa de ser um problema —
 sem custo, sem reescrever histórico e sem sacrificar o gate de CI.
 
+## ⚠ Nenhuma camada automática vai lembrar disso (medido em 2026-07-30)
+
+O GitHub Secret Scanning foi habilitado na Fase 3, mas **não vai gerar alerta para este token**.
+Motivo: dos 4 toggles, só `secret_scanning` e `secret_scanning_push_protection` ficaram ativos —
+`secret_scanning_non_provider_patterns` é recusado em silêncio neste plano de conta (a API devolve
+`200` e mantém `disabled`). É justamente essa regra que detectaria segredos genéricos; sem ela, o
+scanning nativo só reconhece padrões de **provedores conhecidos**, e a Agendor não é um.
+
+O job `secrets` (gitleaks) também não ajuda aqui: ele escaneia o range do PR, não o histórico.
+
+Ou seja, esta pendência depende **inteiramente de acompanhamento humano**. Não haverá alerta, badge
+ou check vermelho lembrando dela.
+
 ## Decisão registrada
 
 Em 2026-07-29 optou-se conscientemente por **manter o repositório público e adiar a rotação**,
