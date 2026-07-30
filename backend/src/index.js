@@ -2,6 +2,17 @@
 // carregamento depende do cwd — e sob PM2 (ecosystem.config.js: cwd '/opt/agendor')
 // o dotenv procuraria /opt/agendor/.env, que não existe, e falharia em SILÊNCIO (D-13).
 require('dotenv').config({ path: require('path').join(__dirname, '../.env') });
+// Fail-fast de configuração (CFG-04, D-04/D-05): valida as 5 obrigatórias no require.
+// Vem AQUI, e não depois, por duas razões:
+// (1) antes de './routes/auth', que puxa db.js — o db.js abre o SQLite e semeia a tabela
+//     `config` no load; um boot mal configurado não pode deixar efeito colateral antes de
+//     morrer (é a definição de fail-fast);
+// (2) antes de './middleware/auth', que puxa secret.js — validando primeiro, o operador
+//     recebe a lista COMPLETA do que falta num único boot, em vez de descobrir uma
+//     variável por vez. O secret.js continua valendo: só ele exige os 16 caracteres
+//     mínimos do JWT_SECRET.
+// Em produção a ausência derruba o processo; fora dela, vira aviso no log (D-05).
+require('./config');
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
