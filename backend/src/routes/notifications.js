@@ -15,8 +15,7 @@ const {
   sendWeeklySummary,
   sendOwnerWeeklySummary,
 } = require('../emailer');
-const { getStaleDeals, getUsers } = require('../agendor');
-const axios = require('axios');
+const { getStaleDeals, getUsers, getDealById } = require('../agendor');
 
 // GET /api/notifications — histórico de notificações
 router.get('/', (req, res) => {
@@ -200,8 +199,6 @@ router.get('/notified-deals', (req, res) => {
 // GET /api/notifications/resolved — verifica quais deals notificados foram atualizados no Agendor
 async function resolvedHandler(req, res) {
   try {
-    const TOKEN = process.env.AGENDOR_TOKEN;
-
     const notifiedDeals = getNotifiedDeals();
     if (!notifiedDeals.length)
       return res.json({
@@ -217,11 +214,13 @@ async function resolvedHandler(req, res) {
     const results = await Promise.all(
       notifiedDeals.map(async (d) => {
         try {
-          const { data } = await axios.get(
-            `https://api.agendor.com.br/v3/deals/${d.deal_id}`,
-            { headers: { Authorization: `Token ${TOKEN}` } },
-          );
-          const currentUpdatedAt = data.data?.updatedAt;
+          // getDealById usa a instância compartilhada de agendor.js e por isso herda o
+          // teto de tempo de 15s (REL-01 / D-01). Antes, esta consulta remontava url
+          // absoluta e header aqui dentro — ficava FORA da instância e esperava
+          // indefinidamente. O `id` vem só de getNotifiedDeals() (do banco): esta rota
+          // não aceita id de query nem de body, e não deve passar a aceitar.
+          const deal = await getDealById(d.deal_id);
+          const currentUpdatedAt = deal?.updatedAt;
           const isResolved =
             currentUpdatedAt &&
             new Date(currentUpdatedAt) > new Date(d.last_notified_at);
@@ -235,7 +234,7 @@ async function resolvedHandler(req, res) {
             currentUpdatedAt,
             resolved: isResolved || d.resolved === 1,
             resolved_at: isResolved ? currentUpdatedAt : d.resolved_at,
-            dealStatus: data.data?.dealStatus?.id, // 1=em andamento, 2=ganho, 3=perdido
+            dealStatus: deal?.dealStatus?.id, // 1=em andamento, 2=ganho, 3=perdido
           };
         } catch {
           return { ...d, resolved: d.resolved === 1 };
