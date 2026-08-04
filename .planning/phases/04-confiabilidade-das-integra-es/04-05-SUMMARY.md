@@ -150,7 +150,42 @@ O caminho padrão deste projeto (sem `options.socket`, sem `options.connection`)
 - Não exige mudança de código. Nenhuma opção nova precisa ser passada; o comportamento é interno à biblioteca.
 - É, em disponibilidade, uma **melhoria**: um servidor com um endereço fora do ar passa a ser alcançado pelo outro, em vez de falhar.
 
-**É informação para o checkpoint, não algo a silenciar.** Se em produção o `notification_log` mostrar `ETIMEDOUT` com latência muito acima de 10s na conexão, esta é a explicação — e o ajuste seria baixar `connectionTimeout`, não reverter o major.
+**É informação para o checkpoint, não algo a silenciar.** Se em produção o `notification_log` mostrar `ETIMEDOUT` com latência muito acima de 10s na conexão, esta é a explicação.
+
+### Resolução do checkpoint C3+C4 — investigação dirigida e Decisão Q6 (2026-08-04)
+
+O usuário **não aprovou de imediato**: pediu investigação dirigida do achado antes de decidir, sem alterar arquivos. A investigação foi feita sobre o fonte da versão instalada e os fatos abaixo estão medidos, não inferidos.
+
+**1. `connectionTimeout` é aplicado por endereço A/AAAA, não globalmente.** `_connectToHost()` (`lib/smtp-connection/index.js:403`) chama `_setupConnectionHandlers()`, que arma um `setTimeout` novo com `options.connectionTimeout` (`:413-415`). `_onConnectionError()` limpa esse timer (`:427`), tira o próximo endereço da fila (`:438`) e chama `_connectToHost()` de novo (`:468`) — instalando um `connectionTimeout` **inteiro e novo**. Não há acumulador nem deadline compartilhada. A lista vem de `lib/shared/index.js:157-172` (A **e** AAAA concatenados), com o primário escolhido **aleatoriamente** em `:83`.
+
+**2. `greetingTimeout` e `socketTimeout` NÃO são multiplicados.** Ambos vivem dentro de `_onConnect()` (`:847` e `:850`), que só roda depois de a conexão subir e marca `stage = 'connected'` (`:829`); `canFallback` exige `stage === 'init'` (`:430`). Só a fase de conexão multiplica.
+
+**3. Nada mais limita a fase de conexão.** `socketTimeout` não vale antes de existir conexão. `dnsTimeout` (default 30s, `:268`) limita só a resolução, e o `dnsCache` tem TTL de 5 min. `grep` por `totalTimeout|globalTimeout|overallTimeout|maxConnectionTime|disableFallback|noFallback` em todo o `lib/` → **zero ocorrências**. O bloco de documentação das opções (`:44-64`) não menciona o fallback.
+
+**4. Pior caso por destinatário — fórmula:**
+
+```
+30N + 69 segundos     (N = registros A + AAAA do smtp_host)
+```
+
+| N | Pior caso | Observação |
+|---|---|---|
+| 1 | 99s | é exatamente o "~1min40s" de D-02 — a garantia original era o caso N=1 |
+| **2** | **129s** | **N=2 observado em 2026-08-04 para `smtp.gmail.com`** (padrão, `db.js:108`) |
+| 4 | 189s | |
+| 8 | 309s | |
+
+O termo dominante continua sendo `socketTimeout`; o fallback acrescenta `(N−1) × connectionTimeout` por tentativa.
+
+**5. A garantia quantitativa de D-02 deixou de ser invariável.** A cláusula de **configuração** (os três valores na fábrica) segue satisfeita ao pé da letra e a v9 honra os mesmos nomes com a mesma semântica — nenhuma mudança de código foi necessária, e nenhuma foi feita. Mas o teto passou a depender do **DNS do provedor**, que o operador não vê nem controla.
+
+**6. Opções avaliadas e descartadas.** Não existe configuração suportada (item 3). Host como IP literal desligaria o fallback (`shared/index.js:103`) mas zera o `servername`, quebrando SNI e validação de certificado, e os IPs do provedor rotacionam. A opção `socket`/`connection` também desligaria, mas exige gerenciar o ciclo de vida do socket. Baixar `connectionTimeout` para `10s/N` não funciona: N não é conhecido em tempo de configuração.
+
+**7. ⚠ `Promise.race` ingênuo é armadilha.** Perder a corrida **não cancela** a operação SMTP subjacente: o socket fica aberto, o `connectionTimeout` do endereço em curso segue armado, e a tentativa continua consumindo descritor. Numa rodada com muitos destinatários isso vaza sockets em vez de limitar tempo. Qualquer teto externo precisa encerrar o transporte explicitamente.
+
+**Decisão Q6 — nova semântica ACEITA nesta fase, upgrade mantido em 9.0.4.** Fundamentos registrados pelo usuário: N=2 no ambiente atual; 129s ainda é redução enorme diante dos ~30min anteriores; suíte integralmente verde; advisory HIGH do nodemailer removido; e ausência de configuração suportada para deadline global. O modo de falha é *mais lento*, não *errado*, e este é um cron diário cujo orçamento é a janela da rodada.
+
+**Pendência rastreável criada:** `.planning/todos/pending/rel-02b-deadline-global-smtp.md` — estudar deadline global controlado **antes do go-live**, com gatilho de reavaliação se o provedor passar a resolver para mais endereços ou se o tempo observado exceder o limite operacional aprovado.
 
 ### Compatibilidade da superfície usada — prova por comparação de fonte
 
