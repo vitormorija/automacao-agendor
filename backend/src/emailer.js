@@ -223,36 +223,55 @@ async function sendStaleNotification({ deal, ownerEmail, authorEmail, logId }) {
   const subject = `⚠️ ${tipoSubject} parado há ${deal.daysSinceUpdate} dias: ${deal.title}`;
   const results = [];
 
-  // Email para o dono do card
-  if (ownerEmail) {
-    const result = await sendMailWithRetry(transporter, {
-      from,
-      to: ownerEmail,
-      subject,
-      html: dealEmailHtml({
-        deal,
-        ownerName: deal.ownerName,
-        role: 'owner',
-        logId,
-      }),
-    });
-    results.push({ to: ownerEmail, ...result });
-  }
+  // Por que este try existe (WR-01) — e por que ele NÃO engole a exceção:
+  // `results` é uma variável local e se perde junto com a pilha quando algo lança
+  // daqui. E lançar DEPOIS de um destinatário já ter recebido é um caminho real:
+  // `sendMailWithRetry` recria o transporte dentro do seu próprio catch (`:211`),
+  // e tanto `createTransporter` quanto `dealEmailHtml` fazem leituras síncronas em
+  // SQLite (`getConfig`) que podem falhar — por exemplo com a conexão já fechada
+  // pelo `shutdown()` do index.js. Sem levar o parcial junto, o catch do agendador
+  // não tem como saber que o dono já recebeu: ele rebaixa a linha do
+  // notification_log para 'error', `alreadyNotifiedToday` volta a devolver false e
+  // a rodada de amanhã reenvia para quem já recebeu.
+  // O erro continua sendo RELANÇADO, sem alteração de mensagem nem de tipo: D-03
+  // (registrar e seguir) e o cenário Q1-2 de notificationStatus.test.js — em que a
+  // exceção vem da fábrica inicial, ANTES de qualquer envio, e cujo desfecho
+  // correto continua sendo 'error' — dependem disso.
+  try {
+    // Email para o dono do card
+    if (ownerEmail) {
+      const result = await sendMailWithRetry(transporter, {
+        from,
+        to: ownerEmail,
+        subject,
+        html: dealEmailHtml({
+          deal,
+          ownerName: deal.ownerName,
+          role: 'owner',
+          logId,
+        }),
+      });
+      results.push({ to: ownerEmail, ...result });
+    }
 
-  // Email para o criador (se diferente do dono)
-  if (authorEmail && authorEmail !== ownerEmail) {
-    const result = await sendMailWithRetry(transporter, {
-      from,
-      to: authorEmail,
-      subject,
-      html: dealEmailHtml({
-        deal,
-        ownerName: deal.authorName,
-        role: 'author',
-        logId,
-      }),
-    });
-    results.push({ to: authorEmail, ...result });
+    // Email para o criador (se diferente do dono)
+    if (authorEmail && authorEmail !== ownerEmail) {
+      const result = await sendMailWithRetry(transporter, {
+        from,
+        to: authorEmail,
+        subject,
+        html: dealEmailHtml({
+          deal,
+          ownerName: deal.authorName,
+          role: 'author',
+          logId,
+        }),
+      });
+      results.push({ to: authorEmail, ...result });
+    }
+  } catch (err) {
+    if (err && typeof err === 'object') err.resultadosParciais = results;
+    throw err;
   }
 
   return results;

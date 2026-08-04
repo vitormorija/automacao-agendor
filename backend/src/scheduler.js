@@ -124,7 +124,22 @@ async function runCheck() {
         // proteger quem já recebeu de um segundo e-mail amanhã. O erro do
         // destinatário que falhou é preservado na coluna `error`. D-03 (registrar
         // e seguir para o próximo destinatário) fica intocado.
+        //
+        // A MESMA razão vale no caminho de EXCEÇÃO (WR-01), e é por isso que
+        // sendStaleNotification anexa ao erro o resultado por destinatário que já
+        // tinha coletado: ela pode lançar DEPOIS de um envio confirmado (o retry
+        // de emailer.js:211 recria o transporte dentro do próprio catch, e essa
+        // recriação lê o SQLite). Rebaixar a linha para 'error' sem olhar o parcial
+        // reabre a duplicata — a linha deixa de deduplicar e a rodada de amanhã
+        // reenvia para quem já recebeu.
+        //
+        // Por que results.notified++ mora DENTRO do ramo 'sent' (WR-04): esse
+        // contador é o número que o logger.info('[Scheduler] Concluído: …') de
+        // :187-189 e a UI exibem como "notificações enviadas". Incrementá-lo numa
+        // falha total faria o log dizer que tudo saiu justamente no dia em que o
+        // SMTP estivesse fora.
         let logId = null;
+        let houveEnvioConfirmado = false;
         try {
           const logEntry = logNotification({
             deal_id: deal.id,
@@ -148,30 +163,37 @@ async function runCheck() {
             logId,
           });
           const allOk = emailResults.every((r) => r.success);
-          const algumSucesso = emailResults.some((r) => r.success);
+          houveEnvioConfirmado = emailResults.some((r) => r.success);
           const errors = emailResults
             .filter((r) => !r.success)
             .map((r) => r.error);
 
-          if (algumSucesso) {
+          if (houveEnvioConfirmado) {
             updateNotificationStatus(
               logId,
               'sent',
               errors.length ? errors.join('; ') : null,
             );
+            results.notified++;
           } else {
             updateNotificationStatus(logId, 'error', errors.join('; '));
           }
 
           dealResult.notified = allOk;
           if (!allOk) results.errors.push(...errors);
-          results.notified++;
         } catch (err) {
           results.errors.push(err.message);
           // Atualiza a linha já inserida em vez de criar uma segunda. Se a exceção
           // ocorreu antes do insert, não há nada a atualizar.
           if (logId !== null) {
-            updateNotificationStatus(logId, 'error', err.message);
+            // O que já foi confirmado antes da exceção chega aqui anexado ao erro.
+            const parciais = err.resultadosParciais ?? [];
+            if (parciais.some((r) => r.success)) houveEnvioConfirmado = true;
+            updateNotificationStatus(
+              logId,
+              houveEnvioConfirmado ? 'sent' : 'error',
+              err.message,
+            );
           }
         }
       } else {
