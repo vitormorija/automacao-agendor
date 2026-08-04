@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 04-04-PLAN.md
-last_updated: "2026-08-04T19:09:18.432Z"
+stopped_at: Completed 04-05-PLAN.md — checkpoint C3+C4 AGUARDANDO aprovacao humana
+last_updated: "2026-08-04T19:25:02.503Z"
 last_activity: 2026-08-04
 progress:
   total_phases: 8
   completed_phases: 3
   total_plans: 23
-  completed_plans: 20
+  completed_plans: 21
   percent: 38
 ---
 
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-07-22)
 ## Current Position
 
 Phase: 04 (confiabilidade-das-integra-es) — EXECUTING
-Plan: 5 of 7
+Plan: 6 of 7
 Status: Ready to execute
 Last activity: 2026-08-04
 
-Progress: [█████████░] 87%
+Progress: [█████████░] 91%
 
 ## Performance Metrics
 
@@ -70,6 +70,7 @@ Progress: [█████████░] 87%
 | Phase 04 P02 | 21 | 2 tasks | 4 files |
 | Phase 04 P03 | 34min | 4 tasks tasks | 7 files files |
 | Phase 04 P04 | 21min | 2 tasks | 2 files |
+| Phase 04 P05 | 14min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -129,6 +130,13 @@ Recent decisions affecting current work:
 - [Phase 04]: 04-04: mock.timers.tickAsync NÃO existe no Node 20 (alvo do CI) nem no 22 — só a partir do v23; substituído pelo helper avancarRelogioAte (setImmediate real drena microtasks + tick avança o relógio). O 04-06 e o 04-07 NÃO devem copiar o tickAsync do 04-RESEARCH
 - [Phase 04]: 04-04: o cenário de exaustão NÃO usa assert.rejects — sendMailWithRetry RESOLVE com { success:false } e é isso que D-03 manda preservar; erros injetados fiéis ao nodemailer (ESOCKET com mensagem read ECONNRESET, nunca code ECONNRESET)
 - [Phase 04]: 04-04: emailer.js de 7,16% para 35,67% de linhas e 82,14% de branches; diff de produção com 14 adições e ZERO remoções — retry e console.warn legado intocados; nodemailer segue em 6.10.1 (bump é escopo do 04-05)
+- [Phase 04]: 04-05: nodemailer ^6.9.13 (resolvido 6.10.1) -> ^9.0.4 em commit isolado de 2 arquivos e 5 linhas; lockfile com 1 entrada alterada, 0 adicionadas, 0 removidas (nodemailer tem zero dependencias); npm audit do backend 9 (3 high) -> 8 (2 high)
+- [Phase 04]: 04-05: o major era OBRIGATORIO, nao opcional — GHSA-rcmh-qjqh-p98v (DoS no addressparser, HIGH) tem first_patched_version null na linha 6.x, ou seja, nao existe correcao dentro do 6.x
+- [Phase 04]: 04-05: correcao ao 04-RESEARCH — a string NoAuth NAO vive so em lib/smtp-pool; em 6.10.1 esta tambem em lib/smtp-transport/index.js:390, dentro de verify(), que o projeto CHAMA. Veredito 'nao afeta' mantido por outra razao: o ramo exige options.forceAuth (nunca passado) e nenhum consumidor le err.code
+- [Phase 04]: 04-05: ACHADO NOVO nao previsto pela pesquisa — o 8.0.0 introduziu fallback de conexao para enderecos DNS alternativos (_fallbackAddresses, inexistente no 6.x). connectionTimeout de 10s passa a valer POR ENDERECO resolvido na fase de conexao; nao quebra teste nem exige mudanca de codigo, mas afrouxa o teto de tempo de REL-02 — item para a Fase 5
+- [Phase 04]: 04-05: as 3 opcoes de timeout de D-02 (connectionTimeout/greetingTimeout/socketTimeout) e o _formatError sao IDENTICOS entre 6.10.1 e 9.0.4 — a mudanca do 04-04 sobrevive ao major sem tocar uma linha
+- [Phase 04]: 04-05: 9.0.4 confirmada e fallback ^9.0.3 NAO acionado — o delta 9.0.3->9.0.4 e todo em mime-funcs/mime-node, caminho que este projeto exercita com assuntos em emoji e acento
+- [Phase 04]: 04-05: engines do nodemailer 9.0.4 verificado ANTES do install — node >=6.0.0, identico a 6.10.1 e compativel com o Node 20 do CI (D-09)
 
 ### Pending Todos
 
@@ -136,7 +144,7 @@ Recent decisions affecting current work:
 
 - `sec-01-rotate-agendor-token` (**alta prioridade**, → ação operacional) — token real da API Agendor exposto no histórico do repositório **público**, commit `13905d4` (`.claude/settings.local.json` e `backend/.env.example`). Rotação adiada por decisão consciente em 2026-07-29 para preservar o gate de CI-02. Reescrever histórico NÃO resolve; tornar privado quebra a branch protection (testado). Só a rotação no painel da Agendor encerra a exposição.
 
-- `sec-02-dependency-vulnerabilities` (**alta prioridade**, → Phase 4, **parcialmente atendido**) — **o 04-03 fechou a metade `axios` do D-06**: `axios` ^1.7.2 → ^1.19.0, e o backend saiu de **12 advisories (5 high) para 9 (3 high)** — saíram `axios`, `form-data` e `follow-redirects`. Falta a metade `nodemailer` (6→9), escopo do 04-05, que deve levar a 8 (2 high). O restante (`path-to-regexp`, `morgan`, `qs`/`express`, `body-parser`, `brace-expansion`, `uuid`/`node-cron`, e o `vite` 5→8 do frontend) **segue pendente e fora da Fase 4** por decisão D-06. Estado original medido em 2026-07-30: 12 advisories no backend (5 high) e 4 no frontend (2 high, todas devDependencies). As três que importam: `nodemailer` (e-mail para domínio não intencionado + injeção SMTP), `axios` (SSRF + bypass de auth) e `path-to-regexp` (ReDoS nas rotas). O CI **não roda `npm audit`** — nada detecta isso hoje. Corrigir em duas levas: as sem major primeiro, depois `nodemailer` 6→9 e `node-cron` 3→4 com teste do novo fluxo.
+- `sec-02-dependency-vulnerabilities` (**alta prioridade**, → Phase 4, **escopo D-06 CONCLUÍDO**) — **o 04-03 fechou a metade `axios` e o 04-05 fechou a metade `nodemailer`**: `axios` ^1.7.2 → ^1.19.0 (saíram `axios`, `form-data`, `follow-redirects`) e `nodemailer` ^6.9.13 → **^9.0.4** (saiu `nodemailer` com seus 4 advisories). Backend: **12 (5 high) → 9 (3 high) → 8 (2 high)**, exatamente o previsto. **Zero high/critical restante é atribuível a `axios` ou `nodemailer`.** Os 8 remanescentes estão listados nominalmente com GHSA no próprio arquivo do todo. O restante (`path-to-regexp`, `morgan`, `qs`/`express`, `body-parser`, `brace-expansion`, `uuid`/`node-cron`, e o `vite` 5→8 do frontend) **segue pendente e fora da Fase 4** por decisão D-06. Estado original medido em 2026-07-30: 12 advisories no backend (5 high) e 4 no frontend (2 high, todas devDependencies). As três que importam: `nodemailer` (e-mail para domínio não intencionado + injeção SMTP), `axios` (SSRF + bypass de auth) e `path-to-regexp` (ReDoS nas rotas). O CI **não roda `npm audit`** — nada detecta isso hoje. Corrigir em duas levas: as sem major primeiro, depois `nodemailer` 6→9 e `node-cron` 3→4 com teste do novo fluxo.
 
 - `ops-01-validar-env-e-pm2-no-primeiro-deploy` (**alta prioridade**, → Phase 8) — **não existe servidor de produção nem deploy em `/opt/agendor`; o projeto roda só localmente** (confirmado pelo usuário em 2026-07-30). Por isso o checkpoint da Task 1 do 03-02 foi registrado como N/A, não bloqueado. Quando houver servidor, validar as 5 variáveis obrigatórias no `.env` e o `cwd` do PM2 antes do primeiro boot com fail-fast ligado. Dois riscos herdados: `SMTP_PASS` não tem mais recuperação pela UI, e um eventual `/opt/agendor/.env` órfão deixou de valer após a correção do 03-01.
 
@@ -172,6 +180,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-04T19:09:18.428Z
-Stopped at: Completed 04-04-PLAN.md
+Last session: 2026-08-04T19:25:02.500Z
+Stopped at: Completed 04-05-PLAN.md — checkpoint C3+C4 AGUARDANDO aprovacao humana
 Resume file: None
