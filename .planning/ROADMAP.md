@@ -94,7 +94,14 @@ Decimal phases appear between their surrounding integers in numeric order.
   5. Status `'sent'` só é gravado após envio confirmado; falha total grava `'error'` e a rodada seguinte retenta (dedup de envios bem-sucedidos preservada) (REL-05, Decisão Q1)
   6. Falha na consulta de tarefas futuras aborta a rodada sem notificar — registrada, lock liberado, rodada seguinte executa (REL-06, Decisão Q2)
 **Contrato de entrega**: `.planning/phases/04-confiabilidade-das-integra-es/04-DELIVERY-CONTRACT.md` (aprovado 2026-08-04; 7 planos, decisões Q1-Q5)
-**Plans**: TBD
+**Plans**: 7 plans (execução estritamente sequencial, waves 1-7; `parallelization: false`)
+- [ ] 04-01-PLAN.md — Caracterização da resiliência do scheduler: falha registrada, lock liberado, concorrência recusada (REL-03) · termina em C2
+- [ ] 04-02-PLAN.md — Fail-safe na consulta de tarefas futuras: completo ou falha explícita, rodada abortada sem notificar (REL-06, Q2)
+- [ ] 04-03-PLAN.md — Timeout HTTP de 15s na instância Agendor + `getDealById` + bump `axios@^1.19.0` (REL-01, D-01, Q3) · termina em C4
+- [ ] 04-04-PLAN.md — Timeouts SMTP 10s/10s/30s na fábrica `createTransporter` + caracterização da exaustão (REL-02, D-02/D-03)
+- [ ] 04-05-PLAN.md — Atualização `nodemailer` 6→9 (`^9.0.4`), protegida pelos testes de REL-02 · termina em C3+C4
+- [ ] 04-06-PLAN.md — Consistência do status de envio: `'sent'` só após confirmação, falha total retentável (REL-05, Q1)
+- [ ] 04-07-PLAN.md — Invalidação do `orgCategoryCache` a cada execução de `getStaleDeals` (REL-04, D-05)
 
 ### Phase 5: Logging & Padronização de Erros
 **Goal**: Logging é estruturado e consistente em todo o backend, e o tratamento/resposta de erro nas rotas segue um padrão único.
