@@ -4,9 +4,22 @@ const logger = require('./logger');
 const BASE_URL = 'https://api.agendor.com.br/v3';
 const TOKEN = process.env.AGENDOR_TOKEN;
 
+// Teto de tempo de TODA chamada à API Agendor (REL-01 / Decisão D-01). Sem `timeout` o
+// axios espera indefinidamente: uma API lenta — não caída, lenta — trava o cron das 8h e o
+// sistema para de notificar em silêncio. 15s é generoso para uma API que responde em menos
+// de 1s no caminho normal, mas corta o travamento antes de comer a janela da rodada.
+// Rejeitados 30s (o pior caso da execução completa cresce demais: são várias páginas mais
+// uma chamada por organização única) e 10s (risco de desistir de respostas que chegariam em
+// horário de pico).
+//
+// O timeout NÃO entra no retry de 429 de fetchDealsPage (:101-117) e isso é deliberado: um
+// erro de timeout não traz `err.response`, então a condição `err.response?.status === 429`
+// é falsa e o erro já sai pelo `throw err`. Retentar timeouts faria o pior caso de uma única
+// página saltar para ~60s, anulando o motivo de existir deste limite.
 const api = axios.create({
   baseURL: BASE_URL,
   headers: { Authorization: `Token ${TOKEN}` },
+  timeout: 15000,
 });
 
 // Busca todos os usuários com seus emails
@@ -44,6 +57,22 @@ async function getOrgCategory(orgId) {
     orgCategoryCache[orgId] = null;
     return null;
   }
+}
+
+// Busca um negócio pelo ID, devolvendo o conteúdo já desembrulhado do envelope da Agendor.
+//
+// Existe para que routes/notifications.js não conheça a borda HTTP: até o 04-03 a rota
+// GET /api/notifications/resolved montava a url absoluta e o header `Authorization` na mão
+// (um `axios.get` cru), o que a deixava FORA desta instância — e portanto sem o timeout de
+// 15s acima. Centralizar a chamada aqui é o que impede esse ponto órfão de reaparecer: quem
+// quiser consultar um deal usa getDealById e herda baseURL, header e teto de tempo de graça.
+//
+// Diferente de getOrgCategory (:35-47), NÃO engole a falha: quem absorve é o catch por item
+// do Promise.all da rota, que já existe. Engolir aqui devolveria null e faria a rota tratar
+// "não consegui consultar" como "não mudou nada" — sem nenhum sinal de que a consulta falhou.
+async function getDealById(id) {
+  const { data } = await api.get(`/deals/${id}`);
+  return data.data || null;
 }
 
 const INACTIVE_CATEGORY = 'Inativo (sem resposta)';
@@ -245,6 +274,7 @@ async function getDealsWithFutureTasks() {
 module.exports = {
   getUsers,
   getStaleDeals,
+  getDealById,
   getDealsWithFutureTasks,
   shouldNotifyOwner,
   getDealType,
