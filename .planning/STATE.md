@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 04-08-PLAN.md — CR-01/WR-06 fechados (corrida do orgCategoryCache); C7 aprovado, entrada no 04-09 autorizada
-last_updated: "2026-08-04T21:58:00.000Z"
-last_activity: 2026-08-04 -- Phase 04 gap closure: 04-08 concluido
+stopped_at: Completed 04-09-PLAN.md — CR-02/WR-03 fechados; C8 aprovado; SEC-01 aceito em aberto (sem rotacao), entrada no 04-10 autorizada
+last_updated: "2026-08-04T22:17:13.157Z"
+last_activity: 2026-08-04 -- Phase 04 gap closure: 04-09 concluido
 progress:
   total_phases: 8
   completed_phases: 3
   total_plans: 27
-  completed_plans: 24
+  completed_plans: 25
   percent: 38
 ---
 
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-07-22)
 ## Current Position
 
 Phase: 04 (confiabilidade-das-integra-es) — EXECUTING (gap closure)
-Plan: 8 of 11
-Status: 04-08 concluido (CR-01/WR-06); C7 aprovado. Proximo: 04-09 (CR-02/WR-03), termina em C8
-Last activity: 2026-08-04 -- Phase 04 gap closure: 04-08 concluido
+Plan: 9 of 11
+Status: 04-09 concluido (CR-02/WR-03); C8 aprovado. SEC-01 ACEITO EM ABERTO (sem rotacao do AGENDOR_TOKEN). Proximo: 04-10
+Last activity: 2026-08-04 -- Phase 04 gap closure: 04-09 concluido
 
-Progress: [███████░░░] 73%
+Progress: [█████████░] 93%
 
 ## Performance Metrics
 
@@ -74,6 +74,7 @@ Progress: [███████░░░] 73%
 | Phase 04 P06 | 12min | 2 tasks | 4 files |
 | Phase 04 P07 | 9min | 2 tasks | 2 files |
 | Phase 04 P08 | 12min | 3 tasks tasks | 3 files files |
+| Phase 04 P09 | 7min | 4 tasks tasks | 10 files files |
 
 ## Accumulated Context
 
@@ -152,16 +153,32 @@ Recent decisions affecting current work:
 - [Phase 04]: 04-07: o null que o catch de getOrgCategory cacheia deixou de sobreviver a execucao — um blip de rede em UMA consulta derrubava a exclusao daquela organizacao em todas as rodadas seguintes do processo
 - [Phase 04]: 04-07: eficiencia provada por CONTAGEM de urls /organizations/ em fake.get.mock.calls (6 orgs unicas, sem repeticao), nao por inspecao — a limpeza por execucao nao multiplicou chamadas dentro da rodada
 - [Phase 04]: 04-07: no teste, o caso que mede contagem de chamadas vem PRIMEIRO porque exige cache frio; e o cenario do null-de-erro exigiu um deal sintetico com organizacao nova, porque no estado RED uma consulta ja cacheada nem chega a ser tentada e portanto nem chega a falhar (o teste ficaria verde onde se espera vermelho)
+- [Phase 04]: 04-09: CR-02 fechado — console.error(err) de routes/deals.js virou logger.error com contexto + err.message; o AxiosError carregava config.headers.Authorization e o stream do PM2 persiste em /opt/agendor/logs/pm2-error.log
+- [Phase 04]: 04-09: a prova da sanitizacao de log e COMPORTAMENTAL (espiao no logger + util.inspect de todos os argumentos + token sintetico), nao estatica — os greps sao sinal auxiliar e o SUMMARY nao lhes atribui garantia que nao tem
+- [Phase 04]: 04-09: WR-03 fechado nos DOIS lados — guarda Number.isInteger(dealId) && dealId > 0 em getDealById antes de qualquer requisicao HTTP, e Number.parseInt no /test-card; afinidade INTEGER sem STRICT nao e validacao
+- [Phase 04]: 04-09: Number(id) e nao parseInt em getDealById — a normalizacao precisa aceitar a string numerica que o SQLite devolve e recusar '101abc'; caso 4 do teste pina getDealById('101') -> /deals/101
+- [Phase 04]: 04-09 [C8, decisao vinculante do usuario, 2026-08-04]: NAO rotacionar o AGENDOR_TOKEN neste momento. SEC-01 permanece ABERTO como RISCO CONSCIENTEMENTE ACEITO — nao marcado como resolvido em nenhum artefato. O token em backend/.env nao foi alterado, lido nem exibido
+- [Phase 04]: 04-09: higiene local do C8 executada (token redigido no unico arquivo de ~/.claude que o continha; logs/error.log e logs/access.log com 0 ocorrencias) — isso REDUZ copias adicionais mas NAO elimina a exposicao historica do Git no repo publico e NAO encerra SEC-01
+- [Phase 04]: 04-09: checkpoint C8 aprovado pelo usuario — entrada no plano 04-10 autorizada
 
 ### Pending Todos
 
 [From .planning/todos/pending/ — ideas captured during sessions]
 
 - `sec-01-rotate-agendor-token` (**alta prioridade**, → ação operacional) — token real da API Agendor exposto no histórico do repositório **público**, commit `13905d4` (`.claude/settings.local.json` e `backend/.env.example`). Rotação adiada por decisão consciente em 2026-07-29 para preservar o gate de CI-02. Reescrever histórico NÃO resolve; tornar privado quebra a branch protection (testado). Só a rotação no painel da Agendor encerra a exposição.
+  **Reafirmado no C8 (2026-08-04, decisão vinculante do usuário): NÃO rotacionar por ora — SEC-01 permanece ABERTO como risco conscientemente aceito.** O 04-09 fechou o caminho **futuro** de gravação do token em disco (`console.error(err)` de `routes/deals.js` → `pm2-error.log`) e a higiene local removeu a única cópia adicional encontrada em `~/.claude`, com `logs/*.log` a 0 ocorrências. Nada disso elimina a exposição histórica do Git nem encerra este todo.
 
 - `sec-02-dependency-vulnerabilities` (**alta prioridade**, → Phase 4, **escopo D-06 CONCLUÍDO**) — **o 04-03 fechou a metade `axios` e o 04-05 fechou a metade `nodemailer`**: `axios` ^1.7.2 → ^1.19.0 (saíram `axios`, `form-data`, `follow-redirects`) e `nodemailer` ^6.9.13 → **^9.0.4** (saiu `nodemailer` com seus 4 advisories). Backend: **12 (5 high) → 9 (3 high) → 8 (2 high)**, exatamente o previsto. **Zero high/critical restante é atribuível a `axios` ou `nodemailer`.** Os 8 remanescentes estão listados nominalmente com GHSA no próprio arquivo do todo. O restante (`path-to-regexp`, `morgan`, `qs`/`express`, `body-parser`, `brace-expansion`, `uuid`/`node-cron`, e o `vite` 5→8 do frontend) **segue pendente e fora da Fase 4** por decisão D-06. Estado original medido em 2026-07-30: 12 advisories no backend (5 high) e 4 no frontend (2 high, todas devDependencies). As três que importam: `nodemailer` (e-mail para domínio não intencionado + injeção SMTP), `axios` (SSRF + bypass de auth) e `path-to-regexp` (ReDoS nas rotas). O CI **não roda `npm audit`** — nada detecta isso hoje. Corrigir em duas levas: as sem major primeiro, depois `nodemailer` 6→9 e `node-cron` 3→4 com teste do novo fluxo.
 
 - `ops-01-validar-env-e-pm2-no-primeiro-deploy` (**alta prioridade**, → Phase 8) — **não existe servidor de produção nem deploy em `/opt/agendor`; o projeto roda só localmente** (confirmado pelo usuário em 2026-07-30). Por isso o checkpoint da Task 1 do 03-02 foi registrado como N/A, não bloqueado. Quando houver servidor, validar as 5 variáveis obrigatórias no `.env` e o `cwd` do PM2 antes do primeiro boot com fail-fast ligado. Dois riscos herdados: `SMTP_PASS` não tem mais recuperação pela UI, e um eventual `/opt/agendor/.env` órfão deixou de valer após a correção do 03-01.
+
+Triagem do `04-REVIEW.md` registrada no 04-09 (achados reconhecidos e deliberadamente fora da Fase 4):
+
+- `in-04-escape-html-no-test-card` (**alta prioridade**, → Phase 5+) — `routes/notifications.js:67-83` passa `title`/`organization`/`ownerName`/`dealId` do corpo da requisição para `emailer.js:117,158,164`, que os interpola **sem escape** (inclusive dentro de um `href`). Um usuário autenticado envia HTML arbitrário para qualquer e-mail com a identidade visual da empresa. Fora da Fase 4 porque a correção mexe no template, declarado inalterado pelo contrato.
+- `in-01-status-pending-na-ui` (média, → fase de UI) — o status `'pending'` do 04-06 renderiza como falha (X vermelho) em `NotificationHistory.jsx:306`.
+- `in-02-seams-fora-do-module-exports` (baixa) — 4 seams de teste anexados fora do bloco `module.exports` único que o `CLAUDE.md` exige.
+- `in-03-comentario-emailer-timeout` (baixa) — comentário de `emailer.timeout.test.js:310-311` afirma um alarme por lentidão que o `node --test` não dá.
+- `cr-02b-console-error-objeto-completo-em-index` (baixa, → Phase 5 com LOG-01/LOG-02) — `index.js:107` despeja o objeto de erro, mas guardado por `NODE_ENV !== 'production'`; não escreve o token no `pm2-error.log`.
 
 Resolvidos e arquivados em `.planning/todos/completed/`:
 
@@ -195,6 +212,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-04T21:56:27.395Z
-Stopped at: Completed 04-07-PLAN.md — REL-04 entregue (invalidacao do orgCategoryCache); Fase 4 pronta para verificacao
+Last session: 2026-08-04T22:17:13.153Z
+Stopped at: Completed 04-09-PLAN.md — CR-02/WR-03 fechados; C8 aprovado; SEC-01 aceito em aberto (sem rotacao), entrada no 04-10 autorizada
 Resume file: None
