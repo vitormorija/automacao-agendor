@@ -24,6 +24,56 @@ advisories são publicados — re-medir antes de agir.
 
 ---
 
+## Estado após a Fase 4 (medido em 2026-08-04, pós-04-05)
+
+A Fase 4 fechou **apenas** a parte de `axios` e `nodemailer` (decisão D-06). Evolução medida do
+`backend/`:
+
+| Momento | Total | High | Moderate |
+|---|---|---|---|
+| Antes do 04-03 | 12 | 5 | 7 |
+| Depois do bump de `axios` (04-03) | 9 | 3 | 6 |
+| **Depois do bump de `nodemailer` (04-05)** | **8** | **2** | **6** |
+
+- `axios` `^1.7.2` → **`^1.19.0`** (04-03). Saíram `axios`, `form-data` e `follow-redirects`.
+- `nodemailer` `^6.9.13` → **`^9.0.4`** (04-05). Saiu `nodemailer`. Motivo do major: o advisory
+  `GHSA-rcmh-qjqh-p98v` (DoS por recursão no `addressparser`, **HIGH**) tem
+  `first_patched_version: null` na linha 6.x — **não existe correção dentro do 6.x**.
+
+**Nenhum high/critical remanescente é atribuível a `axios` ou a `nodemailer`.**
+
+### Advisories remanescentes no `backend/` — lista explícita
+
+| Pacote | Sev. | Direto? | Advisory(ies) | Correção disponível |
+|---|---|---|---|---|
+| `brace-expansion` | **high** | não | GHSA-3jxr-9vmj-r5cp, GHSA-mh99-v99m-4gvg, GHSA-rgw5-rvv9-x895, GHSA-jxxr-4gwj-5jf2 | sem major |
+| `path-to-regexp` | **high** | não (via Express 4) | GHSA-37ch-88jc-xwx2 (ReDoS) | sem major |
+| `qs` | moderate | não | GHSA-q8mj-m7cp-5q26 | sem major |
+| `express` | moderate | **sim** | — (via `qs`) | sem major |
+| `body-parser` | moderate | não | GHSA-v422-hmwv-36x6 (via `qs`) | sem major |
+| `morgan` | moderate | **sim** | GHSA-4vj7-5mj6-jm8m (log forging) | sem major |
+| `uuid` | moderate | não (via `node-cron`) | GHSA-w5hq-g745-h8pq | **exige major `node-cron@4.6.0`** |
+| `node-cron` | moderate | **sim** | — (via `uuid`) | **major 4.6.0** |
+
+O `frontend/` **não foi tocado** pela Fase 4: `vite` 5→8, `postcss`, `esbuild` e `@babel/core`
+seguem pendentes, todos devDependencies.
+
+### O gate permanente de `npm audit` no CI segue deliberadamente adiado
+
+Adicionar `npm audit` como status check obrigatório **agora** deixaria o CI vermelho em toda
+execução por causa dos 8 advisories acima — nenhum deles corrigido nesta fase por decisão D-06.
+O gate só faz sentido **depois** que o backlog restante for zerado (ou que se defina um
+`--audit-level` com allowlist explícita). Continua sendo item próprio, candidato à Fase 6
+(Hardening de Segurança).
+
+### Regra operacional aprendida nas Fases 4
+
+`npm audit fix` é **proibido** neste backlog: 6 dos 8 advisories restantes têm correção sem major
+e entrariam de carona num bump isolado, contaminando o lockfile e tornando o rollback ambíguo.
+Usar sempre `npm install <pacote>@<versão-alvo>`. Nesta fase o `npm audit` foi **leitura**, nunca ação.
+
+---
+
 ## Triagem — o que importa e o que não
 
 ### Backend: runtime, chega em produção
@@ -52,29 +102,36 @@ ou o processo de build. Prioridade menor que a do backend, mas não zero em CI.
 
 ## Como corrigir — em duas levas, não numa só
 
-### Leva 1: correções sem quebra de major (baixo risco)
+> ⚠️ **Plano original de 2026-07-29 — parcialmente superado.** A Fase 4 (D-06) executou só
+> `axios` e `nodemailer`, e **rejeitou o `npm audit fix` recomendado abaixo** (ver "Regra
+> operacional aprendida" acima). Manter o texto como registro do raciocínio inicial; seguir
+> a lista de remanescentes da seção "Estado após a Fase 4" ao retomar.
 
-`axios`, `path-to-regexp`, `form-data`, `express`, `qs`, `body-parser`, `follow-redirects`,
-`brace-expansion`, `morgan`, `postcss`, `@babel/core` têm correção dentro da major atual.
+### Leva 1: correções sem quebra de major (baixo risco) — ⚠️ receita superada
+
+`axios` ✅ **feito no 04-03**. `path-to-regexp`, `express`, `qs`, `body-parser`,
+`brace-expansion`, `morgan`, `postcss`, `@babel/core` seguem pendentes com correção dentro da
+major atual (`form-data` e `follow-redirects` saíram de carona no bump do `axios`).
 
 ```bash
+# ⚠️ NÃO usar: npm audit fix agrupa todos os pendentes num lockfile só e torna o rollback ambíguo.
+# Preferir um pacote por commit:
 export PATH="$HOME/bin:$PATH"
-cd backend && npm audit fix && npm run lint && npm run test:coverage
-cd ../frontend && npm audit fix && npm run lint && npm run build
+cd backend && npm install <pacote>@<versão-alvo> && npm run lint && npm run test:coverage
 ```
 
-A rede de testes da Fase 1 (35 testes) é a proteção aqui. Se ficar verde, o risco é baixo.
+A rede de testes (112 testes ao fim da Fase 4) é a proteção aqui. Se ficar verde, o risco é baixo.
 
 ### Leva 2: bumps de major — mudança de comportamento, exige teste
 
 Três exigem salto de major e **caem sob a restrição do projeto** (`PROJECT.md`: nenhuma mudança
 de comportamento entra sem teste cobrindo o novo comportamento):
 
-| De | Para | Risco |
-|---|---|---|
-| `nodemailer` ^6.9.13 | 9.0.3 | 3 majors. É o caminho de envio de e-mail — o núcleo do produto. Exige teste do novo fluxo de envio antes de entrar. |
-| `node-cron` ^3.0.3 | 4.6.0 | Agendador. Uma mudança de API silenciosa aqui para o check diário sem ninguém perceber. |
-| `vite` ^5.3.1 | 8.1.5 | 3 majors no bundler. Só afeta build/dev, mas pode quebrar o `vite build` que é o gate do frontend no CI. |
+| De | Para | Risco | Status |
+|---|---|---|---|
+| `nodemailer` ^6.9.13 | **^9.0.4** | 3 majors. É o caminho de envio de e-mail — o núcleo do produto. Exige teste do novo fluxo de envio antes de entrar. | ✅ **feito no 04-05**, com o oráculo de 9 casos criado no 04-04 (`backend/test/emailer.timeout.test.js`) |
+| `node-cron` ^3.0.3 | 4.6.0 | Agendador. Uma mudança de API silenciosa aqui para o check diário sem ninguém perceber. | pendente |
+| `vite` ^5.3.1 | 8.1.5 | 3 majors no bundler. Só afeta build/dev, mas pode quebrar o `vite build` que é o gate do frontend no CI. | pendente |
 
 Estes **não** devem ir junto com a Leva 1. Um `npm audit fix --force` faria os três de uma vez
 e é exatamente o que não se quer.
