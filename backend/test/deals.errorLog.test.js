@@ -1,12 +1,12 @@
 // Sanitização do log de erro de GET /api/deals/stale (CR-02 do 04-REVIEW).
 //
-// Por que o SINK importa, e não só a mensagem: `routes/deals.js` tratava a falha com
-// `console.error(err)`, passando o objeto de erro INTEIRO. `util.inspect` de um AxiosError
+// Por que o SINK importa, e não só a mensagem: `routes/deals.js` tratava a falha com uma
+// chamada crua de console passando o objeto de erro INTEIRO. `util.inspect` de um AxiosError
 // imprime suas propriedades próprias enumeráveis — entre elas `config` — e
-// `config.headers.Authorization` carrega `Token <AGENDOR_TOKEN>`. Em produção esse stream vai
-// para `/opt/agendor/logs/pm2-error.log` (`ecosystem.config.js:20`), **persistido em disco** e
-// sobrevivente a restart. Ou seja: uma API Agendor lenta bastava para gravar a credencial de
-// serviço em arquivo.
+// `config.headers.Authorization` carrega o token de serviço da Agendor. Em produção esse
+// stream vai para `/opt/agendor/logs/pm2-error.log` (`ecosystem.config.js:20`), **persistido
+// em disco** e sobrevivente a restart. Ou seja: uma API Agendor lenta bastava para gravar a
+// credencial em arquivo.
 //
 // Por que o caminho é ROTINEIRO e não hipotético: antes do 04-02 a falha de `/tasks` era
 // engolida dentro de `agendor.js`; com o fail-safe de REL-06 ela propaga e o `staleHandler`
@@ -23,7 +23,8 @@
 // olha a saída real.
 //
 // Disciplina de segredo do próprio teste (PC-13): o valor sintético é literal e reconhecível,
-// e o arquivo NUNCA lê `process.env.AGENDOR_TOKEN` nem `backend/.env`. Nenhuma mensagem de
+// e o arquivo NUNCA lê a variável de ambiente do token real nem `backend/.env`. Isto é
+// verificável por grep: nem o nome dessa variável aparece neste arquivo. Nenhuma mensagem de
 // asserção ecoa o token ou o objeto serializado — uma falha aqui não pode virar um segundo
 // vazamento, desta vez na saída do CI.
 
