@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 04-09-PLAN.md — CR-02/WR-03 fechados; C8 aprovado; SEC-01 aceito em aberto (sem rotacao), entrada no 04-10 autorizada
-last_updated: "2026-08-04T22:17:13.157Z"
-last_activity: 2026-08-04 -- Phase 04 gap closure: 04-09 concluido
+stopped_at: Completed 04-10-PLAN.md — WR-01/WR-04/WR-05 fechados; sucesso parcial sobrevive a excecao ('sent' preservado) e results.notified so conta envio real. Proximo: 04-11
+last_updated: "2026-08-04T22:30:18.812Z"
+last_activity: 2026-08-04 -- Phase 04 gap closure: 04-10 concluido
 progress:
   total_phases: 8
   completed_phases: 3
   total_plans: 27
-  completed_plans: 25
+  completed_plans: 26
   percent: 38
 ---
 
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-07-22)
 ## Current Position
 
 Phase: 04 (confiabilidade-das-integra-es) — EXECUTING (gap closure)
-Plan: 9 of 11
-Status: 04-09 concluido (CR-02/WR-03); C8 aprovado. SEC-01 ACEITO EM ABERTO (sem rotacao do AGENDOR_TOKEN). Proximo: 04-10
-Last activity: 2026-08-04 -- Phase 04 gap closure: 04-09 concluido
+Plan: 10 of 11
+Status: 04-10 concluido (WR-01/WR-04/WR-05). SEC-01 permanece ABERTO como risco conscientemente aceito (decisao C8). Proximo: 04-11
+Last activity: 2026-08-04 -- Phase 04 gap closure: 04-10 concluido
 
-Progress: [█████████░] 93%
+Progress: [██████████] 96%
 
 ## Performance Metrics
 
@@ -75,6 +75,7 @@ Progress: [█████████░] 93%
 | Phase 04 P07 | 9min | 2 tasks | 2 files |
 | Phase 04 P08 | 12min | 3 tasks tasks | 3 files files |
 | Phase 04 P09 | 7min | 4 tasks tasks | 10 files files |
+| Phase 04 P10 | 14min | 3 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -160,6 +161,11 @@ Recent decisions affecting current work:
 - [Phase 04]: 04-09 [C8, decisao vinculante do usuario, 2026-08-04]: NAO rotacionar o AGENDOR_TOKEN neste momento. SEC-01 permanece ABERTO como RISCO CONSCIENTEMENTE ACEITO — nao marcado como resolvido em nenhum artefato. O token em backend/.env nao foi alterado, lido nem exibido
 - [Phase 04]: 04-09: higiene local do C8 executada (token redigido no unico arquivo de ~/.claude que o continha; logs/error.log e logs/access.log com 0 ocorrencias) — isso REDUZ copias adicionais mas NAO elimina a exposicao historica do Git no repo publico e NAO encerra SEC-01
 - [Phase 04]: 04-09: checkpoint C8 aprovado pelo usuario — entrada no plano 04-10 autorizada
+- [Phase 04]: 04-10: a correcao sugerida pelo 04-REVIEW (houveEnvioConfirmado atribuido DEPOIS do await) NAO resolveria WR-01 — se sendStaleNotification lanca, aquela linha nunca executa; a informacao precisa ATRAVESSAR a excecao, entao o resultado parcial viaja anexado ao proprio erro relancado
+- [Phase 04]: 04-10: o try de emailer.js envolve APENAS os dois blocos de envio — createTransporter/from/subject ficam FORA para que a fabrica inicial continue lancando sem parcial e o cenario Q1-2 nao mude de significado; a excecao segue relancada sem alterar mensagem nem tipo (D-03)
+- [Phase 04]: 04-10: houveEnvioConfirmado governa o status gravado nos DOIS caminhos (retorno e excecao) — uma excecao apos envio confirmado mantem 'sent' e a dedup protege quem ja recebeu, em vez de reenviar amanha (WR-01)
+- [Phase 04]: 04-10: results.notified++ movido para DENTRO do ramo 'sent' — contador e status gravado viram um unico ponto de verdade; uma falha total deixa de reportar envio no logger.info e na UI (WR-04)
+- [Phase 04]: 04-10: WR-05 fechado por asseracao de PRE-CONDICAO sobre fake.get.mock.calls contendo '/users' (rota do plano) e nao por espiao no logger — nao acopla o teste ao formato da mensagem de log; os dentes foram verificados por mutacao temporaria do early-return, revertida antes do commit
 
 ### Pending Todos
 
@@ -212,6 +218,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-04T22:17:13.153Z
+Last session: 2026-08-04T22:29:17.400Z
 Stopped at: Completed 04-09-PLAN.md — CR-02/WR-03 fechados; C8 aprovado; SEC-01 aceito em aberto (sem rotacao), entrada no 04-10 autorizada
 Resume file: None
