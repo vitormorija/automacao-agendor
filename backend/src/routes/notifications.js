@@ -198,7 +198,7 @@ router.get('/notified-deals', (req, res) => {
 });
 
 // GET /api/notifications/resolved — verifica quais deals notificados foram atualizados no Agendor
-router.get('/resolved', async (req, res) => {
+async function resolvedHandler(req, res) {
   try {
     const TOKEN = process.env.AGENDOR_TOKEN;
 
@@ -259,6 +259,18 @@ router.get('/resolved', async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
-});
+}
+
+router.get('/resolved', resolvedHandler);
 
 module.exports = router;
+
+// ── Seams de teste (não afetam o roteamento do Express) ──────────
+// app.use() só precisa que module.exports seja a função router; esta prop extra é
+// ignorada pelo Express e existe para invocar o handler direto, com um `res` falso
+// mínimo e sem subir servidor HTTP nem depender de supertest.
+// Motivo: esta rota é o ponto onde a consulta à Agendor escapava da instância
+// compartilhada (REL-01). Trocá-la por getDealById muda a forma do dado recebido, e o
+// shape da resposta — em especial `dealStatus`, o único campo que o frontend usa para
+// o rótulo ganho/perdido — precisa ficar pinado por asserção.
+module.exports.resolvedHandler = resolvedHandler;
