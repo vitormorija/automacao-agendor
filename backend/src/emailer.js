@@ -9,6 +9,17 @@ const { shouldNotifyOwner } = require('./agendor');
 // aqui que é de fato um segredo, e o backup diário (deploy/backup.sh) copia o .db
 // inteiro — ela acabaria em até 30 cópias em disco. A migração que zera o valor
 // antigo mora em db.js, logo depois do seed dos defaults.
+//
+// Os três timeouts abaixo (D-02, REL-02) vivem AQUI, na fábrica, e não em cada
+// chamada: `createTransporter()` é o único ponto por onde passam os 6 call-sites
+// de envio do sistema (o retry, o alerta diário, os dois resumos semanais, o
+// teste de SMTP da UI e o reset de senha) — repeti-los seriam 6 lugares para
+// divergir. Sem eles valem os defaults do nodemailer: 2min de conexão, 30s de
+// saudação e **10 minutos** de socket. É o socket de 10 minutos que permite uma
+// única tentativa travada segurar a rodada inteira: com as 3 tentativas de
+// `sendMailWithRetry` o pior caso por destinatário chega a ~30 minutos. Com 30s,
+// esse pior caso cai para ~1min40s — e 30s continua generoso para um servidor
+// SMTP saudável, que responde em menos de um segundo no caminho normal.
 function createTransporter() {
   return nodemailer.createTransport({
     host: getConfig('smtp_host'),
@@ -18,6 +29,9 @@ function createTransporter() {
       user: getConfig('smtp_user'),
       pass: (process.env.SMTP_PASS || '').trim(),
     },
+    connectionTimeout: 10000, // TCP estabelecido
+    greetingTimeout: 10000, // banner 220 do servidor
+    socketTimeout: 30000, // inatividade durante a sessão
   });
 }
 
