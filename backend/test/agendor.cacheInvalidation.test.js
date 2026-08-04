@@ -10,15 +10,18 @@
 //       falha não contamina as rodadas seguintes — hoje um erro transitório de UMA consulta
 //       apaga a categoria daquela organização para todas as rodadas do processo.
 //
-// Por que a invalidação tem de DELETAR AS CHAVES e nunca reatribuir o objeto: o cache é
-// lido por DOIS caminhos que fecham sobre a MESMA referência — getOrgCategory
-// (agendor.js:50) e a leitura DIRETA do dicionário em agendor.js:195, que é onde
-// EXCLUDED_CATEGORIES decide quem fica de fora da notificação. Reatribuir deixaria um lado
-// escrevendo em um objeto novo e o outro lendo o antigo: a leitura direta devolveria
-// `undefined`, `EXCLUDED_CATEGORIES.includes(undefined)` é `false`, e organizações
-// excluídas voltariam a ser notificadas em silêncio. O detector desse erro é o golden
-// `[101, 103]` de agendor.getStaleDeals.test.js:61 — este arquivo não o substitui, soma-se
-// a ele.
+// Por que a invalidação DELETA AS CHAVES e não reatribui o objeto: getOrgCategory
+// (agendor.js:50) é o único leitor e o único escritor do dicionário, e fecha sobre a MESMA
+// referência — reatribuir deixaria a limpeza escrevendo num objeto novo enquanto
+// getOrgCategory segue lendo o antigo, e a invalidação não aconteceria.
+//
+// ESCOPO DESTE ARQUIVO: exclusivamente o refetch ENTRE execuções SEQUENCIAIS. Os três
+// cenários abaixo rodam getStaleDeals uma execução por vez e nada afirmam sobre execuções
+// sobrepostas — essa garantia mora em agendor.cacheConcurrency.test.js (CR-01), que pina o
+// fato de o laço de enriquecimento consumir um mapa LOCAL à execução em vez de reler o
+// dicionário de módulo. O detector do afrouxamento da exclusão por categoria continua sendo
+// o golden `[101, 103]` de agendor.getStaleDeals.test.js:61 — este arquivo não o substitui,
+// soma-se a ele.
 require('./setup');
 
 const { test, before, after, beforeEach, mock } = require('node:test');

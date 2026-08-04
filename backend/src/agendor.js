@@ -153,20 +153,21 @@ async function getStaleDeals(staleDays = 15) {
   // processo — sob PM2 single-instance, potencialmente por semanas. Limpar aqui também
   // zera o `null` que o catch de getOrgCategory (:56-59) grava quando a consulta falha,
   // que hoje faz UM erro transitório apagar a categoria daquela organização em TODAS as
-  // rodadas seguintes. Dentro da rodada nada se perde: o Promise.all de :187 consulta
+  // rodadas seguintes. Dentro da rodada nada se perde: o Promise.all de :211 consulta
   // cada organização única uma única vez.
   //
-  // Deleta as CHAVES; NÃO reatribui. O dicionário é lido por dois caminhos que fecham
-  // sobre ESTA referência — getOrgCategory (:50) e a leitura direta de :195, que é onde
-  // EXCLUDED_CATEGORIES decide quem fica de fora. Reatribuir o dicionário a um objeto
-  // vazio deixaria um lado escrevendo no objeto novo e o outro lendo o antigo; a leitura
-  // direta daria `undefined`, e `EXCLUDED_CATEGORIES.includes(undefined)` é `false`:
-  // organizações excluídas voltariam a ser notificadas em silêncio. Pelo mesmo motivo foi
-  // limpeza e não TTL — um TTL guardaria timestamp junto do valor e mudaria o FORMATO do
-  // dado de string para objeto, com o mesmo desfecho na linha :195.
+  // Deleta as CHAVES; NÃO reatribui. getOrgCategory (:50) é o ÚNICO leitor e o único
+  // escritor deste dicionário, e ele fecha sobre ESTA referência: reatribuir a um objeto
+  // vazio deixaria a limpeza escrevendo em um objeto novo enquanto getOrgCategory continua
+  // lendo o antigo, e a invalidação simplesmente não aconteceria.
   //
-  // Precisa ser a PRIMEIRA instrução: se cair depois do Promise.all de :187, o laço de
-  // enriquecimento lê um dicionário vazio e a exclusão por categoria some.
+  // O que impede duas execuções SOBREPOSTAS de apagarem o dado uma da outra NÃO é a forma
+  // da limpeza — é o mapa `categoriaPorOrg` local à execução (:211), que o laço de
+  // enriquecimento consome. Enquanto o laço relia este dicionário compartilhado, bastava a
+  // execução B começar (e limpar) entre a população e a leitura da execução A para a leitura
+  // de A dar `undefined`, `?? null` virar `null`, `EXCLUDED_CATEGORIES.includes(null)` ser
+  // `false` e uma organização excluída ser notificada (CR-01). Essa propriedade é pinada por
+  // backend/test/agendor.cacheConcurrency.test.js — não voltar a ler estado de módulo aqui.
   for (const orgId of Object.keys(orgCategoryCache)) {
     delete orgCategoryCache[orgId];
   }
@@ -208,7 +209,11 @@ async function getStaleDeals(staleDays = 15) {
   const uniqueOrgIds = [
     ...new Set(staleRaw.map((d) => d.organization?.id).filter(Boolean)),
   ];
-  await Promise.all(uniqueOrgIds.map((id) => getOrgCategory(id)));
+  const categoriaPorOrg = new Map(
+    await Promise.all(
+      uniqueOrgIds.map(async (id) => [id, await getOrgCategory(id)]),
+    ),
+  );
 
   const allDeals = [];
   for (const deal of staleRaw) {
@@ -216,7 +221,7 @@ async function getStaleDeals(staleDays = 15) {
     const daysSinceUpdate = Math.floor(
       (Date.now() - updatedAt) / (1000 * 60 * 60 * 24),
     );
-    const orgCategory = orgCategoryCache[deal.organization?.id] ?? null;
+    const orgCategory = categoriaPorOrg.get(deal.organization?.id) ?? null;
 
     if (EXCLUDED_CATEGORIES.includes(orgCategory)) continue;
     if (EXCLUDED_OWNERS.includes(deal.owner?.name)) continue;
