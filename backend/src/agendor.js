@@ -12,10 +12,11 @@ const TOKEN = process.env.AGENDOR_TOKEN;
 // uma chamada por organização única) e 10s (risco de desistir de respostas que chegariam em
 // horário de pico).
 //
-// O timeout NÃO entra no retry de 429 de fetchDealsPage (:101-117) e isso é deliberado: um
-// erro de timeout não traz `err.response`, então a condição `err.response?.status === 429`
-// é falsa e o erro já sai pelo `throw err`. Retentar timeouts faria o pior caso de uma única
-// página saltar para ~60s, anulando o motivo de existir deste limite.
+// O timeout NÃO entra na política de retry de 429 da borda (fetchWithRetry, abaixo) e isso é
+// deliberado: um erro de timeout não traz `err.response`, então a condição
+// `err.response?.status === 429` é falsa e o erro já sai pelo `throw err`. Retentar timeouts
+// faria o pior caso de uma única requisição saltar para ~60s, anulando o motivo de existir
+// deste limite.
 const api = axios.create({
   baseURL: BASE_URL,
   headers: { Authorization: `Token ${TOKEN}` },
@@ -139,13 +140,21 @@ function getDealType(orgCategory) {
   return 'Lead'; // Concorrente, ExCliente, Referência Linkedin, Indefinido → Lead
 }
 
-async function fetchDealsPage(page, perPage, retries = 3) {
+// Política ÚNICA de retry da borda Agendor (WR-02). Só HTTP 429 é retentado, porque é o único
+// erro que a API sinaliza como "tente de novo"; um erro sem `err.response` — timeout de client,
+// D-01 — não entra aqui de propósito, e retentá-lo levaria o pior caso de uma requisição de ~15s
+// para ~60s, comendo a janela do cron.
+//
+// Por que um helper e não uma segunda cópia do laço: a consulta de tarefas futuras (:281) precisa
+// exatamente da mesma regra, e desde o fail-safe de REL-06 qualquer falha dela ABORTA a rodada
+// inteira. Como o cron é diário, um 429 transitório lá custa 24 horas sem nenhuma notificação, em
+// silêncio. Duplicar a regra dentro do MESMO módulo e da MESMA borda criaria um segundo lugar
+// para ela divergir — o número de tentativas ou o tempo de espera mudaria em um consumidor e não
+// no outro, e ninguém perceberia até a rodada sumir.
+async function fetchWithRetry(fn, retries = 3) {
   for (let attempt = 0; attempt < retries; attempt++) {
     try {
-      const { data } = await api.get('/deals', {
-        params: { page, per_page: perPage, deal_status_id: 1 },
-      });
-      return data;
+      return await fn();
     } catch (err) {
       if (err.response?.status === 429 && attempt < retries - 1) {
         const wait = (attempt + 1) * 5000;
@@ -155,6 +164,17 @@ async function fetchDealsPage(page, perPage, retries = 3) {
       throw err;
     }
   }
+}
+
+async function fetchDealsPage(page, perPage, retries = 3) {
+  const { data } = await fetchWithRetry(
+    () =>
+      api.get('/deals', {
+        params: { page, per_page: perPage, deal_status_id: 1 },
+      }),
+    retries,
+  );
+  return data;
 }
 
 // Busca negócios criados a partir de 2026, em andamento, com paginação paralela
@@ -277,9 +297,11 @@ async function getDealsWithFutureTasks() {
   let page = 1;
   while (true) {
     try {
-      const { data } = await api.get('/tasks', {
-        params: { dueDateGt: yesterday, per_page: 100, page },
-      });
+      const { data } = await fetchWithRetry(() =>
+        api.get('/tasks', {
+          params: { dueDateGt: yesterday, per_page: 100, page },
+        }),
+      );
       const tasks = data.data || [];
       if (!tasks.length) break;
 
@@ -302,6 +324,11 @@ async function getDealsWithFutureTasks() {
       // o finally de :174 libera o lock, e a rodada seguinte executa normalmente.
       // Só a mensagem é logada: o objeto de erro do axios carrega `config.headers`
       // com `Authorization: Token <AGENDOR_TOKEN>` (REL-06 / Decisão Q2).
+      //
+      // A partir do WR-02 a requisição acima passa pela política de retry da borda: um HTTP 429
+      // é retentado ANTES de a falha virar explícita, e só a EXAUSTÃO das tentativas aborta a
+      // rodada. Isso não afrouxa o contrato — retentar não é engolir: o Set continua saindo
+      // completo ou não saindo.
     } catch (err) {
       logger.error('[Agendor] Erro ao buscar tarefas futuras:', err.message);
       throw err;
