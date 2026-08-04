@@ -147,6 +147,30 @@ async function fetchDealsPage(page, perPage, retries = 3) {
 
 // Busca negócios criados a partir de 2026, em andamento, com paginação paralela
 async function getStaleDeals(staleDays = 15) {
+  // Invalidação do cache de categorias por EXECUÇÃO (REL-04 / Decisão D-05). Sem isto o
+  // orgCategoryCache é estado de módulo que nunca expira: uma organização recategorizada
+  // para 'Parceiro' no Agendor continuaria sendo notificada até o próximo restart do
+  // processo — sob PM2 single-instance, potencialmente por semanas. Limpar aqui também
+  // zera o `null` que o catch de getOrgCategory (:56-59) grava quando a consulta falha,
+  // que hoje faz UM erro transitório apagar a categoria daquela organização em TODAS as
+  // rodadas seguintes. Dentro da rodada nada se perde: o Promise.all de :187 consulta
+  // cada organização única uma única vez.
+  //
+  // Deleta as CHAVES; NÃO reatribui. O dicionário é lido por dois caminhos que fecham
+  // sobre ESTA referência — getOrgCategory (:50) e a leitura direta de :195, que é onde
+  // EXCLUDED_CATEGORIES decide quem fica de fora. Reatribuir o dicionário a um objeto
+  // vazio deixaria um lado escrevendo no objeto novo e o outro lendo o antigo; a leitura
+  // direta daria `undefined`, e `EXCLUDED_CATEGORIES.includes(undefined)` é `false`:
+  // organizações excluídas voltariam a ser notificadas em silêncio. Pelo mesmo motivo foi
+  // limpeza e não TTL — um TTL guardaria timestamp junto do valor e mudaria o FORMATO do
+  // dado de string para objeto, com o mesmo desfecho na linha :195.
+  //
+  // Precisa ser a PRIMEIRA instrução: se cair depois do Promise.all de :187, o laço de
+  // enriquecimento lê um dicionário vazio e a exclusão por categoria some.
+  for (const orgId of Object.keys(orgCategoryCache)) {
+    delete orgCategoryCache[orgId];
+  }
+
   const cutoffDate = new Date(Date.now() - staleDays * 24 * 60 * 60 * 1000);
   const startOf2026 = new Date('2026-01-01T00:00:00.000Z');
   const perPage = 100;
