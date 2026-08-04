@@ -334,6 +334,15 @@ function markResolved(deal_id, resolved_at) {
   ).run(resolved_at, deal_id);
 }
 
+// Reconcilia o status da MESMA linha depois que o envio termina (REL-05): a linha
+// nasce 'pending' e vira 'sent' ou 'error' conforme o resultado por destinatário.
+// Existe para que o caminho de falha ATUALIZE o registro em vez de inserir um segundo.
+function updateNotificationStatus(log_id, status, error) {
+  db.prepare(
+    `UPDATE notification_log SET status = ?, error = ? WHERE id = ?`,
+  ).run(status, error || null, log_id);
+}
+
 function recordClick(log_id) {
   db.prepare(`UPDATE notification_log SET clicked_at = ? WHERE id = ?`).run(
     new Date().toISOString(),
@@ -435,6 +444,7 @@ module.exports = {
   getNotificationStats,
   getNotifiedDeals,
   markResolved,
+  updateNotificationStatus,
   recordClick,
   getLogById,
   getClickedDealIds,

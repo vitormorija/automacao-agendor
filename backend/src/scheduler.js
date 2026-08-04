@@ -2,6 +2,7 @@ const cron = require('node-cron');
 const {
   getConfig,
   logNotification,
+  updateNotificationStatus,
   alreadyNotifiedToday,
   saveWeeklySnapshot,
 } = require('./db');
@@ -108,8 +109,23 @@ async function runCheck() {
 
       const hasRecipient = ownerEmail || authorEmail;
       if (notificationsEnabled && hasRecipient) {
+        // Registro do envio em DUAS etapas (REL-05, Decisão Q1). O insert continua
+        // vindo ANTES do envio porque o log_id é o que identifica o clique no link
+        // de tracking — mas ele não pode mais nascer 'sent', senão uma falha deixa
+        // a linha mentindo e, como alreadyNotifiedToday (db.js:223-232) filtra
+        // status = 'sent', o deal nunca seria retentado.
+        //
+        // Por que o status inicial é 'pending': se o processo morrer no meio do
+        // envio, a linha fica 'pending' — que nenhum leitor conta como enviado, e
+        // portanto a rodada de amanhã retenta. É o fail-safe correto. Manter
+        // 'sent' e só corrigir na falha reabriria essa janela.
+        //
+        // Por que ≥ 1 sucesso confirma 'sent': houve envio real, e a dedup precisa
+        // proteger quem já recebeu de um segundo e-mail amanhã. O erro do
+        // destinatário que falhou é preservado na coluna `error`. D-03 (registrar
+        // e seguir para o próximo destinatário) fica intocado.
+        let logId = null;
         try {
-          // Salva primeiro para obter o log_id para rastreamento
           const logEntry = logNotification({
             deal_id: deal.id,
             deal_title: deal.title,
@@ -117,13 +133,13 @@ async function runCheck() {
             owner_email: ownerEmail,
             admin_email: adminEmails.join(', '),
             days_stale: deal.daysSinceUpdate,
-            status: 'sent',
+            status: 'pending',
             error: null,
             deal_updated_at: deal.updatedAt,
             deal_type: deal.dealType,
             web_url: deal.webUrl,
           });
-          const logId = logEntry.lastInsertRowid;
+          logId = logEntry.lastInsertRowid;
 
           const emailResults = await sendStaleNotification({
             deal,
@@ -132,28 +148,31 @@ async function runCheck() {
             logId,
           });
           const allOk = emailResults.every((r) => r.success);
+          const algumSucesso = emailResults.some((r) => r.success);
           const errors = emailResults
             .filter((r) => !r.success)
             .map((r) => r.error);
+
+          if (algumSucesso) {
+            updateNotificationStatus(
+              logId,
+              'sent',
+              errors.length ? errors.join('; ') : null,
+            );
+          } else {
+            updateNotificationStatus(logId, 'error', errors.join('; '));
+          }
 
           dealResult.notified = allOk;
           if (!allOk) results.errors.push(...errors);
           results.notified++;
         } catch (err) {
           results.errors.push(err.message);
-          logNotification({
-            deal_id: deal.id,
-            deal_title: deal.title,
-            owner_name: deal.ownerName,
-            owner_email: ownerEmail,
-            admin_email: adminEmails.join(', '),
-            days_stale: deal.daysSinceUpdate,
-            status: 'error',
-            error: err.message,
-            deal_updated_at: deal.updatedAt,
-            deal_type: deal.dealType,
-            web_url: deal.webUrl,
-          });
+          // Atualiza a linha já inserida em vez de criar uma segunda. Se a exceção
+          // ocorreu antes do insert, não há nada a atualizar.
+          if (logId !== null) {
+            updateNotificationStatus(logId, 'error', err.message);
+          }
         }
       } else {
         dealResult.skipped = true;
