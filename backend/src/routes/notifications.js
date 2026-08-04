@@ -51,7 +51,7 @@ router.post('/run', async (req, res) => {
 });
 
 // POST /api/notifications/test-card — envia email de card de teste para um email específico
-router.post('/test-card', async (req, res) => {
+async function testCardHandler(req, res) {
   const {
     email,
     ownerName,
@@ -107,7 +107,9 @@ router.post('/test-card', async (req, res) => {
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message });
   }
-});
+}
+
+router.post('/test-card', testCardHandler);
 
 // POST /api/notifications/test-summary — envia resumo semanal de teste com dados reais
 router.post('/test-summary', async (req, res) => {
@@ -272,4 +274,11 @@ module.exports = router;
 // compartilhada (REL-01). Trocá-la por getDealById muda a forma do dado recebido, e o
 // shape da resposta — em especial `dealStatus`, o único campo que o frontend usa para
 // o rótulo ganho/perdido — precisa ficar pinado por asserção.
+//
+// `testCardHandler` existe pelo mesmo mecanismo, mas por outro motivo: este é o ÚNICO
+// escritor de `notification_log.deal_id` controlado pelo corpo de uma requisição, e a coluna
+// tem afinidade `INTEGER` sem `STRICT` — texto sobrevive nela. O seam permite ler a linha
+// gravada e asserir o TIPO do valor (WR-03), que é o que impede um `deal_id` textual de
+// reaparecer depois como path da API Agendor em getDealById.
 module.exports.resolvedHandler = resolvedHandler;
+module.exports.testCardHandler = testCardHandler;
