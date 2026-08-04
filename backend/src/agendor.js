@@ -1,4 +1,5 @@
 const axios = require('axios');
+const logger = require('./logger');
 
 const BASE_URL = 'https://api.agendor.com.br/v3';
 const TOKEN = process.env.AGENDOR_TOKEN;
@@ -221,9 +222,19 @@ async function getDealsWithFutureTasks() {
 
       if (tasks.length < 100) break;
       page++;
+      // Contrato desta função: o Set é COMPLETO ou a chamada FALHA — nunca parcial.
+      // O motivo é que scheduler.js:61 usa este Set como decisão de quem NÃO recebe
+      // notificação (`staleDeals.filter((d) => !futureTasks.has(d.id))`). Engolir o erro
+      // e devolver o que já foi coletado (o antigo `break`) faz deals que TÊM tarefa
+      // futura agendada serem notificados indevidamente — e ninguém percebe, porque a
+      // rodada termina "com sucesso". Falha explícita é preferível a proteção parcial:
+      // a rejeição sobe até o catch de scheduler.js:171, que registra em results.error,
+      // o finally de :174 libera o lock, e a rodada seguinte executa normalmente.
+      // Só a mensagem é logada: o objeto de erro do axios carrega `config.headers`
+      // com `Authorization: Token <AGENDOR_TOKEN>` (REL-06 / Decisão Q2).
     } catch (err) {
-      console.error('[Agendor] Erro ao buscar tarefas futuras:', err.message);
-      break;
+      logger.error('[Agendor] Erro ao buscar tarefas futuras:', err.message);
+      throw err;
     }
   }
 
