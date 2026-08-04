@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 04-10-PLAN.md — WR-01/WR-04/WR-05 fechados; sucesso parcial sobrevive a excecao ('sent' preservado) e results.notified so conta envio real. Proximo: 04-11
-last_updated: "2026-08-04T22:30:18.812Z"
-last_activity: 2026-08-04 -- Phase 04 gap closure: 04-10 concluido
+stopped_at: Completed 04-11-PLAN.md — WR-02 fechado; retry de 429 unificado em fetchWithRetry e aplicado tambem a /tasks. Gap closure da Fase 04 (04-08..04-11) COMPLETO. SEC-01 permanece ABERTO por decisao C8.
+last_updated: "2026-08-04T22:41:06.154Z"
+last_activity: 2026-08-04 -- Phase 04 gap closure: 04-11 concluido (ultimo plano da fase)
 progress:
   total_phases: 8
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 27
-  completed_plans: 26
-  percent: 38
+  completed_plans: 27
+  percent: 50
 ---
 
 # Project State
@@ -25,12 +25,12 @@ See: .planning/PROJECT.md (updated 2026-07-22)
 
 ## Current Position
 
-Phase: 04 (confiabilidade-das-integra-es) — EXECUTING (gap closure)
-Plan: 10 of 11
-Status: 04-10 concluido (WR-01/WR-04/WR-05). SEC-01 permanece ABERTO como risco conscientemente aceito (decisao C8). Proximo: 04-11
-Last activity: 2026-08-04 -- Phase 04 gap closure: 04-10 concluido
+Phase: 04 (confiabilidade-das-integra-es) — COMPLETE (gap closure encerrado)
+Plan: 11 of 11
+Status: 04-11 concluido (WR-02). Gap closure 04-08..04-11 completo — CR-01, CR-02 e WR-01..WR-06 fechados. SEC-01 permanece ABERTO como risco conscientemente aceito (decisao C8).
+Last activity: 2026-08-04 -- Phase 04 gap closure: 04-11 concluido (ultimo plano da fase)
 
-Progress: [██████████] 96%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
@@ -76,6 +76,7 @@ Progress: [██████████] 96%
 | Phase 04 P08 | 12min | 3 tasks tasks | 3 files files |
 | Phase 04 P09 | 7min | 4 tasks tasks | 10 files files |
 | Phase 04 P10 | 14min | 3 tasks | 5 files |
+| Phase 04 P11 | 22min | 2 tasks tasks | 2 files files |
 
 ## Accumulated Context
 
@@ -166,6 +167,12 @@ Recent decisions affecting current work:
 - [Phase 04]: 04-10: houveEnvioConfirmado governa o status gravado nos DOIS caminhos (retorno e excecao) — uma excecao apos envio confirmado mantem 'sent' e a dedup protege quem ja recebeu, em vez de reenviar amanha (WR-01)
 - [Phase 04]: 04-10: results.notified++ movido para DENTRO do ramo 'sent' — contador e status gravado viram um unico ponto de verdade; uma falha total deixa de reportar envio no logger.info e na UI (WR-04)
 - [Phase 04]: 04-10: WR-05 fechado por asseracao de PRE-CONDICAO sobre fake.get.mock.calls contendo '/users' (rota do plano) e nao por espiao no logger — nao acopla o teste ao formato da mensagem de log; os dentes foram verificados por mutacao temporaria do early-return, revertida antes do commit
+- [Phase ?]: 04-11: a politica de retry de 429 da borda Agendor virou UM helper (fetchWithRetry) compartilhado por fetchDealsPage e getDealsWithFutureTasks — uma terceira copia do laco dentro do mesmo modulo seria um segundo lugar para a regra divergir (WR-02)
+- [Phase ?]: 04-11: o laco foi copiado byte a byte (so 429, 3 tentativas, esperas de 5s e 10s) e a caracterizacao do 429 em /deals (golden [101, 103] com 2 requisicoes) foi escrita ANTES da extracao — e ela o oraculo que impede a refatoracao de mudar a politica sem querer
+- [Phase ?]: 04-11: retentar nao e engolir — esgotadas as 3 tentativas a falha continua propagando e o contrato Q2 do 04-02 (Set completo ou excecao) permanece; scheduler.failsafe.test.js rodou sem edicao
+- [Phase ?]: 04-11: timeout continua FORA do retry (D-01) e agora esta pinado nos DOIS consumidores — e a ausencia de err.response que o mantem fora; retenta-lo levaria o pior caso de uma requisicao de ~15s para ~60s
+- [Phase ?]: 04-11: o relogio falso precisa ser rearmado em beforeEach quando o proprio SUT avanca o tempo — o avanco do retry de um caso adiantava o cutoff de 15 dias do caso seguinte e fazia os deals 102 e 104 entrarem no golden (contaminacao de ordem, nao defeito)
+- [Phase ?]: 04-11: avancarRelogioAte (04-10) so observa promessas pelo caminho de SUCESSO — numa rejeicao substitui o erro real por 'a promessa nao concluiu'; contornado por envelope LOCAL no arquivo de teste, sem editar o helper compartilhado; dedupar/estender fica para a Fase 5/7
 
 ### Pending Todos
 
@@ -218,6 +225,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-04T22:29:17.400Z
-Stopped at: Completed 04-09-PLAN.md — CR-02/WR-03 fechados; C8 aprovado; SEC-01 aceito em aberto (sem rotacao), entrada no 04-10 autorizada
+Last session: 2026-08-04T22:41:06.150Z
+Stopped at: Completed 04-11-PLAN.md — WR-02 fechado; retry de 429 unificado em fetchWithRetry e aplicado tambem a /tasks. Gap closure da Fase 04 (04-08..04-11) COMPLETO. SEC-01 permanece ABERTO por decisao C8.
 Resume file: None
