@@ -696,8 +696,10 @@ test('rate-limit: passada a janela de 15 min, checkRateLimit reporta not blocked
 ```
 
 Diferença para o 04-04: as esperas de `sendMailWithRetry` são `setTimeout`, não `Date` — habilitar
-`apis: ['setTimeout']` e usar `tickAsync` (Pitfall 3 da pesquisa). O `try/finally` com `mock.timers.reset()`
-é a parte a copiar de `auth.test.js`.
+`apis: ['setTimeout']` e avançar o relógio com o helper `avancarRelogioAte`
+(`backend/test/emailer.timeout.test.js:78-101`). **Não usar `tickAsync`**: a API só existe no Node 23 e é
+`undefined` no Node 20 que o `ci.yml` fixa (correção medida na onda 4, ver §Pitfall 3 da pesquisa). O
+`try/finally` com `mock.timers.reset()` é a parte a copiar de `auth.test.js`.
 
 **PC-13:** nunca imprimir o objeto de opções inteiro em mensagem de asserção — ele contém `auth.pass`.
 `emailer.smtpPass.test.js` só assere campos individuais; seguir isso.

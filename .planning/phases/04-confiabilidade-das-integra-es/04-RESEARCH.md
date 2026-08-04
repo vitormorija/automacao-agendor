@@ -815,9 +815,23 @@ preservar; o contrato proíbe alterar a semântica de retry. Registrar, não con
 hoje roda em **~0,5s**.
 **Por que acontece:** `sendMailWithRetry` faz `await new Promise(r => setTimeout(r, attempt * 3000))`
 (`emailer.js:191-195`).
-**Como evitar:** `mock.timers.enable({ apis: ['setTimeout'] })`, **iniciar** a promise sem `await`, então
-`await mock.timers.tickAsync(3000)` / `tickAsync(6000)`, e só depois `await` no resultado. Atenção: `tick()`
-síncrono não deixa microtasks drenarem entre as tentativas.
+**Como evitar:** `mock.timers.enable({ apis: ['setTimeout'] })`, **iniciar** a promise sem `await`, avançar o
+relógio, e só depois `await` no resultado.
+
+> ⚠️ **CORREÇÃO (medida na onda 4, 04-04).** A recomendação original desta seção era
+> `await mock.timers.tickAsync(3000)` / `tickAsync(6000)`. **`mock.timers.tickAsync` não existe no runtime
+> alvo deste projeto.** Ela foi adicionada no **Node 23**; `engines.node` é `>=20` e o `ci.yml` fixa
+> `node-version: '20'` nas duas linhas (D-09). Medido nesta máquina (Node 22.13.1):
+> `typeof mock.timers.tickAsync === 'undefined'`. Um teste que a use morre com `TypeError` no CI.
+>
+> **Use o helper `avancarRelogioAte`** (`backend/test/emailer.timeout.test.js:78-101`) como molde: ele
+> alterna `setImmediate` **real** — que não está mockado, porque só habilitamos `apis: ['setTimeout']` — para
+> drenar as microtasks entre as tentativas, com `mock.timers.tick()` para avançar o relógio. O laço é limitado
+> e falha com mensagem explícita em vez de travar a suíte. Resultado medido: 9s de esperas simuladas em ~1ms
+> real.
+>
+> O ponto original continua válido: `tick()` **sozinho** não deixa as microtasks drenarem entre as
+> tentativas — é justamente por isso que o helper intercala `setImmediate`.
 **Cuidado extra:** `agendor.futureTasks.test.js:72` habilita apenas `apis: ['Date']`. Habilitar
 `['setTimeout']` num teste que atravessa `getStaleDeals` também congela o
 `await new Promise(r => setTimeout(r, 1000))` da paginação (`agendor.js:143`) — pode travar o teste se o
