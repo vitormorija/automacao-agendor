@@ -17,7 +17,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 1: Rede de Testes (Safety-Net)** - Testes de caracterização fixam o comportamento atual da lógica crítica de notificação antes de qualquer mudança (completed 2026-07-24)
 - [x] **Phase 2: Toolchain de Qualidade & CI** - Lint, formatação, scripts npm e pipeline de CI que bloqueia PRs com falha (completed 2026-07-29)
 - [x] **Phase 3: Config & Segredos por Ambiente** - Segredos fora do código, `.env.example`, separação dev/prod e validação no boot (completed 2026-07-30)
-- [ ] **Phase 4: Confiabilidade das Integrações** - Timeouts em Agendor/SMTP, cron resiliente a falhas e cache com TTL
+- [x] **Phase 4: Confiabilidade das Integrações** - Timeouts em Agendor/SMTP, cron resiliente a falhas e cache com TTL (completed 2026-08-04)
 - [ ] **Phase 5: Logging & Padronização de Erros** - `console.*` residual migrado para `logger` estruturado e resposta de erro consistente
 - [ ] **Phase 6: Hardening de Segurança** - Riscos do CONCERNS.md fechados; mudanças comportamentais só com teste do novo fluxo (ou adiadas com justificativa)
 - [ ] **Phase 7: Refatoração Incremental de Arquitetura** - Extrair `getEnrichedStaleDeals` e serviço de agregação, sem alterar comportamento, protegido pelos testes
@@ -101,7 +101,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] 04-04-PLAN.md — Timeouts SMTP 10s/10s/30s na fábrica `createTransporter` + caracterização da exaustão (REL-02, D-02/D-03)
 - [x] 04-05-PLAN.md — Atualização `nodemailer` 6→9 (`^9.0.4`), protegida pelos testes de REL-02 · termina em C3+C4
 - [x] 04-06-PLAN.md — Consistência do status de envio: `'sent'` só após confirmação, falha total retentável (REL-05, Q1)
-- [ ] 04-07-PLAN.md — Invalidação do `orgCategoryCache` a cada execução de `getStaleDeals` (REL-04, D-05)
+- [x] 04-07-PLAN.md — Invalidação do `orgCategoryCache` a cada execução de `getStaleDeals` (REL-04, D-05)
 
 ### Phase 5: Logging & Padronização de Erros
 **Goal**: Logging é estruturado e consistente em todo o backend, e o tratamento/resposta de erro nas rotas segue um padrão único.
@@ -155,7 +155,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | 1. Rede de Testes (Safety-Net) | 5/5 | Complete   | 2026-07-24 |
 | 2. Toolchain de Qualidade & CI | 4/4 | Complete   | 2026-07-29 |
 | 3. Config & Segredos por Ambiente | 7/7 | Complete   | 2026-07-30 |
-| 4. Confiabilidade das Integrações | 6/7 | In Progress|  |
+| 4. Confiabilidade das Integrações | 7/7 | Complete   | 2026-08-04 |
 | 5. Logging & Padronização de Erros | 0/TBD | Not started | - |
 | 6. Hardening de Segurança | 0/TBD | Not started | - |
 | 7. Refatoração Incremental de Arquitetura | 0/TBD | Not started | - |
