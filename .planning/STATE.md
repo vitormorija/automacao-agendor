@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-stopped_at: Completed 04-06-PLAN.md — REL-05 entregue (status de envio consistente)
-last_updated: "2026-08-04T19:49:02.771Z"
+status: verifying
+stopped_at: Completed 04-07-PLAN.md — REL-04 entregue (invalidacao do orgCategoryCache); Fase 4 pronta para verificacao
+last_updated: "2026-08-04T20:01:08.187Z"
 last_activity: 2026-08-04
 progress:
   total_phases: 8
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 23
-  completed_plans: 22
-  percent: 38
+  completed_plans: 23
+  percent: 50
 ---
 
 # Project State
@@ -27,10 +27,10 @@ See: .planning/PROJECT.md (updated 2026-07-22)
 
 Phase: 04 (confiabilidade-das-integra-es) — EXECUTING
 Plan: 7 of 7
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-08-04
 
-Progress: [██████████] 96%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
@@ -72,6 +72,7 @@ Progress: [██████████] 96%
 | Phase 04 P04 | 21min | 2 tasks | 2 files |
 | Phase 04 P05 | 14min | 2 tasks | 3 files |
 | Phase 04 P06 | 12min | 2 tasks | 4 files |
+| Phase 04 P07 | 9min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -145,6 +146,11 @@ Recent decisions affecting current work:
 - [Phase 04]: 04-06: POST /api/notifications/test-card e o terceiro escritor de 'sent' pre-envio e ficou FORA por decisao humana (contrato §11 + rollback atomico) — registrado no todo rel-05b-test-card-status
 - [Phase 04]: 04-06: nenhuma migracao de dados — a informacao que reclassificaria as linhas historicas nunca foi gravada e a dedup e por data, com as datas ja passadas
 - [Phase 04]: 04-06: no teste, um id de deal por cenario em vez de limpar a tabela — a dedup do proprio SUT acopla os casos de forma ASSIMETRICA entre o estado antes e o depois da correcao, e um id unico produziria um RED ilegivel
+- [Phase 04]: 04-07: orgCategoryCache limpo por delete de chave na PRIMEIRA instrucao de getStaleDeals — reatribuir bifurcaria a referencia lida por getOrgCategory e pela leitura direta de :195, e EXCLUDED_CATEGORIES.includes(undefined) devolveria organizacoes excluidas a lista de notificacao (REL-04/D-05)
+- [Phase 04]: 04-07: limpeza por execucao e nao TTL — um TTL mudaria o FORMATO do valor guardado de string para objeto e quebraria a leitura direta de :195, mesmo desfecho da reatribuicao; o Map de escopo de execucao segue adiado para a Fase 7
+- [Phase 04]: 04-07: o null que o catch de getOrgCategory cacheia deixou de sobreviver a execucao — um blip de rede em UMA consulta derrubava a exclusao daquela organizacao em todas as rodadas seguintes do processo
+- [Phase 04]: 04-07: eficiencia provada por CONTAGEM de urls /organizations/ em fake.get.mock.calls (6 orgs unicas, sem repeticao), nao por inspecao — a limpeza por execucao nao multiplicou chamadas dentro da rodada
+- [Phase 04]: 04-07: no teste, o caso que mede contagem de chamadas vem PRIMEIRO porque exige cache frio; e o cenario do null-de-erro exigiu um deal sintetico com organizacao nova, porque no estado RED uma consulta ja cacheada nem chega a ser tentada e portanto nem chega a falhar (o teste ficaria verde onde se espera vermelho)
 
 ### Pending Todos
 
@@ -188,6 +194,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-04T19:49:02.767Z
-Stopped at: Completed 04-06-PLAN.md — REL-05 entregue (status de envio consistente)
+Last session: 2026-08-04T20:01:08.182Z
+Stopped at: Completed 04-07-PLAN.md — REL-04 entregue (invalidacao do orgCategoryCache); Fase 4 pronta para verificacao
 Resume file: None
