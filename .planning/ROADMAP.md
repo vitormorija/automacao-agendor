@@ -94,7 +94,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   5. Status `'sent'` só é gravado após envio confirmado; falha total grava `'error'` e a rodada seguinte retenta (dedup de envios bem-sucedidos preservada) (REL-05, Decisão Q1)
   6. Falha na consulta de tarefas futuras aborta a rodada sem notificar — registrada, lock liberado, rodada seguinte executa (REL-06, Decisão Q2)
 **Contrato de entrega**: `.planning/phases/04-confiabilidade-das-integra-es/04-DELIVERY-CONTRACT.md` (aprovado 2026-08-04; 7 planos, decisões Q1-Q5)
-**Plans**: 7 planos originais + 4 de gap closure = 11 (execução estritamente sequencial; `parallelization: false`)
+**Plans**: 7 planos originais + 4 de gap closure (r1) + 6 de gap closure (r2) = 17 (execução estritamente sequencial; `parallelization: false`)
 - [x] 04-01-PLAN.md — Caracterização da resiliência do scheduler: falha registrada, lock liberado, concorrência recusada (REL-03) · termina em C2
 - [x] 04-02-PLAN.md — Fail-safe na consulta de tarefas futuras: completo ou falha explícita, rodada abortada sem notificar (REL-06, Q2)
 - [x] 04-03-PLAN.md — Timeout HTTP de 15s na instância Agendor + `getDealById` + bump `axios@^1.19.0` (REL-01, D-01, Q3) · termina em C4
@@ -103,11 +103,19 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] 04-06-PLAN.md — Consistência do status de envio: `'sent'` só após confirmação, falha total retentável (REL-05, Q1)
 - [x] 04-07-PLAN.md — Invalidação do `orgCategoryCache` a cada execução de `getStaleDeals` (REL-04, D-05)
 
-**Gap closure** (fonte: `04-REVIEW.md`, status `issues_found` — 2 critical, 6 warning, 4 info; não existe `04-VERIFICATION.md`, a execução parou no gate de code review). 4 planos **aditivos**, waves 1-4, `gap_closure: true`:
+**Gap closure r1** (fonte: `04-REVIEW-r1.md`, status `issues_found` — 2 critical, 6 warning, 4 info; não existe `04-VERIFICATION.md`, a execução parou no gate de code review). 4 planos **aditivos**, waves 1-4, `gap_closure: true`:
 - [x] 04-08-PLAN.md — Corrida do `orgCategoryCache`: categoria por organização em mapa local à execução (CR-01, WR-06) · termina em C7
 - [x] 04-09-PLAN.md — `AGENDOR_TOKEN` fora do log de erro de `/api/deals/stale` + validação do id em `getDealById` (CR-02, WR-03) · registra a triagem dos demais achados como todo · termina em C8
 - [x] 04-10-PLAN.md — Sucesso parcial sobrevive à exceção e `results.notified` só conta envio real (WR-01, WR-04, WR-05)
 - [x] 04-11-PLAN.md — Retry de 429 também na consulta de tarefas futuras (WR-02)
+
+**Gap closure r2** (fonte: `04-REVIEW.md`, `round: 2`, status `issues_found` — 1 critical, 6 warning, 4 info; a rodada 2 verificou ceticamente as conclusões da r1 e REABRIU a fase). 6 planos **aditivos**, waves 5-10, `gap_closure: true`. Ordem por risco: CR2-01 primeiro (bloqueante do Core Value), depois o helper de teste que é oráculo dos demais:
+- [ ] 04-12-PLAN.md — Cache de categorias escopado à execução: fim do estado de módulo compartilhado entre execuções (CR2-01) · termina em C9
+- [ ] 04-13-PLAN.md — `avancarRelogioAte` normaliza o desfecho e para de produzir `unhandledRejection` atribuído ao caso errado (WR2-03)
+- [ ] 04-14-PLAN.md — `results.notified` acompanha o status também no caminho de exceção (WR2-01)
+- [ ] 04-15-PLAN.md — O tratamento de exceção do envio para de derrubar a rodada: registro protegido e canal parcial validado (WR2-02, WR2-04) · termina em C10
+- [ ] 04-16-PLAN.md — O transporte recriado no retry serve o destinatário seguinte (WR2-05) · termina em C11
+- [ ] 04-17-PLAN.md — Âncoras estáveis nos comentários e registro de IN2-01..IN2-04 como todos pendentes (WR2-06)
 
 ### Phase 5: Logging & Padronização de Erros
 **Goal**: Logging é estruturado e consistente em todo o backend, e o tratamento/resposta de erro nas rotas segue um padrão único.
