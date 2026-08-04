@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 04-03-PLAN.md (C4 aprovado)
-last_updated: "2026-08-04T18:58:45.939Z"
+stopped_at: Completed 04-04-PLAN.md
+last_updated: "2026-08-04T19:09:18.432Z"
 last_activity: 2026-08-04
 progress:
   total_phases: 8
   completed_phases: 3
   total_plans: 23
-  completed_plans: 19
+  completed_plans: 20
   percent: 38
 ---
 
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-07-22)
 ## Current Position
 
 Phase: 04 (confiabilidade-das-integra-es) — EXECUTING
-Plan: 4 of 7
+Plan: 5 of 7
 Status: Ready to execute
 Last activity: 2026-08-04
 
-Progress: [████████░░] 83%
+Progress: [█████████░] 87%
 
 ## Performance Metrics
 
@@ -69,6 +69,7 @@ Progress: [████████░░] 83%
 | Phase 04 P01 | 24min | 3 tasks | 2 files |
 | Phase 04 P02 | 21 | 2 tasks | 4 files |
 | Phase 04 P03 | 34min | 4 tasks tasks | 7 files files |
+| Phase 04 P04 | 21min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -124,6 +125,10 @@ Recent decisions affecting current work:
 - [Phase 04]: 04-03: axios ^1.7.2 -> ^1.19.0 em commit isolado; npm audit do backend 12 (5 high) -> 9 (3 high); npm audit fix PROIBIDO e não usado (arrastaria 6 advisories sem-major do sec-02)
 - [Phase 04]: 04-03: checkpoint C4 aprovado pelo usuário — lockfile sem contaminação; https-proxy-agent e agent-base são NOVOS e esperados (dependências diretas de axios@1.19.0)
 - [Phase 04]: 04-03: desvio de processo registrado — git stash executado por engano na Task 2 e recuperado com git stash pop sem perda; refs/stash vazio e f41b56c íntegro (verificado pelo orquestrador)
+- [Phase 04]: 04-04: os 3 timeouts de D-02 (10s/10s/30s) vivem na FÁBRICA createTransporter — 3 chaves cobrindo os 6 call-sites SMTP; repetir nos call-sites seriam 6 lugares para divergir
+- [Phase 04]: 04-04: mock.timers.tickAsync NÃO existe no Node 20 (alvo do CI) nem no 22 — só a partir do v23; substituído pelo helper avancarRelogioAte (setImmediate real drena microtasks + tick avança o relógio). O 04-06 e o 04-07 NÃO devem copiar o tickAsync do 04-RESEARCH
+- [Phase 04]: 04-04: o cenário de exaustão NÃO usa assert.rejects — sendMailWithRetry RESOLVE com { success:false } e é isso que D-03 manda preservar; erros injetados fiéis ao nodemailer (ESOCKET com mensagem read ECONNRESET, nunca code ECONNRESET)
+- [Phase 04]: 04-04: emailer.js de 7,16% para 35,67% de linhas e 82,14% de branches; diff de produção com 14 adições e ZERO remoções — retry e console.warn legado intocados; nodemailer segue em 6.10.1 (bump é escopo do 04-05)
 
 ### Pending Todos
 
@@ -167,6 +172,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-04T18:56:54.371Z
-Stopped at: Completed 04-03-PLAN.md (C4 aprovado)
+Last session: 2026-08-04T19:09:18.428Z
+Stopped at: Completed 04-04-PLAN.md
 Resume file: None

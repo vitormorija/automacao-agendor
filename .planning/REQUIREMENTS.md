@@ -36,7 +36,7 @@ Requisitos desta etapa de estabilização. A ordem reflete dependência: testes 
 ### Confiabilidade das Integrações
 
 - [x] **REL-01**: Timeout explícito nas chamadas HTTP à API Agendor (instância axios compartilhada + chamada ad-hoc em `/resolved`)
-- [ ] **REL-02**: Timeout e tratamento de falha no envio SMTP (nodemailer)
+- [x] **REL-02**: Timeout e tratamento de falha no envio SMTP (nodemailer)
 - [x] **REL-03**: Falha em uma execução do cron é registrada e não derruba o agendador (tratamento de erro em `runCheck`/`runWeeklySummary`)
 - [ ] **REL-04**: `orgCategoryCache` ganha TTL/invalidação para não usar categoria obsoleta indefinidamente
 - [ ] **REL-05**: Status de envio consistente em falhas — `'sent'` somente após envio confirmado; falha total registra `'error'` e permite retentativa na rodada seguinte; dedup de envios realmente bem-sucedidos preservada (derivado de DESC-1 / Decisão Q1, 04-DELIVERY-CONTRACT.md, 2026-08-04)
@@ -121,7 +121,7 @@ Preenchido na criação do roadmap.
 | CFG-03 | Phase 3 | Complete |
 | CFG-04 | Phase 3 | Complete |
 | REL-01 | Phase 4 | Complete |
-| REL-02 | Phase 4 | Pending |
+| REL-02 | Phase 4 | Complete |
 | REL-03 | Phase 4 | Complete |
 | REL-04 | Phase 4 | Pending |
 | REL-05 | Phase 4 | Pending |
