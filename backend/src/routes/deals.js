@@ -8,7 +8,7 @@ const {
 const { getConfig } = require('../db');
 
 // GET /api/deals/stale — lista negócios parados
-router.get('/stale', async (req, res) => {
+async function staleHandler(req, res) {
   try {
     const staleDays = parseInt(getConfig('stale_days')) || 15;
     const [staleDeals, users, futureTasks] = await Promise.all([
@@ -32,6 +32,19 @@ router.get('/stale', async (req, res) => {
     console.error(err);
     res.status(500).json({ error: err.message });
   }
-});
+}
+
+router.get('/stale', staleHandler);
 
 module.exports = router;
+
+// ── Seams de teste (não afetam o roteamento do Express) ──────────
+// app.use() só precisa que module.exports seja a função router; esta prop extra
+// é ignorada pelo Express e existe para invocar o handler direto, com um `res`
+// falso mínimo e sem subir servidor HTTP nem depender de supertest.
+// Motivo: esta rota é o consumidor B3 de getDealsWithFutureTasks. Com o
+// fail-safe de REL-06 (Decisão Q2) a consulta de tarefas passou a propagar a
+// falha, então o catch acima responde 500 { error } em vez de devolver a lista
+// com `hasFutureTask` silenciosamente errado. Esse 500 é decisão humana aceita
+// e precisa ficar pinado por asserção.
+module.exports.staleHandler = staleHandler;
