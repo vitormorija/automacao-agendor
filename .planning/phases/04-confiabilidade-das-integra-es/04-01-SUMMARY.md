@@ -173,6 +173,13 @@ git status --porcelain backend/agendor.db → (vazio)
 - **Sem blockers.** Nenhum defeito de produção descoberto; nada foi adiado para `deferred-items.md`.
 - **Atenção para o verificador de fase:** o total de branches oscila por causa do `all: true` do c8 (ver Issues Encountered). Avaliar por arquivo, não pelo agregado.
 
+## Self-Check: PASSED
+
+- `backend/test/scheduler.resilience.test.js` — FOUND
+- `backend/src/scheduler.js` — FOUND
+- `.planning/phases/04-confiabilidade-das-integra-es/04-01-SUMMARY.md` — FOUND
+- Commits `e806bd8`, `aab1a0c`, `4b99e1e` — FOUND
+
 ---
 *Phase: 04-confiabilidade-das-integra-es*
 *Completed: 2026-08-04*

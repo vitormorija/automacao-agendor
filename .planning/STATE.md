@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 4 context gathered
-last_updated: "2026-08-04T17:18:06.619Z"
-last_activity: 2026-08-04 -- Phase 04 planning complete
+stopped_at: Completed 04-01-PLAN.md (C2 aprovado)
+last_updated: "2026-08-04T18:27:44.765Z"
+last_activity: 2026-08-04
 progress:
   total_phases: 8
   completed_phases: 3
   total_plans: 23
-  completed_plans: 16
+  completed_plans: 17
   percent: 38
 ---
 
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-22)
 
 **Core value:** Rede de testes automatizados sobre a lógica crítica de notificação (quem recebe / quem não recebe) — para nunca mais uma regressão silenciosa.
-**Current focus:** Phase 04 — confiabilidade-das-integracoes (próxima; ainda não iniciada)
+**Current focus:** Phase 04 — confiabilidade-das-integra-es
 
 ## Current Position
 
-Phase: 03 (config-segredos-por-ambiente) — COMPLETE
-Plan: 7 of 7 — todos concluídos
+Phase: 04 (confiabilidade-das-integra-es) — EXECUTING
+Plan: 2 of 7
 Status: Ready to execute
-Last activity: 2026-08-04 -- Phase 04 planning complete
+Last activity: 2026-08-04
 
-Progress: [███░░░░░░░] 38% (3 de 8 fases)
+Progress: [███████░░░] 74%
 
 ## Performance Metrics
 
@@ -66,6 +66,7 @@ Progress: [███░░░░░░░] 38% (3 de 8 fases)
 | Phase 3 P05 | 15min | 2 tasks | 3 files |
 | Phase 03 P06 | 22min | 2 tasks tasks | 3 files files |
 | Phase 03 P02 | 22min | 2 tasks | 2 files |
+| Phase 04 P01 | 24min | 3 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -105,6 +106,10 @@ Recent decisions affecting current work:
 - [Phase 03]: [03-07]: `secrets` adicionado aos required status checks da main (agora [backend, frontend, secrets], strict + enforce_admins); provado por PR com chave sintética → mergeStateStatus BLOCKED
 - [Phase 03]: [03-07]: Secret Scanning nativo habilitado só pela metade — `secret_scanning` e `push_protection` ativos; `non_provider_patterns` e `validity_checks` são recusados EM SILÊNCIO (PATCH devolve 200 e ignora). Consequência: o token do sec-01 NÃO gera alerta nativo, contrariando o que se esperava ao decidir D-11 — nenhuma camada automática vai lembrar da rotação
 - [Phase 03]: [03-07]: a chave de exemplo da AWS (AKIAIOSFODNN7EXAMPLE) é allowlisted pelo gitleaks — testar um gate de segredo com exemplo canônico de documentação prova o oposto do pretendido
+- [Phase 04]: 04-01: caracterização de REL-03 falha pela borda /users (getUsers propaga), não /tasks (getDealsWithFutureTasks engole) — mantém os 5 cenários válidos após o fail-safe do 04-02
+- [Phase 04]: 04-01: runWeeklySummary exposta por seam aditivo (module.exports.runWeeklySummary), fora do module.exports principal — nenhum consumidor de produção a importa
+- [Phase 04]: 04-01: a prova de 'rodada não recusada pelo guard' é reason === undefined; results.skipped é contagem numérica (scheduler.js:36), não flag
+- [Phase 04]: 04-01: checkpoint C2 aprovado pelo usuário — entrada no plano comportamental 04-02 autorizada
 
 ### Pending Todos
 
@@ -148,6 +153,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-30T18:25:00.813Z
-Stopped at: Phase 4 context gathered
-Resume file: .planning/phases/04-confiabilidade-das-integra-es/04-CONTEXT.md
+Last session: 2026-08-04T18:27:44.762Z
+Stopped at: Completed 04-01-PLAN.md (C2 aprovado)
+Resume file: None
