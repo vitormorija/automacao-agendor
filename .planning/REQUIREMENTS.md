@@ -35,7 +35,7 @@ Requisitos desta etapa de estabilização. A ordem reflete dependência: testes 
 
 ### Confiabilidade das Integrações
 
-- [ ] **REL-01**: Timeout explícito nas chamadas HTTP à API Agendor (instância axios compartilhada + chamada ad-hoc em `/resolved`)
+- [x] **REL-01**: Timeout explícito nas chamadas HTTP à API Agendor (instância axios compartilhada + chamada ad-hoc em `/resolved`)
 - [ ] **REL-02**: Timeout e tratamento de falha no envio SMTP (nodemailer)
 - [x] **REL-03**: Falha em uma execução do cron é registrada e não derruba o agendador (tratamento de erro em `runCheck`/`runWeeklySummary`)
 - [ ] **REL-04**: `orgCategoryCache` ganha TTL/invalidação para não usar categoria obsoleta indefinidamente
@@ -120,7 +120,7 @@ Preenchido na criação do roadmap.
 | CFG-02 | Phase 3 | Complete |
 | CFG-03 | Phase 3 | Complete |
 | CFG-04 | Phase 3 | Complete |
-| REL-01 | Phase 4 | Pending |
+| REL-01 | Phase 4 | Complete |
 | REL-02 | Phase 4 | Pending |
 | REL-03 | Phase 4 | Complete |
 | REL-04 | Phase 4 | Pending |

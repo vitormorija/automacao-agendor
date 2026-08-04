@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 04-01-PLAN.md (C2 aprovado)
-last_updated: "2026-08-04T18:39:01.725Z"
+stopped_at: Completed 04-03-PLAN.md (C4 aprovado)
+last_updated: "2026-08-04T18:58:45.939Z"
 last_activity: 2026-08-04
 progress:
   total_phases: 8
   completed_phases: 3
   total_plans: 23
-  completed_plans: 18
+  completed_plans: 19
   percent: 38
 ---
 
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-07-22)
 ## Current Position
 
 Phase: 04 (confiabilidade-das-integra-es) — EXECUTING
-Plan: 3 of 7
+Plan: 4 of 7
 Status: Ready to execute
 Last activity: 2026-08-04
 
-Progress: [████████░░] 78%
+Progress: [████████░░] 83%
 
 ## Performance Metrics
 
@@ -68,6 +68,7 @@ Progress: [████████░░] 78%
 | Phase 03 P02 | 22min | 2 tasks | 2 files |
 | Phase 04 P01 | 24min | 3 tasks | 2 files |
 | Phase 04 P02 | 21 | 2 tasks | 4 files |
+| Phase 04 P03 | 34min | 4 tasks tasks | 7 files files |
 
 ## Accumulated Context
 
@@ -114,6 +115,15 @@ Recent decisions affecting current work:
 - [Phase 04]: 04-02: getDealsWithFutureTasks passa a propagar a falha (Set completo ou exceção) — Set parcial notificava indevidamente deals com tarefa futura (REL-06/Q2)
 - [Phase 04]: 04-02: o 500 do GET /api/deals/stale é aceito — try/catch local reintroduziria o parcial silencioso
 - [Phase 04]: 04-02: seam aditivo module.exports.staleHandler + res falso mínimo — primeiro handler Express executado por teste, sem supertest/nock
+- [Phase 04]: 04-03: timeout de 15s na instância axios compartilhada (D-01) — o timeout NÃO entra no retry de 429 porque um timeout não traz err.response; retentá-lo levaria o pior caso de UMA página de ~15s para ~60s
+- [Phase 04]: 04-03: a instância axios NÃO é exportada (Q3) — o que sai de agendor.js é getDealById(id), função de domínio que propaga a falha; exportar a instância deixaria qualquer chamador sobrescrever o timeout por chamada
+- [Phase 04]: 04-03: ponto órfão de routes/notifications.js:220 eliminado — zero ocorrências de axios em backend/src fora de agendor.js, e AGENDOR_TOKEN volta a ser lido em um único lugar (agendor.js:5)
+- [Phase 04]: 04-03: prova do timeout por inspeção dos argumentos de axios.create (fakeAxios ganhou createArgs, extensão aditiva), não por espera real — o código de erro do axios num timeout é ECONNABORTED, não ETIMEDOUT
+- [Phase 04]: 04-03: dealStatus pinado por asserção de VALOR no shape de /resolved — é o único campo que o frontend usa para o rótulo ganho/perdido, e a troca de envelope o perderia com a rota ainda respondendo 200
+- [Phase 04]: 04-03: seam resolvedHandler criado no commit RED (estrutural, corpo idêntico) para que o vermelho isolasse o ponto órfão em vez de acusar só a ausência do seam
+- [Phase 04]: 04-03: axios ^1.7.2 -> ^1.19.0 em commit isolado; npm audit do backend 12 (5 high) -> 9 (3 high); npm audit fix PROIBIDO e não usado (arrastaria 6 advisories sem-major do sec-02)
+- [Phase 04]: 04-03: checkpoint C4 aprovado pelo usuário — lockfile sem contaminação; https-proxy-agent e agent-base são NOVOS e esperados (dependências diretas de axios@1.19.0)
+- [Phase 04]: 04-03: desvio de processo registrado — git stash executado por engano na Task 2 e recuperado com git stash pop sem perda; refs/stash vazio e f41b56c íntegro (verificado pelo orquestrador)
 
 ### Pending Todos
 
@@ -121,7 +131,7 @@ Recent decisions affecting current work:
 
 - `sec-01-rotate-agendor-token` (**alta prioridade**, → ação operacional) — token real da API Agendor exposto no histórico do repositório **público**, commit `13905d4` (`.claude/settings.local.json` e `backend/.env.example`). Rotação adiada por decisão consciente em 2026-07-29 para preservar o gate de CI-02. Reescrever histórico NÃO resolve; tornar privado quebra a branch protection (testado). Só a rotação no painel da Agendor encerra a exposição.
 
-- `sec-02-dependency-vulnerabilities` (**alta prioridade**, → Phase 4) — 12 advisories no backend (5 high) e 4 no frontend (2 high, todas devDependencies). As três que importam: `nodemailer` (e-mail para domínio não intencionado + injeção SMTP), `axios` (SSRF + bypass de auth) e `path-to-regexp` (ReDoS nas rotas). O CI **não roda `npm audit`** — nada detecta isso hoje. Corrigir em duas levas: as sem major primeiro, depois `nodemailer` 6→9 e `node-cron` 3→4 com teste do novo fluxo.
+- `sec-02-dependency-vulnerabilities` (**alta prioridade**, → Phase 4, **parcialmente atendido**) — **o 04-03 fechou a metade `axios` do D-06**: `axios` ^1.7.2 → ^1.19.0, e o backend saiu de **12 advisories (5 high) para 9 (3 high)** — saíram `axios`, `form-data` e `follow-redirects`. Falta a metade `nodemailer` (6→9), escopo do 04-05, que deve levar a 8 (2 high). O restante (`path-to-regexp`, `morgan`, `qs`/`express`, `body-parser`, `brace-expansion`, `uuid`/`node-cron`, e o `vite` 5→8 do frontend) **segue pendente e fora da Fase 4** por decisão D-06. Estado original medido em 2026-07-30: 12 advisories no backend (5 high) e 4 no frontend (2 high, todas devDependencies). As três que importam: `nodemailer` (e-mail para domínio não intencionado + injeção SMTP), `axios` (SSRF + bypass de auth) e `path-to-regexp` (ReDoS nas rotas). O CI **não roda `npm audit`** — nada detecta isso hoje. Corrigir em duas levas: as sem major primeiro, depois `nodemailer` 6→9 e `node-cron` 3→4 com teste do novo fluxo.
 
 - `ops-01-validar-env-e-pm2-no-primeiro-deploy` (**alta prioridade**, → Phase 8) — **não existe servidor de produção nem deploy em `/opt/agendor`; o projeto roda só localmente** (confirmado pelo usuário em 2026-07-30). Por isso o checkpoint da Task 1 do 03-02 foi registrado como N/A, não bloqueado. Quando houver servidor, validar as 5 variáveis obrigatórias no `.env` e o `cwd` do PM2 antes do primeiro boot com fail-fast ligado. Dois riscos herdados: `SMTP_PASS` não tem mais recuperação pela UI, e um eventual `/opt/agendor/.env` órfão deixou de valer após a correção do 03-01.
 
@@ -157,6 +167,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-04T18:38:34.544Z
-Stopped at: Completed 04-01-PLAN.md (C2 aprovado)
+Last session: 2026-08-04T18:56:54.371Z
+Stopped at: Completed 04-03-PLAN.md (C4 aprovado)
 Resume file: None
