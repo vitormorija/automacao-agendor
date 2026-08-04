@@ -96,7 +96,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Contrato de entrega**: `.planning/phases/04-confiabilidade-das-integra-es/04-DELIVERY-CONTRACT.md` (aprovado 2026-08-04; 7 planos, decisões Q1-Q5)
 **Plans**: 7 plans (execução estritamente sequencial, waves 1-7; `parallelization: false`)
 - [x] 04-01-PLAN.md — Caracterização da resiliência do scheduler: falha registrada, lock liberado, concorrência recusada (REL-03) · termina em C2
-- [ ] 04-02-PLAN.md — Fail-safe na consulta de tarefas futuras: completo ou falha explícita, rodada abortada sem notificar (REL-06, Q2)
+- [x] 04-02-PLAN.md — Fail-safe na consulta de tarefas futuras: completo ou falha explícita, rodada abortada sem notificar (REL-06, Q2)
 - [ ] 04-03-PLAN.md — Timeout HTTP de 15s na instância Agendor + `getDealById` + bump `axios@^1.19.0` (REL-01, D-01, Q3) · termina em C4
 - [ ] 04-04-PLAN.md — Timeouts SMTP 10s/10s/30s na fábrica `createTransporter` + caracterização da exaustão (REL-02, D-02/D-03)
 - [ ] 04-05-PLAN.md — Atualização `nodemailer` 6→9 (`^9.0.4`), protegida pelos testes de REL-02 · termina em C3+C4
@@ -155,7 +155,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | 1. Rede de Testes (Safety-Net) | 5/5 | Complete   | 2026-07-24 |
 | 2. Toolchain de Qualidade & CI | 4/4 | Complete   | 2026-07-29 |
 | 3. Config & Segredos por Ambiente | 7/7 | Complete   | 2026-07-30 |
-| 4. Confiabilidade das Integrações | 1/7 | In Progress|  |
+| 4. Confiabilidade das Integrações | 2/7 | In Progress|  |
 | 5. Logging & Padronização de Erros | 0/TBD | Not started | - |
 | 6. Hardening de Segurança | 0/TBD | Not started | - |
 | 7. Refatoração Incremental de Arquitetura | 0/TBD | Not started | - |

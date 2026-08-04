@@ -4,13 +4,13 @@ milestone: v1.0
 milestone_name: milestone
 status: executing
 stopped_at: Completed 04-01-PLAN.md (C2 aprovado)
-last_updated: "2026-08-04T18:27:44.765Z"
+last_updated: "2026-08-04T18:39:01.725Z"
 last_activity: 2026-08-04
 progress:
   total_phases: 8
   completed_phases: 3
   total_plans: 23
-  completed_plans: 17
+  completed_plans: 18
   percent: 38
 ---
 
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-07-22)
 ## Current Position
 
 Phase: 04 (confiabilidade-das-integra-es) — EXECUTING
-Plan: 2 of 7
+Plan: 3 of 7
 Status: Ready to execute
 Last activity: 2026-08-04
 
-Progress: [███████░░░] 74%
+Progress: [████████░░] 78%
 
 ## Performance Metrics
 
@@ -67,6 +67,7 @@ Progress: [███████░░░] 74%
 | Phase 03 P06 | 22min | 2 tasks tasks | 3 files files |
 | Phase 03 P02 | 22min | 2 tasks | 2 files |
 | Phase 04 P01 | 24min | 3 tasks | 2 files |
+| Phase 04 P02 | 21 | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -110,6 +111,9 @@ Recent decisions affecting current work:
 - [Phase 04]: 04-01: runWeeklySummary exposta por seam aditivo (module.exports.runWeeklySummary), fora do module.exports principal — nenhum consumidor de produção a importa
 - [Phase 04]: 04-01: a prova de 'rodada não recusada pelo guard' é reason === undefined; results.skipped é contagem numérica (scheduler.js:36), não flag
 - [Phase 04]: 04-01: checkpoint C2 aprovado pelo usuário — entrada no plano comportamental 04-02 autorizada
+- [Phase 04]: 04-02: getDealsWithFutureTasks passa a propagar a falha (Set completo ou exceção) — Set parcial notificava indevidamente deals com tarefa futura (REL-06/Q2)
+- [Phase 04]: 04-02: o 500 do GET /api/deals/stale é aceito — try/catch local reintroduziria o parcial silencioso
+- [Phase 04]: 04-02: seam aditivo module.exports.staleHandler + res falso mínimo — primeiro handler Express executado por teste, sem supertest/nock
 
 ### Pending Todos
 
@@ -153,6 +157,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-04T18:27:44.762Z
+Last session: 2026-08-04T18:38:34.544Z
 Stopped at: Completed 04-01-PLAN.md (C2 aprovado)
 Resume file: None
