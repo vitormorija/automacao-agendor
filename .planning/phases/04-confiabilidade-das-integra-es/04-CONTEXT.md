@@ -54,6 +54,28 @@ agendador que sobrevive a uma execução que falha, e cache de categorias que n�
 - **Nota de implementação:** `createTransporter()` é chamada em **6 lugares** (`emailer.js` linhas
   206, 383, 404, 409, 689 e a definição em 12). A configuração de timeout deve viver na função
   fábrica, não ser repetida em cada chamada.
+- **⚠ CORREÇÃO A D-02 (Decisão Q6, 2026-08-04 — supersede a cláusula quantitativa acima).**
+  Medido no fonte de `nodemailer@9.0.4` durante o 04-05: **`connectionTimeout` é aplicado por
+  endereço A/AAAA resolvido, não globalmente à tentativa de conexão.** `_connectToHost()`
+  (`lib/smtp-connection/index.js:403`) chama `_setupConnectionHandlers()` (`:413-415`), que arma um
+  `setTimeout` novo a cada endereço; `_onConnectionError()` (`:427,438,468`) limpa o timer, avança
+  para o próximo endereço e reinstala o timeout inteiro. `greetingTimeout` e `socketTimeout` **não**
+  são multiplicados — vivem em `_onConnect()` (`:847,850`), que marca `stage = 'connected'` (`:829`),
+  e `canFallback` exige `stage === 'init'` (`:430`).
+  - Pior caso por destinatário passa a ser **`30N + 69` segundos**, com N = registros A + AAAA do
+    `smtp_host`. **N = 2 observado em 2026-08-04** para `smtp.gmail.com` (padrão, `db.js:108`).
+  - **A garantia de "~1min40s" acima não é mais invariável**: era o caso N=1 (99s). Hoje são **129s**;
+    N=4 daria 189s, N=8 daria 309s. O risco passou a depender do **DNS do provedor**, que o operador
+    não vê nem controla.
+  - A cláusula de **configuração** de D-02 (os três valores na fábrica) permanece **satisfeita ao pé
+    da letra** — a v9 honra os mesmos nomes com a mesma semântica. Nenhuma mudança de código foi
+    necessária, e nenhuma foi feita.
+  - Não existe configuração suportada no nodemailer 9 para impor deadline global ou desligar o
+    fallback (verificado por `grep` em todo o `lib/`). Pendência rastreável antes do go-live:
+    `.planning/todos/pending/rel-02b-deadline-global-smtp.md`.
+  - **Ao implementar o teto externo, `Promise.race` ingênuo é armadilha:** perder a corrida não
+    cancela a operação SMTP subjacente — o socket fica aberto e a tentativa segue consumindo
+    descritor. Qualquer implementação precisa encerrar o transporte explicitamente.
 
 ### Comportamento ao esgotar as tentativas (REL-02)
 - **D-03:** **Registrar e seguir para o próximo destinatário** — exatamente o comportamento atual,
