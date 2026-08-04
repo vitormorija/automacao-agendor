@@ -21,7 +21,7 @@
 //       — já passa; é o oráculo que impede a extração do laço de mudar a política de 429
 require('./setup');
 
-const { test, before, after, beforeEach, mock } = require('node:test');
+const { test, after, beforeEach, mock } = require('node:test');
 const assert = require('node:assert/strict');
 const { installFakeAxios } = require('./helpers/fakeAxios');
 const { avancarRelogioAte } = require('./helpers/fakeTimers');
@@ -130,17 +130,22 @@ async function avancarRelogioAteDesfecho(promessa) {
   return desfecho.valor;
 }
 
-before(() => {
-  mock.timers.enable({ apis: ['Date', 'setTimeout'], now: FIXED_NOW });
-});
-
 after(() => {
   mock.timers.reset();
 });
 
-// Contadores e modos são estado de módulo: zerar aqui mantém cada asserção de contagem local ao
-// seu caso, independentemente da ordem de execução.
+// Contadores, modos E RELÓGIO voltam ao estado inicial antes de cada caso.
+//
+// Rearmar o relógio não é zelo decorativo: avançar o tempo é o mecanismo que faz as esperas do
+// retry resolverem, então cada caso que retenta DEIXA o relógio adiantado (10s por tick) para o
+// caso seguinte. Com um `before` único, o caso (4) rodava com `now` já em 00:00:30 — e o cutoff
+// de 15 dias andava junto, fazendo os deals 102 e 104 (que existem na fixture justamente para
+// pinar a fronteira estrita do dia) entrarem no golden. O caso ficaria vermelho por contaminação
+// de ordem, não por defeito de produção. `reset()` antes de `enable()` porque `enable()` lança se
+// os timers já estiverem habilitados.
 beforeEach(() => {
+  mock.timers.reset();
+  mock.timers.enable({ apis: ['Date', 'setTimeout'], now: FIXED_NOW });
   chamadasTasks = 0;
   chamadasDeals = 0;
   modoTasks = 'ok';
