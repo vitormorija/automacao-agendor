@@ -1194,9 +1194,14 @@ compatíveis; nenhum plano introduz API dependente de versão. O gate real conti
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED — decisões humanas de 2026-08-04, incorporadas aos PLANs)
 
-### 1. `POST /api/notifications/test-card` grava `'sent'` antes de enviar — o mesmo defeito DESC-1, fora do escopo declarado
+> Todas as 5 perguntas foram respondidas pelo usuário em 2026-08-04, seguindo as recomendações:
+> (1) `/test-card` fora do 04-06 + todo · (2) 500 em `GET /api/deals/stale` aceito, com teste obrigatório (B3) ·
+> (3) toast verde do Dashboard vira todo `ui-01`, não é consertado nesta fase · (4) status inicial `'pending'` no 04-06 ·
+> (5) extensão aditiva do `installFakeAxios` adotada no 04-03. Os planos 04-02, 04-03 e 04-06 citam cada decisão.
+
+### 1. (RESOLVED) `POST /api/notifications/test-card` grava `'sent'` antes de enviar — o mesmo defeito DESC-1, fora do escopo declarado
 
 - **O que se sabe:** `routes/notifications.js:87-99` insere `status: 'sent'` **antes** do
   `sendStaleNotification` da linha 101, exatamente como `scheduler.js:113`. Se o envio de teste falhar, fica
