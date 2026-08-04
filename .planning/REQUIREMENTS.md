@@ -39,6 +39,8 @@ Requisitos desta etapa de estabilização. A ordem reflete dependência: testes 
 - [ ] **REL-02**: Timeout e tratamento de falha no envio SMTP (nodemailer)
 - [ ] **REL-03**: Falha em uma execução do cron é registrada e não derruba o agendador (tratamento de erro em `runCheck`/`runWeeklySummary`)
 - [ ] **REL-04**: `orgCategoryCache` ganha TTL/invalidação para não usar categoria obsoleta indefinidamente
+- [ ] **REL-05**: Status de envio consistente em falhas — `'sent'` somente após envio confirmado; falha total registra `'error'` e permite retentativa na rodada seguinte; dedup de envios realmente bem-sucedidos preservada (derivado de DESC-1 / Decisão Q1, 04-DELIVERY-CONTRACT.md, 2026-08-04)
+- [ ] **REL-06**: Falha na consulta de tarefas futuras aborta a rodada sem disparar notificações — resultado completo ou falha explícita, nunca proteção parcial silenciosa (derivado de DESC-2 / Decisão Q2, 04-DELIVERY-CONTRACT.md, 2026-08-04)
 
 ### Logging & Erros
 
@@ -122,6 +124,8 @@ Preenchido na criação do roadmap.
 | REL-02 | Phase 4 | Pending |
 | REL-03 | Phase 4 | Pending |
 | REL-04 | Phase 4 | Pending |
+| REL-05 | Phase 4 | Pending |
+| REL-06 | Phase 4 | Pending |
 | LOG-01 | Phase 5 | Pending |
 | LOG-02 | Phase 5 | Pending |
 | SEC-01 | Phase 6 | Pending |
@@ -135,8 +139,8 @@ Preenchido na criação do roadmap.
 | DOC-02 | Phase 8 | Pending |
 
 **Coverage:**
-- v1 requirements: 29 total
-- Mapped to phases: 29 (100%)
+- v1 requirements: 31 total (29 originais + REL-05/REL-06 derivados na Fase 4)
+- Mapped to phases: 31 (100%)
 - Unmapped: 0
 
 ---

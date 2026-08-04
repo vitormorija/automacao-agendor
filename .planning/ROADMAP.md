@@ -85,12 +85,15 @@ Decimal phases appear between their surrounding integers in numeric order.
 ### Phase 4: Confiabilidade das Integrações
 **Goal**: Integrações de saída (Agendor HTTP, SMTP) e o agendador cron toleram lentidão e falhas sem travar ou derrubar o sistema.
 **Depends on**: Phase 3
-**Requirements**: REL-01, REL-02, REL-03, REL-04
+**Requirements**: REL-01, REL-02, REL-03, REL-04, REL-05, REL-06
 **Success Criteria** (what must be TRUE):
   1. Chamadas HTTP à API Agendor (instância axios compartilhada + chamada ad-hoc em `/resolved`) têm timeout explícito, verificável em config/teste (REL-01)
   2. Envio SMTP tem timeout e trata falha sem lançar exceção não capturada (REL-02)
   3. Falha em `runCheck`/`runWeeklySummary` é registrada e o agendador continua ativo (não derruba o processo) (REL-03)
-  4. `orgCategoryCache` ganha TTL/invalidação; teste confirma que categoria obsoleta não é usada indefinidamente (REL-04)
+  4. `orgCategoryCache` é invalidado a cada execução de `getStaleDeals`; teste confirma que categoria obsoleta não é usada entre execuções (REL-04, D-05: limpeza por execução, não TTL)
+  5. Status `'sent'` só é gravado após envio confirmado; falha total grava `'error'` e a rodada seguinte retenta (dedup de envios bem-sucedidos preservada) (REL-05, Decisão Q1)
+  6. Falha na consulta de tarefas futuras aborta a rodada sem notificar — registrada, lock liberado, rodada seguinte executa (REL-06, Decisão Q2)
+**Contrato de entrega**: `.planning/phases/04-confiabilidade-das-integra-es/04-DELIVERY-CONTRACT.md` (aprovado 2026-08-04; 7 planos, decisões Q1-Q5)
 **Plans**: TBD
 
 ### Phase 5: Logging & Padronização de Erros
