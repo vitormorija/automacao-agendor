@@ -104,8 +104,8 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] 04-07-PLAN.md — Invalidação do `orgCategoryCache` a cada execução de `getStaleDeals` (REL-04, D-05)
 
 **Gap closure** (fonte: `04-REVIEW.md`, status `issues_found` — 2 critical, 6 warning, 4 info; não existe `04-VERIFICATION.md`, a execução parou no gate de code review). 4 planos **aditivos**, waves 1-4, `gap_closure: true`:
-- [ ] 04-08-PLAN.md — Corrida do `orgCategoryCache`: categoria por organização em mapa local à execução (CR-01, WR-06)
-- [ ] 04-09-PLAN.md — `AGENDOR_TOKEN` fora do log de erro de `/api/deals/stale` + validação do id em `getDealById` (CR-02, WR-03) · registra a triagem dos demais achados como todo
+- [ ] 04-08-PLAN.md — Corrida do `orgCategoryCache`: categoria por organização em mapa local à execução (CR-01, WR-06) · termina em C7
+- [ ] 04-09-PLAN.md — `AGENDOR_TOKEN` fora do log de erro de `/api/deals/stale` + validação do id em `getDealById` (CR-02, WR-03) · registra a triagem dos demais achados como todo · termina em C8
 - [ ] 04-10-PLAN.md — Sucesso parcial sobrevive à exceção e `results.notified` só conta envio real (WR-01, WR-04, WR-05)
 - [ ] 04-11-PLAN.md — Retry de 429 também na consulta de tarefas futuras (WR-02)
 
