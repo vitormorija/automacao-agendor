@@ -266,5 +266,16 @@ test('(5) runWeeklySummary resolve sem lançar quando a borda falha', async () =
     'uma falha de borda no resumo semanal não pode escapar para o cron',
   );
 
+  // `assert.doesNotReject` sozinho é insuficiente (WR-05): runWeeklySummary tem um
+  // early-return em scheduler.js:210 (`if (!notificationsEnabled) return;`) ANTES do
+  // Promise.all que falha. Qualquer coisa que faça a função sair cedo mantém o caso
+  // verde sem NUNCA tocar o catch que ele afirma pinar. A asserção abaixo prova que a
+  // execução passou do early-return e chegou à borda: o beforeEach de :146-148 zera
+  // fake.get.mock.calls, então a contagem é local a este caso.
+  assert.ok(
+    fake.get.mock.calls.some((c) => c.arguments[0] === '/users'),
+    'pré-condição: a falha da borda precisa ter sido ALCANÇADA — sem isto o caso passaria por ausência de exceção, inclusive numa regressão real como o seed de notifications_enabled virar "false" e a função sair no early-return',
+  );
+
   usuariosDevemFalhar = false;
 });
