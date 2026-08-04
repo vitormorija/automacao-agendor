@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 04-05-PLAN.md — checkpoint C3+C4 AGUARDANDO aprovacao humana
-last_updated: "2026-08-04T19:25:02.503Z"
+stopped_at: Completed 04-06-PLAN.md — REL-05 entregue (status de envio consistente)
+last_updated: "2026-08-04T19:49:02.771Z"
 last_activity: 2026-08-04
 progress:
   total_phases: 8
   completed_phases: 3
   total_plans: 23
-  completed_plans: 21
+  completed_plans: 22
   percent: 38
 ---
 
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-07-22)
 ## Current Position
 
 Phase: 04 (confiabilidade-das-integra-es) — EXECUTING
-Plan: 6 of 7
+Plan: 7 of 7
 Status: Ready to execute
 Last activity: 2026-08-04
 
-Progress: [█████████░] 91%
+Progress: [██████████] 96%
 
 ## Performance Metrics
 
@@ -71,6 +71,7 @@ Progress: [█████████░] 91%
 | Phase 04 P03 | 34min | 4 tasks tasks | 7 files files |
 | Phase 04 P04 | 21min | 2 tasks | 2 files |
 | Phase 04 P05 | 14min | 2 tasks | 3 files |
+| Phase 04 P06 | 12min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -137,6 +138,13 @@ Recent decisions affecting current work:
 - [Phase 04]: 04-05: as 3 opcoes de timeout de D-02 (connectionTimeout/greetingTimeout/socketTimeout) e o _formatError sao IDENTICOS entre 6.10.1 e 9.0.4 — a mudanca do 04-04 sobrevive ao major sem tocar uma linha
 - [Phase 04]: 04-05: 9.0.4 confirmada e fallback ^9.0.3 NAO acionado — o delta 9.0.3->9.0.4 e todo em mime-funcs/mime-node, caminho que este projeto exercita com assuntos em emoji e acento
 - [Phase 04]: 04-05: engines do nodemailer 9.0.4 verificado ANTES do install — node >=6.0.0, identico a 6.10.1 e compativel com o Node 20 do CI (D-09)
+- [Phase 04]: 04-06: a linha do notification_log nasce 'pending' e so vira 'sent' com >= 1 destinatario confirmado — um crash no meio do envio deixa a linha nao-deduplicante e portanto retentavel amanha (REL-05/Q1)
+- [Phase 04]: 04-06: sucesso parcial mantem 'sent' com o erro do destinatario que falhou preservado na coluna error — classificar o parcial como 'error' faria quem JA recebeu receber de novo amanha (risco R-11)
+- [Phase 04]: 04-06: o caminho de excecao ATUALIZA a linha existente via updateNotificationStatus em vez de inserir uma segunda — logNotification em scheduler.js caiu de 3 para 2 ocorrencias (import + unica chamada)
+- [Phase 04]: 04-06: alreadyNotifiedToday passa a refletir so envios confirmados; getNotificationStats/getNotifiedDealIds/getNotifiedDeals devolvem numeros MENORES e isso e o conserto, nao regressao — zero mudanca de frontend (o ternario ja trata status !== 'sent')
+- [Phase 04]: 04-06: POST /api/notifications/test-card e o terceiro escritor de 'sent' pre-envio e ficou FORA por decisao humana (contrato §11 + rollback atomico) — registrado no todo rel-05b-test-card-status
+- [Phase 04]: 04-06: nenhuma migracao de dados — a informacao que reclassificaria as linhas historicas nunca foi gravada e a dedup e por data, com as datas ja passadas
+- [Phase 04]: 04-06: no teste, um id de deal por cenario em vez de limpar a tabela — a dedup do proprio SUT acopla os casos de forma ASSIMETRICA entre o estado antes e o depois da correcao, e um id unico produziria um RED ilegivel
 
 ### Pending Todos
 
@@ -180,6 +188,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-04T19:25:02.500Z
-Stopped at: Completed 04-05-PLAN.md — checkpoint C3+C4 AGUARDANDO aprovacao humana
+Last session: 2026-08-04T19:49:02.767Z
+Stopped at: Completed 04-06-PLAN.md — REL-05 entregue (status de envio consistente)
 Resume file: None
