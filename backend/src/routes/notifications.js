@@ -84,7 +84,10 @@ async function testCardHandler(req, res) {
   try {
     // Salva no log para habilitar rastreamento de clique
     const logEntry = logNotification({
-      deal_id: req.body.dealId || 0,
+      // Converte ANTES de gravar (WR-03): a coluna tem afinidade INTEGER mas a tabela não é
+      // STRICT, então texto vindo daqui sobrevive no banco e reaparece depois como path em
+      // getDealById. O `|| 0` preserva o fallback de hoje quando não há id utilizável.
+      deal_id: Number.parseInt(req.body.dealId, 10) || 0,
       deal_title: mockDeal.title,
       owner_name: mockDeal.ownerName,
       owner_email: email,

@@ -71,7 +71,19 @@ async function getOrgCategory(orgId) {
 // do Promise.all da rota, que já existe. Engolir aqui devolveria null e faria a rota tratar
 // "não consegui consultar" como "não mudou nada" — sem nenhum sinal de que a consulta falhou.
 async function getDealById(id) {
-  const { data } = await api.get(`/deals/${id}`);
+  // Guarda de tipo ANTES de qualquer requisição (WR-03). O chamador de produção lê o id de
+  // `notification_log.deal_id`, coluna com afinidade `INTEGER` mas em tabela SEM `STRICT` —
+  // texto sobrevive nela — e um dos escritores dessa coluna é o CORPO de uma requisição
+  // autenticada (`POST /api/notifications/test-card`). Sem esta guarda, um valor como
+  // `'../users'` compõe o path relativo e faz a consulta sair para OUTRO recurso da Agendor,
+  // com o token de serviço no header. `Number()` (e não `parseInt`) porque a normalização tem
+  // de aceitar a string numérica que o SQLite devolve e recusar `'101abc'`; o path abaixo
+  // interpola o número já convertido, nunca o argumento cru.
+  const dealId = Number(id);
+  if (!Number.isInteger(dealId) || dealId <= 0) {
+    throw new Error(`[Agendor] id de negócio inválido: ${String(id)}`);
+  }
+  const { data } = await api.get(`/deals/${dealId}`);
   return data.data || null;
 }
 
