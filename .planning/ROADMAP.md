@@ -17,7 +17,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 1: Rede de Testes (Safety-Net)** - Testes de caracterização fixam o comportamento atual da lógica crítica de notificação antes de qualquer mudança (completed 2026-07-24)
 - [x] **Phase 2: Toolchain de Qualidade & CI** - Lint, formatação, scripts npm e pipeline de CI que bloqueia PRs com falha (completed 2026-07-29)
 - [x] **Phase 3: Config & Segredos por Ambiente** - Segredos fora do código, `.env.example`, separação dev/prod e validação no boot (completed 2026-07-30)
-- [x] **Phase 4: Confiabilidade das Integrações** - Timeouts em Agendor/SMTP, cron resiliente a falhas e cache com TTL (completed 2026-08-04)
+- [ ] **Phase 4: Confiabilidade das Integrações** - Timeouts em Agendor/SMTP, cron resiliente a falhas e cache com TTL (7 planos executados em 2026-08-04; **reaberta para gap closure** — 04-REVIEW com 2 bloqueantes)
 - [ ] **Phase 5: Logging & Padronização de Erros** - `console.*` residual migrado para `logger` estruturado e resposta de erro consistente
 - [ ] **Phase 6: Hardening de Segurança** - Riscos do CONCERNS.md fechados; mudanças comportamentais só com teste do novo fluxo (ou adiadas com justificativa)
 - [ ] **Phase 7: Refatoração Incremental de Arquitetura** - Extrair `getEnrichedStaleDeals` e serviço de agregação, sem alterar comportamento, protegido pelos testes
@@ -94,7 +94,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   5. Status `'sent'` só é gravado após envio confirmado; falha total grava `'error'` e a rodada seguinte retenta (dedup de envios bem-sucedidos preservada) (REL-05, Decisão Q1)
   6. Falha na consulta de tarefas futuras aborta a rodada sem notificar — registrada, lock liberado, rodada seguinte executa (REL-06, Decisão Q2)
 **Contrato de entrega**: `.planning/phases/04-confiabilidade-das-integra-es/04-DELIVERY-CONTRACT.md` (aprovado 2026-08-04; 7 planos, decisões Q1-Q5)
-**Plans**: 7 plans (execução estritamente sequencial, waves 1-7; `parallelization: false`)
+**Plans**: 7 planos originais + 4 de gap closure = 11 (execução estritamente sequencial; `parallelization: false`)
 - [x] 04-01-PLAN.md — Caracterização da resiliência do scheduler: falha registrada, lock liberado, concorrência recusada (REL-03) · termina em C2
 - [x] 04-02-PLAN.md — Fail-safe na consulta de tarefas futuras: completo ou falha explícita, rodada abortada sem notificar (REL-06, Q2)
 - [x] 04-03-PLAN.md — Timeout HTTP de 15s na instância Agendor + `getDealById` + bump `axios@^1.19.0` (REL-01, D-01, Q3) · termina em C4
@@ -102,6 +102,12 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] 04-05-PLAN.md — Atualização `nodemailer` 6→9 (`^9.0.4`), protegida pelos testes de REL-02 · termina em C3+C4
 - [x] 04-06-PLAN.md — Consistência do status de envio: `'sent'` só após confirmação, falha total retentável (REL-05, Q1)
 - [x] 04-07-PLAN.md — Invalidação do `orgCategoryCache` a cada execução de `getStaleDeals` (REL-04, D-05)
+
+**Gap closure** (fonte: `04-REVIEW.md`, status `issues_found` — 2 critical, 6 warning, 4 info; não existe `04-VERIFICATION.md`, a execução parou no gate de code review). 4 planos **aditivos**, waves 1-4, `gap_closure: true`:
+- [ ] 04-08-PLAN.md — Corrida do `orgCategoryCache`: categoria por organização em mapa local à execução (CR-01, WR-06)
+- [ ] 04-09-PLAN.md — `AGENDOR_TOKEN` fora do log de erro de `/api/deals/stale` + validação do id em `getDealById` (CR-02, WR-03) · registra a triagem dos demais achados como todo
+- [ ] 04-10-PLAN.md — Sucesso parcial sobrevive à exceção e `results.notified` só conta envio real (WR-01, WR-04, WR-05)
+- [ ] 04-11-PLAN.md — Retry de 429 também na consulta de tarefas futuras (WR-02)
 
 ### Phase 5: Logging & Padronização de Erros
 **Goal**: Logging é estruturado e consistente em todo o backend, e o tratamento/resposta de erro nas rotas segue um padrão único.
