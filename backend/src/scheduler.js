@@ -317,3 +317,11 @@ function stopTasks() {
 }
 
 module.exports = { scheduleTask, runCheck, runCheckOnly, getStatus, stopTasks };
+
+// ── Seam de teste (não altera o agendamento) ─────────────────────
+// `runWeeklySummary` é registrada direto no cron por scheduleTask() e nenhum
+// consumidor de produção a importa — por isso ela nunca esteve no export acima.
+// Esta linha a expõe SOMENTE para a caracterização de REL-03, que precisa provar
+// que uma falha de borda dentro dela é registrada e NÃO relançada (catch de :242).
+// Acrescentar a propriedade não muda o que scheduleTask agenda nem quem chama o quê.
+module.exports.runWeeklySummary = runWeeklySummary;
