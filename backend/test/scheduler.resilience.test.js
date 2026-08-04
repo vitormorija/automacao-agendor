@@ -124,8 +124,10 @@ mock.method(nodemailer, 'createTransport', () => ({
 }));
 
 // require do db e do scheduler DEPOIS de DB_PATH e do stub de axios.
+// `runWeeklySummary` vem do seam aditivo de scheduler.js (module.exports.runWeeklySummary):
+// em produção ela só é alcançada pelo cron, e o cenário (5) precisa chamá-la direto.
 const db = require('../src/db');
-const { runCheck, getStatus } = require('../src/scheduler');
+const { runCheck, runWeeklySummary, getStatus } = require('../src/scheduler');
 
 before(() => {
   // Só 'Date': habilitar 'setTimeout' congelaria a espera entre lotes de páginas
@@ -216,4 +218,53 @@ test('(3) a execução seguinte a uma falha roda normalmente (o guard de :27 nã
     'string',
     'ranAt só é gravado quando a rodada completa',
   );
+});
+
+test('(4) chamada concorrente devolve { skipped: true } sem executar', async () => {
+  // Estado neutro esperado por este caso: a borda responde, mas /users fica PENDENTE
+  // até liberarUsuarios(). É esse pendurado que mantém a primeira execução em voo.
+  usuariosDevemFalhar = false;
+  suspenderUsuarios();
+
+  // Sem `await`: runCheck() roda sincronamente até o primeiro await, e nesse trecho já
+  // executou `isRunning = true` (scheduler.js:29). É a janela que o guard protege.
+  const emAndamento = runCheck();
+
+  const concorrente = await runCheck();
+  assert.equal(
+    concorrente.skipped,
+    true,
+    'a segunda chamada deve ser recusada pelo guard de scheduler.js:27',
+  );
+  assert.equal(
+    concorrente.reason,
+    'Verificação já em andamento',
+    'o motivo da recusa é literal e faz parte do contrato observado hoje',
+  );
+
+  // Libera a borda e AGUARDA a primeira execução: sem isto o arquivo terminaria com
+  // uma promessa pendurada (e a rodada gravando no banco já fechado pelo `after`).
+  liberarUsuarios();
+  await emAndamento;
+
+  assert.equal(
+    getStatus().isRunning,
+    false,
+    'terminada a primeira execução, o lock volta a false',
+  );
+});
+
+test('(5) runWeeklySummary resolve sem lançar quando a borda falha', async () => {
+  // Reafirma o estado neutro que este caso espera (o cenário 4 deixou a borda sã).
+  usuariosDevemFalhar = true;
+
+  // Pina o catch de scheduler.js:242-244: registra o erro e NÃO relança. Note que
+  // runWeeklySummary NÃO tem lock `isRunning` — é o comportamento ATUAL, deliberadamente
+  // pinado como está; nada aqui pede que ela ganhe um.
+  await assert.doesNotReject(
+    () => runWeeklySummary(),
+    'uma falha de borda no resumo semanal não pode escapar para o cron',
+  );
+
+  usuariosDevemFalhar = false;
 });
