@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 04-11-PLAN.md — WR-02 fechado; retry de 429 unificado em fetchWithRetry e aplicado tambem a /tasks. Gap closure da Fase 04 (04-08..04-11) COMPLETO. SEC-01 permanece ABERTO por decisao C8.
+stopped_at: Gap closure r1 (04-08..04-11) executado, mas a 2a rodada de code review reabriu a fase — 04-REVIEW.md traz CR2-01 (Critical) e 6 warnings. Fase 04 NAO esta completa. Proximo passo: /gsd:plan-phase 04 --gaps sobre o 04-REVIEW.md da rodada 2.
 last_updated: "2026-08-04T22:41:06.154Z"
-last_activity: 2026-08-04 -- Phase 04 gap closure: 04-11 concluido (ultimo plano da fase)
+last_activity: 2026-08-04 -- Phase 04: code review r2 reabriu a fase (CR2-01 critico)
 progress:
   total_phases: 8
-  completed_phases: 4
+  completed_phases: 3
   total_plans: 27
   completed_plans: 27
-  percent: 50
+  percent: 38
 ---
 
 # Project State
@@ -25,12 +25,22 @@ See: .planning/PROJECT.md (updated 2026-07-22)
 
 ## Current Position
 
-Phase: 04 (confiabilidade-das-integra-es) — COMPLETE (gap closure encerrado)
-Plan: 11 of 11
-Status: 04-11 concluido (WR-02). Gap closure 04-08..04-11 completo — CR-01, CR-02 e WR-01..WR-06 fechados. SEC-01 permanece ABERTO como risco conscientemente aceito (decisao C8).
-Last activity: 2026-08-04 -- Phase 04 gap closure: 04-11 concluido (ultimo plano da fase)
+Phase: 04 (confiabilidade-das-integra-es) — REABERTA (gap closure r2 pendente)
+Plan: 11 of 11 executados; nova rodada de planos ainda nao criada
+Status: Gap closure r1 (04-08..04-11) executado e suite verde (139/139). A 2a rodada de code review
+  (04-REVIEW.md, round: 2) verificou as conclusoes CETICAMENTE e reabriu a fase:
+  - Fechados de fato: CR-02, WR-02, WR-03, WR-05
+  - Fechados so em parte: CR-01, WR-01, WR-04 — cada um deixou aberto o cenario vizinho que o
+    comentario novo no codigo declara resolvido
+  - CR2-01 (CRITICAL): orgCategoryCache continua sendo estado de modulo compartilhado. O 04-08
+    fechou "B apaga antes de A ler"; a direcao oposta segue aberta — A grava null apos a limpeza
+    de B, e B le esse null cacheado sem consultar a API. Reproduzido deterministicamente: deal 105
+    (org 205, categoria 'Parceiro', EXCLUIDA) entra nas duas listas. Notifica quem nao devia.
+  A rodada 1 esta preservada em 04-REVIEW-r1.md (origem dos planos 04-08..04-11).
+  SEC-01 permanece ABERTO como risco conscientemente aceito (decisao C8) — nao marcar resolvido.
+Last activity: 2026-08-04 -- Phase 04: code review r2 reabriu a fase (CR2-01 critico)
 
-Progress: [██████████] 100%
+Progress: [█████████░] 92% (execucao dos planos; fase bloqueada por CR2-01)
 
 ## Performance Metrics
 
