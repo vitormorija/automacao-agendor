@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: FASE 04 COMPLETA (2026-08-05) — 38 planos, verificacao passed, seguranca auditada
-stopped_at: "FASE 04 COMPLETA (2026-08-05). 38 planos, suite 148 -> 196 verdes, CINCO rodadas de code review e cinco blockers reais fechados. Verificacao: status passed, 8/8 Success Criteria e 6/6 requisitos conferidos CONTRA O CODIGO. Seguranca: 232/233 ameacas fechadas, threats_open 1 (SEC-01, aberta por decisao consciente C8). 41 todos com dono levados para as fases seguintes. Proximo: Fase 5 — Logging & Padronizacao de Erros, onde os 8 achados de observabilidade da r5 se encaixam por tema."
-last_updated: "2026-08-05T23:40:00.000Z"
-last_activity: 2026-08-05 -- Fase 04 FECHADA: verificacao passed + auditoria de seguranca
+status: FASE 05 — CONTEXTO COLETADO (2026-08-05); pronta para /gsd-plan-phase 5
+stopped_at: "Fase 5 (Logging & Padronizacao de Erros) — CONTEXTO COLETADO em 2026-08-05. 05-CONTEXT.md e 05-DISCUSSION-LOG.md escritos; nenhum plano ainda, nenhum codigo tocado. 4 areas cinzentas discutidas, 13 decisoes travadas (D-01..D-13), 6 todos dobrados para o escopo (cr-02b, wr5-04, in2-03, wr5-02, in5-01, wr5-03). Baseline inicial: 196/196 testes verdes. Fase 04 FECHADA e nao reaberta. Proximo: /gsd-plan-phase 5."
+last_updated: "2026-08-06T00:20:00.000Z"
+last_activity: 2026-08-05 -- Fase 05: contexto coletado (discuss-phase), 13 decisoes travadas
 progress:
   total_phases: 8
   completed_phases: 4
@@ -21,9 +21,84 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-22)
 
 **Core value:** Rede de testes automatizados sobre a lógica crítica de notificação (quem recebe / quem não recebe) — para nunca mais uma regressão silenciosa.
-**Current focus:** Phase 04 — confiabilidade-das-integra-es
+**Current focus:** Phase 05 — logging-padroniza-o-de-erros
 
 ## Current Position
+
+Phase: 05 (logging-padroniza-o-de-erros) — CONTEXTO COLETADO, sem planos
+Plan: 0 de TBD. Proximo comando: /gsd-plan-phase 5
+Status: pronta para planejamento (2026-08-05)
+
+  CONTEXTO DA FASE 5 COLETADO (05-CONTEXT.md + 05-DISCUSSION-LOG.md). NENHUM CODIGO TOCADO —
+  git status --porcelain backend/ frontend/ vazio, suite 196/196 verde como baseline inicial.
+
+  As 4 areas cinzentas foram apresentadas, o usuario selecionou TODAS, e as 13 decisoes
+  (D-01..D-13) foram escolhidas UMA A UMA por ele — zero discricao deixada ao agente.
+
+  DOIS FATOS MEDIDOS QUE CONTRADIZEM O TEXTO DO REQUISITO, e por isso o CONTEXT parte do
+  codigo e nao da prosa:
+  1. routes/deals.js e nomeado por LOG-01 mas JA ESTA LIMPO (0 console.*, 2 logger.*).
+  2. Os console.* residuais reais sao SEIS, em TRES arquivos: agendor.js:542, emailer.js
+     222/792/857/867 e routes/track.js:31. O frontend ja tem ZERO. O logger.js tem 4, mas e
+     o SINK — ficam.
+
+  O QUE FICOU TRAVADO, em uma linha cada:
+  - D-01/D-02/D-03: migram os 6 + o console.error(err) do index.js:107 (fecha cr-02b); os 4 do
+    logger.js ficam; a trava anti-regressao e META-TESTE no molde de secrets.grep.test.js, com
+    allowlist justificada — NAO regra do Biome (o baseline de lint e deliberadamente tolerante
+    e promover regra a error o inverteria).
+  - D-04: migracao 1:1 LITERAL, com UMA excecao — emailer.js:792 adota a forma do irmao de
+    :800, porque ali a assimetria E o defeito que wr5-04 registra. Fecha wr5-04 dentro do LOG-01.
+  - D-05: o shape canonico e { ok:false, message }. 24 dos 35 sites ja usam ok:false, e
+    ok:true/ok:false ja e o contrato do CAMINHO FELIZ — o cliente ganha UM discriminador.
+  - D-06/D-07: o middleware global entra no padrao; e a REDACAO em producao passa a valer
+    tambem nos handlers de rota (hoje devolvem err.message CRU enquanto o middleware redige).
+    D-07 e MUDANCA DE COMPORTAMENTO: plano proprio, commit proprio, executado por ULTIMO e
+    cortavel. Continuidade direta do CR-02 — o AxiosError carrega o token da Agendor.
+  - D-08: prova em DUAS PERNAS — grep prova ALCANCE (os 35 sites), seam prova COMPORTAMENTO
+    (staleHandler + seam novo em reports). Mesmo raciocinio que fez secrets.grep.test.js existir.
+  - D-09/D-10: backend e frontend no MESMO commit (os 2 sites que quebram — DealsList.jsx:80 e
+    ReportPanel.jsx:68 — quebram EM SILENCIO: param de lancar e vite build passa verde).
+    ARMADILHA DE GREP registrada: log.error em NotificationHistory/Dashboard e a COLUNA do
+    notification_log, NAO o shape. Grep ingenuo acusa 6 sites; so 2 sao de shape.
+  - D-11: o middleware global sai para backend/src/middleware/error.js — e o que torna D-06 e
+    D-07 testaveis sem tocar em app.listen nem na ordem de boot que a Fase 3 endureceu.
+  - D-12/D-13: logs/error.log e APOSENTADO (um formato, um lugar: pm2-error.log, que ja recebe
+    todo logger.error). CLAUDE.md e codebase/{CONVENTIONS,ARCHITECTURE,INTEGRATIONS}.md
+    descrevem esse arquivo e ficam desatualizados — atualiza-los ENTRA no escopo, e o runbook
+    da Fase 8 herda o aviso operacional. morgan/access.log ficam FORA.
+
+  SEIS TODOS DOBRADOS PARA O ESCOPO (dobrar e ESCOPO, nao fechamento — nenhum arquivo saiu de
+  pending/, que continua com 41): cr-02b e wr5-04 (fechados pelas proprias decisoes D-01/D-04),
+  in2-03, wr5-02, in5-01 e wr5-03. Os tres ultimos exigem plano proprio: wr5-02 muda volume e
+  forma de log (teste do novo comportamento), in5-01 mexe num contrato que a Fase 4 estabilizou
+  em tres planos e o Dashboard consome, e wr5-03 precisa de um PISO MINIMO novo — e os cenarios
+  I/J do oraculo usam N=2, entao NAO discriminam implementacao com e sem piso: o oraculo muda junto.
+
+  NAO TOCADOS E NAO FECHADOS por esta fase, por decisao registrada: SEC-01 (aberto, C8 — so a
+  rotacao no painel da Agendor encerra; o valor do token nao aparece em nenhum artefato novo),
+  rel-02b (pre-go-live, alta), sec-02 (Fase 6) e wr5-05 (alta, Core Value — e rede de testes de
+  envio, nao logging). Nenhum deles aparece no diff desta sessao.
+
+  ESTRUTURA SUGERIDA AO PLANNER (no CONTEXT, derivada de D-04/D-07/D-09/D-11 e da regra de nunca
+  misturar mudanca de comportamento com padronizacao): 5 unidades revertiveis independentes —
+  (1) migracao 1:1 + meta-teste; (2) extracao do middleware/error.js + aposentadoria do
+  error.log; (3) shape canonico backend+frontend num commit + as duas pernas de prova;
+  (4) redacao de err.message, por ultimo e cortavel; (5) os quatro todos de conteudo de log.
+
+  MANDATO HERDADO DA FASE 4, valido aqui: o INVENTARIO DE IRMAOS com as duas clausulas da r5 —
+  (a) direcao reversa (de que comportamento alheio o conserto novo DEPENDE, o que pode
+  neutraliza-lo) e (b) retroatividade da justificativa (todo comentario novo vira grep no mesmo
+  arquivo por construcoes que ele condena). A clausula (b) e literalmente o que produziu wr5-02
+  e wr5-04, os dois achados que esta fase dobrou.
+
+  ATRITO DE FERRAMENTAL CONFIRMADO NESTA SESSAO: `gsd-sdk query todo.match-phase 5` devolveu
+  RUIDO — score 0.6 uniforme para todo arquivo que contem a palavra "todo" ou "phase", com
+  title "Untitled" e area "general" em todos. O cruzamento dos 41 pendentes foi refeito A MAO.
+  Somado ao atrito ja conhecido dos handlers state.*, a regra pratica e: nenhum handler do
+  gsd-sdk que LE ou ESCREVE estado curado deve ser usado sem conferencia manual.
+
+  --- historico anterior abaixo ---
 
 Phase: 04 (confiabilidade-das-integra-es) — COMPLETA
 Plan: 38 de 38 executados (04-01..04-38).
