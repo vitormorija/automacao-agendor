@@ -28,7 +28,7 @@
 // contamina a execução vizinha" (caso 'escrita tardia...', CR2-01).
 require('./setup');
 
-const { test, before, after, mock } = require('node:test');
+const { test, before, after, beforeEach, mock } = require('node:test');
 const assert = require('node:assert/strict');
 const { installFakeAxios } = require('./helpers/fakeAxios');
 
@@ -63,8 +63,8 @@ let chamadas205 = 0;
 // ── Cenário espelho (CR2-01): a escrita tardia de A contamina B ──────────────────────
 // Controles com nomes PRÓPRIOS, sem reuso dos dos dois casos acima: os dois cenários medem
 // entrelaçamentos diferentes, e compartilhar contador deixaria a leitura de um refém da
-// ordem do outro. `cenarioAtivo` nasce no valor que os casos existentes medem, e só o caso
-// novo o troca (restaurando ao final).
+// ordem do outro. `cenarioAtivo` nasce no valor que os casos existentes medem, e só o caso do
+// espelho o troca; quem o devolve ao valor neutro é o `beforeEach` abaixo, não o fim do caso.
 let cenarioAtivo = 'limpeza-apaga-leitura';
 let chamadasDealsNoEspelho = 0;
 let liberarDealsDaExecucaoB = null;
@@ -189,6 +189,26 @@ after(() => {
   mock.timers.reset();
 });
 
+// Reafirma o estado NEUTRO do seletor de cenário antes de cada caso, em vez de restaurá-lo na
+// última instrução do corpo do caso do espelho, como este arquivo fazia até o 04-26 (WR3-07).
+// A restauração no caminho feliz NÃO roda quando uma asserção falha antes dela: o routeHandler
+// fica servindo o cenário espelho para os casos seguintes, e o vermelho seguinte chega com a
+// mensagem de outro caso, apontando para um defeito de produção que não existe. Com o hook,
+// existe UM lugar responsável pelo estado.
+//
+// A LISTA É CURTA DE PROPÓSITO, e completá-la TRAVA a suíte (D-WR3-07-c). As outras 7 variáveis
+// de topo (`liberar210`, `liberar205DaExecucaoB`, `chamadas205`, `chamadasDealsNoEspelho`,
+// `liberarDealsDaExecucaoB`, `falhar205DaExecucaoA`, `consultas205NoEspelho`) NÃO são estado de
+// cenário: são estado de ARMAÇÃO. Os pontos de suspensão são armados uma única vez e consumidos
+// ao longo da ordem declarada dos casos, então zerá-los RE-ARMA uma suspensão que ninguém libera.
+// Medido: com as 8 no hook, os casos (2) e (3) deixam de terminar, com
+// `Promise resolution is still pending but the event loop has already resolved`. O conserto
+// correto é escopar a armação por caso — está registrado em
+// `.planning/todos/pending/wr3-07b-estado-de-armacao-em-cacheconcurrency.md`.
+beforeEach(() => {
+  cenarioAtivo = 'limpeza-apaga-leitura';
+});
+
 // Um turno de setImmediate drena TODA a fila de microtasks: os temporizadores são reais (só o
 // relógio está mockado), e o callback da fase de check só roda depois de a fila de microtasks
 // esvaziar. É isso que torna o passo (2) do cenário um FATO — a execução A terá avançado até o
@@ -271,7 +291,7 @@ test('depois do entrelaçamento, uma execução sequencial continua devolvendo o
 });
 
 test('escrita tardia: a falha de UMA execução não pode decidir quem a execução vizinha notifica (CR2-01)', async () => {
-  // (1) Liga o cenário espelho. Só este caso o usa, e ele o restaura no final.
+  // (1) Liga o cenário espelho. Só este caso o usa; o `beforeEach` o devolve ao valor neutro.
   cenarioAtivo = 'falha-tardia';
 
   // (2) A execução A começa e não é aguardada.
@@ -349,7 +369,4 @@ test('escrita tardia: a falha de UMA execução não pode decidir quem a execuç
     2,
     'a execução B precisa RECONSULTAR a categoria: com cache de módulo ela lê o null de A e nem chega a perguntar',
   );
-
-  // (12) Restaura o cenário inicial para não afetar quem rodar depois.
-  cenarioAtivo = 'limpeza-apaga-leitura';
 });
