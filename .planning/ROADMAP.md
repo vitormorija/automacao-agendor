@@ -134,7 +134,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] 04-28-PLAN.md — A supressão TOTAL por categoria indecidível vira erro da rodada: contador próprio, campo de erro, array de erros e log em nível de erro (CR4-01, blocker)
 - [x] 04-29-PLAN.md — Teto de páginas na terceira paginação e guarda de envelope em `getUsers` (WR4-01, WR4-05)
 - [x] 04-30-PLAN.md — Teto de concorrência na consulta de categoria por organização, o único fan-out proporcional ao volume de dados (WR4-04)
-- [ ] 04-31-PLAN.md — A prévia do envio marca quem será notificado, e o botão do painel conta por ela (WR4-06)
+- [x] 04-31-PLAN.md — A prévia do envio marca quem será notificado, e o botão do painel conta por ela (WR4-06)
 - [ ] 04-32-PLAN.md — Responsável sem nome deixa de derrubar o resumo semanal de todos os comerciais (WR4-07)
 - [ ] 04-33-PLAN.md — Comentários da suíte alinhados ao instrumento único e âncoras nomeadas no oráculo de REL-02 (WR4-02, WR4-03)
 - [ ] 04-34-PLAN.md — IN4-02..IN4-06 e os cinco residuais do inventário de irmãos como todos pendentes, e o critério de observabilidade no ROADMAP
@@ -191,7 +191,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | 1. Rede de Testes (Safety-Net) | 5/5 | Complete   | 2026-07-24 |
 | 2. Toolchain de Qualidade & CI | 4/4 | Complete   | 2026-07-29 |
 | 3. Config & Segredos por Ambiente | 7/7 | Complete   | 2026-07-30 |
-| 4. Confiabilidade das Integrações | 30/34 | In Progress|  |
+| 4. Confiabilidade das Integrações | 31/34 | In Progress|  |
 | 5. Logging & Padronização de Erros | 0/TBD | Not started | - |
 | 6. Hardening de Segurança | 0/TBD | Not started | - |
 | 7. Refatoração Incremental de Arquitetura | 0/TBD | Not started | - |

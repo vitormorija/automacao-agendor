@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: "Completed 04-30-PLAN.md — WR4-04 e IN4-01 FECHADOS: a unica borda do modulo com fan-out proporcional ao VOLUME DE DADOS ganhou teto de CONCORRENCIA (LOTE_DE_ORGS), sem mudar o resultado de getStaleDeals, e o lote IRMAO da paginacao esta VERIFICADO por medicao. Suite 178 -> 181, agendor.js 100% linhas / 91,72% branches, lint exit 0. Faltam 04-31..04-34 da gap closure r4. || anterior: Completed 04-29-PLAN.md — WR4-01 e WR4-05 FECHADOS: as TRES paginacoes de agendor.js tem o mesmo teto e o mesmo tratamento de envelope, com as irmas VERIFICADAS por teste e nao presumidas. Suite 174 -> 178, agendor.js em 100% linhas / 91,6% branches, lint exit 0. Faltam 04-30..04-34 da gap closure r4. || anterior: Completed 04-28-PLAN.md — CR4-01 (o BLOCKER da r4) FECHADO. || GAP CLOSURE R4 PLANEJADA E VERIFICADA (2026-08-05): 7 planos aditivos 04-28..04-34 sobre o 04-REVIEW.md round 4. Plan-checker: VERIFICATION PASSED NA PRIMEIRA PASSADA. Cobertura REL-01..06 = 6/6. || FASE 04 REABERTA PELA 4a VEZ pelo code review rodada 4: 1 BLOCKER (CR4-01), 7 warnings e 6 info."
-last_updated: "2026-08-05T15:20:00.000Z"
-last_activity: 2026-08-05 -- 04-30 completo (WR4-04 teto de concorrencia na consulta de categoria + IN4-01 comentario do lote irmao); suite 181/181, lint exit 0
+stopped_at: "Completed 04-31-PLAN.md — WR4-06 FECHADO: a PREVIA do envio (runCheckOnly) passou a MARCAR quem sera notificado, com os MESMOS quatro predicados de runCheck, e o rotulo do botao do painel deixou de contar negocios parados para contar destinatarios. A divergencia entre previa e envio virou VERMELHO (cenarios F e G), nao comentario. Suite 181 -> 183, lint exit 0 no backend e no frontend, build do frontend exit 0. Faltam 04-32..04-34 da gap closure r4. || anterior: Completed 04-30-PLAN.md — WR4-04 e IN4-01 FECHADOS: a unica borda do modulo com fan-out proporcional ao VOLUME DE DADOS ganhou teto de CONCORRENCIA (LOTE_DE_ORGS), sem mudar o resultado de getStaleDeals, e o lote IRMAO da paginacao esta VERIFICADO por medicao. Suite 178 -> 181, agendor.js 100% linhas / 91,72% branches, lint exit 0. Faltam 04-31..04-34 da gap closure r4. || anterior: Completed 04-29-PLAN.md — WR4-01 e WR4-05 FECHADOS: as TRES paginacoes de agendor.js tem o mesmo teto e o mesmo tratamento de envelope, com as irmas VERIFICADAS por teste e nao presumidas. Suite 174 -> 178, agendor.js em 100% linhas / 91,6% branches, lint exit 0. Faltam 04-30..04-34 da gap closure r4. || anterior: Completed 04-28-PLAN.md — CR4-01 (o BLOCKER da r4) FECHADO. || GAP CLOSURE R4 PLANEJADA E VERIFICADA (2026-08-05): 7 planos aditivos 04-28..04-34 sobre o 04-REVIEW.md round 4. Plan-checker: VERIFICATION PASSED NA PRIMEIRA PASSADA. Cobertura REL-01..06 = 6/6. || FASE 04 REABERTA PELA 4a VEZ pelo code review rodada 4: 1 BLOCKER (CR4-01), 7 warnings e 6 info."
+last_updated: "2026-08-05T17:05:00.000Z"
+last_activity: 2026-08-05 -- 04-31 completo (WR4-06: a previa marca quem sera notificado e o botao do painel conta destinatarios); suite 183/183, lint exit 0, build do frontend exit 0
 progress:
   total_phases: 8
   completed_phases: 3
   total_plans: 50
-  completed_plans: 46
+  completed_plans: 47
   percent: 38
 ---
 
@@ -26,8 +26,80 @@ See: .planning/PROJECT.md (updated 2026-07-22)
 ## Current Position
 
 Phase: 04 (confiabilidade-das-integra-es) — gap closure r4 EM EXECUCAO
-Plan: 30 de 34 executados (04-01..04-30). Faltam 04-31..04-34 (gap closure r4).
-Status: WR4-04 E IN4-01 FECHADOS PELO 04-30 (2026-08-05)
+Plan: 31 de 34 executados (04-01..04-31). Faltam 04-32..04-34 (gap closure r4).
+Status: WR4-06 FECHADO PELO 04-31 (2026-08-05)
+
+  O 04-31 fechou o achado em que o ERRO ERA LIDO PELO OPERADOR ANTES DE UMA DECISAO: a previa
+  somente-leitura (runCheckOnly, POST /api/notifications/check) aplicava UM filtro — tarefas
+  futuras — enquanto runCheck aplicava QUATRO guardas antes do envio (dedup do dia, categoria
+  indecidivel, funil sem notificacao ao responsavel, e o else de notificacoes/destinatario). O
+  consumidor nao e tabela decorativa: e o rotulo do botao de disparo, que renderizava
+  literalmente "Enviar notificacoes (N negocios)". A UI prometia N e o envio entregava
+  N menos (indecidiveis + Beefor). Medido na entrada: ZERO casos sobre runCheckOnly em toda a
+  suite, e ZERO ocorrencias de seraNotificado no repositorio.
+  AGORA: runCheckOnly acrescenta `seraNotificado` por negocio — a conjuncao dos MESMOS quatro
+  predicados — e le notify_author e notifications_enabled, como a rodada real. A configuracao de
+  notificacoes entra de proposito (D-WR4-06-b): a pergunta do botao e "quantos vao receber se eu
+  clicar AGORA", e com as notificacoes desligadas a resposta honesta e zero. A dedup e consultada
+  UMA vez por negocio e o valor e reusado pelos dois campos — alreadyNotifiedToday(deal.id)
+  nao-comentario continua em 2, o mesmo valor de entrada (D-WR4-06-c).
+  MARCA, NAO REMOVE (D-WR4-06-a): a lista continua filtrada so por tarefas futuras
+  (futureTasks.has(deal.id) nao-comentario = 1) e o comprimento dela nao muda — e a metade
+  "permanece no painel" da decisao do usuario, e e ela que da sentido ao `total` que o card
+  exibe. O card e o toast continuam contando `total` (D-WR4-06-g): sao perguntas diferentes.
+  O ORACULO E A IGUALDADE, NAO O CAMPO (D-WR4-06-d, a decisao central). Duplicar os predicados
+  cria um segundo lugar para a regra divergir — o mecanismo exato de WR3-01 —, e extrair um
+  predicado compartilhado seria refatoracao estrutural da cadeia de guardas de runCheck, no
+  caminho do Core Value, que a constraint de processo do CLAUDE.md proibe misturar a uma
+  correcao. A resposta foi um oraculo: os cenarios F e G rodam runCheckOnly() e runCheck() contra
+  a MESMA armacao e exigem que o conjunto de ids PROMETIDOS seja IGUAL ao conjunto de ids
+  NOTIFICADOS de fato — medido pela linha 'sent' no notification_log, e NAO por r.notified, que e
+  contador e nao diz QUAIS. Cada caso tem guarda de NAO-VACUIDADE (o conjunto prometido e
+  asserido contra [segundo]), senao dois conjuntos vazios satisfariam a igualdade.
+  O SIMETRICO E DE FILTRO, NAO DE POSICAO, e e ele que fecha o achado: F cobre o filtro do
+  achado (categoria indecidivel, do 04-20) e G cobre o funil Beefor, ANTERIOR ao 04-20. Sem o G,
+  um conserto que tratasse so `categoriaIndecidivel` ficaria verde e a previa continuaria
+  mentindo pelo funil. Ordem fixada por D-WR4-06-e: runCheckOnly() ANTES de runCheck(), porque a
+  previa e somente leitura e o envio grava — invertida, a linha 'sent' mudaria a resposta da
+  dedup DENTRO da previa e o oraculo mediria o rastro do proprio teste.
+  RED literal, previsao do plano batendo nos dois: F e G vermelhos na PRIMEIRA assercao sobre
+  seraNotificado, com `+ undefined / - expected false`, e A a E verdes. A condicao de PARAR
+  ("se algum ficar verde, o campo ja existe por caminho nao medido") nao foi atingida.
+  FRONTEND: aNotificarCount conta os itens com seraNotificado verdadeiro, com FALLBACK para
+  `total` quando nenhum item traz o campo (D-WR4-06-f) — a resposta anterior e restaurada de
+  localStorage sob `dashboard_check_cache` ao montar, entao logo apos o deploy o painel pode
+  renderizar uma resposta de backend antigo; sem fallback o botao diria ZERO e o operador
+  concluiria que nao ha ninguem a notificar. O rotulo passou a dizer "(N a notificar)".
+  TODOS OS NUMEROS PRESCRITOS BATERAM, inclusive `git diff | grep -c "results\."` = 0 no comando
+  LITERAL do plano (sem precisar de -U0, ao contrario do 04-30) — runCheck ficou byte a byte.
+  Invariantes de scheduler.js preservadas e medidas: 1 catch (erroDeRegistro), 2
+  results.notified++, 3 continue;, 3 skipReason, 3 skippedCategoriaIndecidivel, 1
+  futureTasks.has(deal.id), 2 alreadyNotifiedToday(deal.id), 1 seraNotificado nao-comentario.
+  agendor.js, routes/notifications.js e os todos: AUSENTES do diff.
+  UMA DIVERGENCIA DE MEDICAO, registrada e nao forcada: `grep -c "checkResult.total"` no
+  Dashboard.jsx da 2 como o plano previa, mas por COMPOSICAO DIFERENTE — o plano dizia "o card e
+  o toast", e o toast usa `result.total` (sem o prefixo `checkResult`), que o padrao nao casa; os
+  2 sao o card e o FALLBACK novo. Numero igual, motivo diferente. Segunda medicao ajustada: o
+  inventario dizia que nenhum texto do DealsList.jsx usa "notificar" para prometer envio, e a
+  palavra APARECE uma vez — em "(sem notificacao)", que DECLARA uma exclusao em vez de prometer
+  um envio, e a exclusao declarada e justamente a de tarefas futuras, o unico filtro que a previa
+  ja aplicava. A classificacao verificada-e-sa sobrevive por outra medicao, mais forte: nem
+  DealsList.jsx nem ReportPanel.jsx tem botao de disparo (0 chamadas a notifications/run|check).
+  in3-08 CONTINUA ABERTO E NAO FOI TOCADO, por decisao registrada: shouldNotifyOwner transforma
+  funil ausente em string vazia e por isso NOTIFICA; conserta-lo mudaria QUEM RECEBE, esta pinado
+  como quirk em agendor.funnel.test.js, e a pergunta central e de DIRECAO (fail-open ou fail-safe
+  para os filtros de elegibilidade), reservada ao usuario. Este plano o ALCANCA sem o consertar:
+  a previa passou a EXIBIR o resultado de shouldNotifyOwner, tornando o efeito visivel.
+  ZERO DESVIOS: nenhuma Rule 1-4 acionada, nenhum pacote instalado, package.json e lockfiles
+  intocados. Suite 181 -> 183 (os 2 novos sao F e G), cobertura exit 0, lint exit 0 no backend
+  (44 warnings) e no frontend (60 warnings), `npm run build` exit 0.
+  ATENCAO PARA QUEM SEGUIR: os cenarios F e G sao o UNICO lugar da suite que compara a PREVIA com
+  o ENVIO. Quem acrescentar uma quinta guarda a runCheck e NAO acrescentar o predicado
+  correspondente a runCheckOnly deixa os dois vermelhos — e essa e a funcao deles. Nao
+  "simplificar" a guarda de nao-vacuidade nem inverter a ordem das duas chamadas.
+  Commits: 15f534a (RED), 1b82e39 (GREEN), ca05995 (frontend).
+
+Status anterior: WR4-04 E IN4-01 FECHADOS PELO 04-30 (2026-08-05)
 
   O 04-30 fechou o achado que nasceu como CONSEQUENCIA NAO AVALIADA do 04-19: o retry da borda
   entrou no UNICO ponto do modulo cujo fan-out e proporcional ao VOLUME DE DADOS. getOrgCategory
