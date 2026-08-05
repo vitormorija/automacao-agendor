@@ -40,7 +40,12 @@ async function getUsers() {
     const { data } = await fetchWithRetry(() =>
       api.get('/users', { params: { page, per_page: 100 } }),
     );
-    for (const user of data.data) {
+    // Guarda de envelope (WR4-05). Das três paginações do módulo esta era a ÚNICA sem fallback:
+    // uma resposta bem-sucedida no envelope mas sem a chave `data` produzia um TypeError que não
+    // é capturado em lugar nenhum desta função e subia pelo Promise.all de runCheck, abortando a
+    // rodada ANTES do laço de envio. Resolver com o que a borda entregou é o desfecho certo —
+    // sem `data` também não há `links.next`, então o laço encerra no `break` da mesma volta.
+    for (const user of data.data || []) {
       users[user.id] = {
         id: user.id,
         name: user.name,
@@ -54,10 +59,12 @@ async function getUsers() {
   // não-terminação chega aqui. A forma importa: um `break` no lugar deste `throw` devolveria
   // um dicionário PARCIAL, e um responsável ausente dele perde o e-mail em silêncio.
   //
-  // Por que getStaleDeals NÃO recebe teto: ela deriva `totalPages` de `meta.totalCount` e
-  // percorre um `for` sobre um array finito de páginas — é limitada por construção, e não
-  // existe ali condição de parada vinda da resposta a ser frustrada. A ausência do teto lá é
-  // decisão registrada, não esquecimento.
+  // Por que getStaleDeals TAMBÉM recebe teto (WR4-01): a redação anterior deste parágrafo dizia
+  // que ela era limitada por construção, porque percorre um `for` sobre um array finito de
+  // páginas. O array é finito, mas o seu COMPRIMENTO é derivado de `meta.totalCount`, um valor
+  // que vem da RESPOSTA da borda — do mesmo lado da fronteira de onde vêm as condições de parada
+  // das outras duas paginações. A premissa de regressão de terceiro que sustenta este teto cobre
+  // igualmente aquele laço, e por isso a terceira borda passou a usar a MESMA constante.
   if (page > MAX_PAGES) {
     throw new Error(
       `[Agendor] paginação de /users excedeu ${MAX_PAGES} páginas — a borda pode estar ignorando o parâmetro page`,
@@ -265,6 +272,20 @@ async function getStaleDeals(staleDays = 15) {
   const firstPage = await fetchDealsPage(1, perPage);
   const totalCount = firstPage.meta?.totalCount || 0;
   const totalPages = Math.ceil(totalCount / perPage);
+
+  // Teto da TERCEIRA paginação (WR4-01). O array de páginas é finito, mas o seu COMPRIMENTO vem
+  // de `meta.totalCount`, um valor da RESPOSTA: a mesma premissa de regressão de borda que
+  // sustenta o teto das outras duas paginações cobre igualmente esta. A verificação vem ANTES do
+  // `Array.from` de propósito — um total anunciado grande aloca o array inteiro antes de qualquer
+  // requisição, e essa alocação sozinha já é um modo de falha contra o `max_memory_restart` do
+  // ecosystem.config.js. E a forma é `throw`, nunca `Math.min(totalPages, MAX_PAGES)`: truncar
+  // trocaria a não-terminação por um resultado PARCIAL silencioso — a mesma direção de falha,
+  // só que mais difícil de perceber.
+  if (totalPages > MAX_PAGES) {
+    throw new Error(
+      `[Agendor] /deals anunciou ${totalPages} páginas (> ${MAX_PAGES}) — meta.totalCount não parece corresponder ao filtro enviado`,
+    );
+  }
 
   // Busca todas as páginas restantes em paralelo (batches de 10)
   const allRawDeals = [...(firstPage.data || [])];
