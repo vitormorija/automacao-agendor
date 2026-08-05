@@ -23,17 +23,15 @@ Antes de qualquer mudança, existir uma **rede de testes automatizados sobre a l
 - ✓ Auth: login com bcrypt, rate-limit por IP, reset de senha, CRUD de usuários — existing (`routes/auth.js`)
 - ✓ Config runtime como key-value em SQLite, editável pela UI (SMTP, cron, threshold) — existing (`db.js`, `routes/config.js`)
 - ✓ Boot falha rápido se `JWT_SECRET` ausente/fraco — existing (`secret.js`)
-- ✓ Rede de testes de caracterização sobre a lógica crítica de notificação (getStaleDeals, dedup, supressão por funil, auth) — Validado na Phase 1 (`backend/test/`, 28 testes via `node:test`)
+- ✓ Rede de testes de caracterização sobre a lógica crítica de notificação (getStaleDeals, dedup, supressão por funil, auth) — Validado na Phase 1 (`backend/test/`, 28 testes via `node:test`); ampliada para **196 testes** até a Phase 4
+- ✓ Toolchain de qualidade (Biome) + CI bloqueando PR com falha — Validado na Phase 2
+- ✓ Segredos fora do código, `.env.example` e validação no boot — Validado na Phase 3 (a exposição histórica do token permanece aberta como SEC-01, risco aceito)
+- ✓ Timeouts e tratamento de falha nas integrações de saída (Agendor HTTP, SMTP) e no cron — Validado na Phase 4 (REL-01..REL-06, 8/8 Success Criteria conferidos contra o código; 38 planos e 5 rodadas de code review)
 
 ### Active
 
 <!-- Metas desta etapa de estabilização. Ordem reflete dependência: testes primeiro. -->
 
-- [ ] Toolchain de qualidade: lint, formatação e runner de testes configurados no backend e frontend
-- [ ] CI: pipeline (lint + testes + build) rodando e passando em cada PR
-- [ ] Remover segredos e config hardcoded do código (token Agendor, credenciais SMTP, etc.) → env por ambiente, fora do git
-- [ ] Config por ambiente: separação clara dev vs produção (alvo único: PM2)
-- [ ] Timeouts e tratamento de falha nas integrações de saída (Agendor HTTP, SMTP) e no cron
 - [ ] Padronizar logging (eliminar `console.*` residual em favor do `logger` estruturado) e tratamento de erros
 - [ ] Fechar riscos de segurança do CONCERNS.md que **não** alteram comportamento (ex.: timeouts, permissões de arquivo do DB/backup)
 - [ ] Reorganização incremental de arquitetura/responsabilidades (ex.: extrair `getEnrichedStaleDeals`, tirar lógica de agregação das rotas) — sem alterar comportamento
