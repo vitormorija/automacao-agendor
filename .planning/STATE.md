@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: 04-25 COMPLETO — WR3-06 FECHADO (teto de paginas com falha explicita nas duas paginacoes sem limite)
-stopped_at: Completed 04-24-PLAN.md
-last_updated: "2026-08-05T06:22:33.463Z"
-last_activity: "2026-08-05 -- 04-25 completo (WR3-06: teto de paginas com falha explicita nas duas paginacoes sem limite); suite 168 -> 172"
+status: 04-26 COMPLETO — WR3-04, WR3-05 e WR3-07 FECHADOS (higiene do instrumento de teste)
+stopped_at: Completed 04-26-PLAN.md
+last_updated: "2026-08-05T06:36:24.154Z"
+last_activity: "2026-08-05 -- 04-26 completo (WR3-04 + WR3-05 + WR3-07: higiene do instrumento de teste, diff de producao ZERO); suite 172 -> 172"
 progress:
   total_phases: 8
   completed_phases: 3
   total_plans: 43
-  completed_plans: 41
+  completed_plans: 42
   percent: 38
 ---
 
@@ -26,8 +26,72 @@ See: .planning/PROJECT.md (updated 2026-07-22)
 ## Current Position
 
 Phase: 04 (confiabilidade-das-integra-es) — gap closure r3 EM EXECUCAO
-Plan: 25 de 27 executados (04-01..04-25). Faltam 04-26 e 04-27 (gap closure r3).
-Status: 04-25 COMPLETO — WR3-06 FECHADO (teto de paginas com falha explicita nas duas paginacoes sem limite)
+Plan: 26 de 27 executados (04-01..04-26). Falta 04-27 (gap closure r3).
+Status: 04-26 COMPLETO — WR3-04, WR3-05 e WR3-07 FECHADOS (higiene do instrumento de teste)
+
+  O 04-26 fechou os TRES achados da rodada 3 sobre o INSTRUMENTO, nao sobre o produto. Os
+  tres produzem o mesmo dano: um vermelho atribuido ao ATOR ERRADO, apontando para um
+  defeito de producao que nao existe — numa suite que existe para ser o oraculo de quem e
+  notificado, isso corroi a confianca em tudo o mais. DIFF DE PRODUCAO ZERO, medido sobre
+  os tres commits (git diff --name-only HEAD~3 HEAD -- backend/src/ VAZIO), e ZERO
+  assercoes alteradas nos seis arquivos de teste.
+  WR3-04: tres arquivos habilitavam o relogio falso UMA VEZ num `before` de topo, entao
+  cada tick(10000) de avancarRelogioAte (ate 200s por chamada) deixava o relogio adiantado
+  para o caso seguinte — e o cutoff de 15 dias anda junto com ele. O precedente ja estava
+  medido em agendor.retry429.test.js: 30s de adiantamento trouxeram os deals de fronteira
+  102 e 104 para DENTRO do golden. Agora o enable vive no beforeEach, precedido de
+  mock.timers.reset() (enable() lanca sobre timers ja habilitados). `before(` de topo = 0
+  nos tres. O VIZINHO entrou: o review nomeava so os dois criados na rodada 2, mas o
+  defeito foi COPIADO de partialFailure — corrigir so os nomeados repetiria pela quarta vez
+  o padrao que reabriu esta fase tres vezes.
+  WR3-05: a copia local de avancarRelogioAte em emailer.timeout.test.js (o oraculo de
+  REL-02) mantinha o defeito que o 04-13 corrigiu no helper compartilhado — `then` de UM
+  argumento, que deixa a promessa derivada orfa na rejeicao e faz o node:test creditar a
+  falha ao caso VIZINHO. O motivo de manter a copia (nao trocar instrumento e objeto medido
+  na mesma rodada) EXPIROU quando o 04-17 terminou de mexer no emailer.js. Agora
+  helpers/fakeTimers.js e a UNICA implementacao em circulacao, e o VIZINHO entrou: a nota de
+  topo do helper deixou de declarar a duplicacao como deliberada (diff do helper: 0 linhas
+  nao-comentario).
+  WR3-07: os dois arquivos de cache restauravam o estado global na ULTIMA instrucao do corpo
+  do test() — restauracao no CAMINHO FELIZ, que nao roda quando uma assercao falha antes
+  dela. Agora ha UM responsavel pelo estado em cada arquivo. Em cacheInvalidation o escopo
+  foi COMPLETO (D-WR3-07-b): as TRES variaveis lidas pelo routeHandler no hook —
+  dealsServidos, orgQueFalha e delete ORG_CATEGORY[201] —, e o VIZINHO aqui sao a segunda e
+  a terceira, que o texto do achado nao citava. O `orgQueFalha = null` do MEIO do cenario (3)
+  FICOU: ele nao e limpeza, e o passo em que a API volta a responder.
+  D-WR3-07-c RESPEITADA E NAO 'COMPLETADA': em cacheConcurrency o beforeEach tem EXATAMENTE
+  UMA atribuicao (cenarioAtivo). As outras 7 variaveis sao estado de ARMACAO, nao de
+  cenario: os pontos de suspensao sao armados uma vez e consumidos ao longo da ordem
+  declarada dos casos, e zera-los RE-ARMA uma suspensao que ninguem libera — os casos (2) e
+  (3) DEIXAM DE TERMINAR ('Promise resolution is still pending but the event loop has
+  already resolved'). Isso foi MEDIDO no planejamento, nao inferido. O que ficou de fora tem
+  dono: .planning/todos/pending/wr3-07b-estado-de-armacao-em-cacheconcurrency.md (69 linhas),
+  prioridade baixa, com a mensagem literal e a indicacao de que o conserto correto e escopar
+  a armacao por caso (redesenho do arquivo), nao um hook.
+  NENHUM CASO DEPENDIA DA CONTAMINACAO — a pergunta que a acao mandava PARAR e reportar. Os
+  dois arquivos de cache ficaram 3/3 e os tres de notificationStatus 3/3 cada, sem edicao de
+  assercao, ou seja, nenhum carregava o adiantamento do relogio como pre-condicao implicita.
+  CENARIO SIMETRICO: ausente POR JUSTIFICATIVA ESCRITA no objetivo do plano — nenhuma das
+  tres correcoes introduz ou altera ramificacao de comportamento, entao nao existe 'direcao
+  oposta' de um beforeEach; o que se poderia asserir sobre ele e a suite continuar verde com
+  o MESMO numero de casos, e isso foi criterio de aceite nas tres tasks. O que existe e o
+  VIZINHO, e os tres entraram como trabalho obrigatorio.
+  ARMADILHA DE MEDICAO CONFIRMADA (a que o plano avisou): uma varredura ingenua por
+  'setTimeout' em `before` de topo acusa 3 arquivos (notificationStatus.test.js,
+  scheduler.failsafe, scheduler.resilience). Os tres sao FALSO POSITIVO — a palavra aparece
+  dentro de um comentario preexistente que explica por que so 'Date' e habilitado ali.
+  Filtrando comentario: ZERO. D-WR3-04-b confirmada.
+  UMA DIVERGENCIA, de escopo e para MENOS: o biome format refluiu dois `new Error(...)`
+  PREEXISTENTES de canalParcial, alheios a hooks. Foram DEVOLVIDOS ao estado original para
+  que o diff dos seis arquivos seja estritamente hooks, importacoes e comentario, como a
+  acao do plano exige. Divida de formatacao preexistente registrada, nao silenciada.
+  Todo in2-02 MOVIDO para .planning/todos/completed/ com o desfecho anotado (a correcao foi
+  aplicada nos TRES arquivos, nao so no partialFailure que ele nomeava). NENHUM outro todo
+  editado: in-01, rel-02b e sec-01 mantem prioridade e estado por decisao do usuario.
+  SEC-01 permanece ABERTO (decisao C8) — nao tocado, nao declarado resolvido.
+  Suite 172 -> 172 (o plano nao acrescenta casos), cobertura exit 0 (agendor.js 90,69%
+  linhas / 88,42% branches, inalterada), lint exit 0 (44 warnings, baseline).
+  Commits: 44c3e5c (WR3-04), 46cf90a (WR3-05), 3c94508 (WR3-07).
 
   O 04-25 fechou WR3-06, o unico achado da rodada 3 que era PRE-EXISTENTE e nunca fora
   avaliado por nenhum plano da fase — apesar de a fase inteira ter sido escrita em torno
@@ -689,9 +753,9 @@ Origem: CODE REVIEW RODADA 3 (2026-08-05)
   checkpoints bloqueantes: C9, C10, C11).
   A rodada 1 esta preservada em 04-REVIEW-r1.md (origem dos planos 04-08..04-11).
   SEC-01 permanece ABERTO como risco conscientemente aceito (decisao C8) — nao marcar resolvido.
-Last activity: 2026-08-05 -- 04-25 completo (WR3-06: teto de paginas com falha explicita nas duas paginacoes sem limite); suite 168 -> 172
+Last activity: 2026-08-05 -- 04-26 completo (WR3-04 + WR3-05 + WR3-07: higiene do instrumento de teste, diff de producao ZERO); suite 172 -> 172
 
-Progress: [██████████] 95%
+Progress: [██████████] 98%
 
 ## Performance Metrics
 
@@ -752,6 +816,7 @@ Progress: [██████████] 95%
 | Phase 04 P23 | 12 | 2 tasks | 2 files |
 | Phase 04 P24 | 14min | 2 tasks | 3 files |
 | Phase 04 P25 | 16min | 2 tasks | 2 files |
+| Phase 04 P26 | 21min | 3 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -896,6 +961,9 @@ Recent decisions affecting current work:
 - [Phase ?]: 04-23 (WR3-02): a leitura de dedup vive num try/catch proprio com a variavel em false — falhar a leitura significa NOTIFICAR (direcao do fail-safe decidida em C10); a magnitude que C10 nao cobria (a rodada inteira, nao uma linha) esta registrada no comentario do codigo
 - [Phase ?]: 04-23 (D-WR3-02-d): runCheckOnly NAO entra no escopo — e a previa somente-leitura do painel e uma falha la vira erro HTTP visivel, nao silencio; por isso o total nao-comentario de alreadyNotifiedToday(deal.id) continua 2
 - [Phase ?]: 04-25 (WR3-06): MAX_PAGES = 200 exportada e compartilhada pelas duas paginacoes que encerram por condicao vinda da resposta; teto com throw DEPOIS do laco (nunca break, que trocaria nao-terminacao por resultado parcial silencioso); getStaleDeals NAO recebe teto, com a justificativa escrita no codigo
+- [Phase 04]: [04-26]: D-WR3-07-c respeitada e NAO 'completada' — o beforeEach de agendor.cacheConcurrency.test.js tem EXATAMENTE uma atribuicao (cenarioAtivo); as outras 7 sao estado de ARMACAO e zera-las faz os casos (2) e (3) DEIXAREM DE TERMINAR ('Promise resolution is still pending'). Registrado como todo wr3-07b
+- [Phase 04]: [04-26]: backend/test/helpers/fakeTimers.js e a UNICA implementacao de avancarRelogioAte da suite — a copia local do oraculo de REL-02 foi removida (WR3-05) e a nota de topo do helper deixou de declarar a duplicacao como deliberada
+- [Phase 04]: [04-26]: restauracao de estado global no fim do corpo de um test() e restauracao no CAMINHO FELIZ — nao roda se uma assercao falha antes. O lugar correto e um beforeEach que REAFIRMA o valor neutro (WR3-07)
 
 ### Pending Todos
 
@@ -948,6 +1016,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-05T06:10:21.538Z
+Last session: 2026-08-05T06:34:57.235Z
 Stopped at: Completed 04-24-PLAN.md
 Resume file: None
