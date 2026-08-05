@@ -75,11 +75,13 @@ Antes de qualquer mudança, existir uma **rede de testes automatizados sobre a l
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| Testes de caracterização antes de qualquer refatoração | Rede de segurança para não regredir regras de notificação | — Pending |
-| Mudanças que alteram comportamento só com teste do novo fluxo | Preservar comportamento observável; evitar surpresas em produção | — Pending |
-| Config por ambiente para 1 alvo (produção PM2), sem staging | Realidade do deploy atual; não inventar infra que não existe | — Pending |
-| Segredos fora do git, via env por ambiente | Fechar vazamento de token Agendor/SMTP do repositório | — Pending |
-| Adiar novas features até estabilização concluída | Não misturar refatoração com feature; base segura primeiro | — Pending |
+| Testes de caracterização antes de qualquer refatoração | Rede de segurança para não regredir regras de notificação | ✓ Validada (Fases 1–4) — a rede saiu de 0 para 196 testes e foi ela que sustentou 38 planos e 5 rodadas de review sem regressão silenciosa |
+| Mudanças que alteram comportamento só com teste do novo fluxo | Preservar comportamento observável; evitar surpresas em produção | ✓ Validada (Fase 4) — toda mudança de "quem recebe" entrou com RED medido antes do GREEN; os casos que pinavam o comportamento antigo foram reescritos explicitamente, nunca apagados |
+| Config por ambiente para 1 alvo (produção PM2), sem staging | Realidade do deploy atual; não inventar infra que não existe | ✓ Validada (Fase 3) |
+| Segredos fora do git, via env por ambiente | Fechar vazamento de token Agendor/SMTP do repositório | ◐ Parcial — o código não tem mais segredo hardcoded (Fase 3) e a Fase 4 fechou a gravação do token em disco pelo log de erro (CR-02). **SEC-01 segue aberto**: o token continua exposto no histórico do repo público, e só a rotação no painel da Agendor encerra isso (risco aceito, decisão C8) |
+| Adiar novas features até estabilização concluída | Não misturar refatoração com feature; base segura primeiro | ✓ Sustentada — 4 fases sem feature nova |
+| Achado de code review vira plano com RED medido, não correção direta | Cinco rodadas na Fase 4 mostraram que o conserto "óbvio" abre o vizinho: CR3-01 gerou CR4-01, que gerou CR5-01 | ✓ Validada (Fase 4) — cada blocker foi reproduzido por sonda antes de corrigido |
+| Todo conserto lista suas construções gêmeas ("inventário de irmãos") | O padrão que reabriu a Fase 4 quatro vezes foi sempre código vizinho não olhado, não input não testado | ✓ Validada (Fase 4, r4–r5) — produziu achados que 4 rodadas de review não tinham encontrado; ampliado com direção reversa e retroatividade da justificativa |
 
 ## Evolution
 
