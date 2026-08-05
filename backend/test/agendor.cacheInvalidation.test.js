@@ -6,22 +6,23 @@
 //       'Parceiro' continua sendo notificada indefinidamente;
 //   (2) dentro de UMA execução cada organização única é consultada exatamente uma vez —
 //       a invalidação não pode custar uma chamada por deal;
-//   (3) o `null` que o catch de getOrgCategory (agendor.js:56-59) grava quando a consulta
-//       falha não contamina as rodadas seguintes — hoje um erro transitório de UMA consulta
-//       apaga a categoria daquela organização para todas as rodadas do processo.
+//   (3) o `null` que o catch de getOrgCategory grava quando a consulta falha morre com a
+//       execução que o gravou, porque o cache é DELA — antes da correção esse `null` ficava
+//       num dicionário de módulo e um erro transitório de UMA consulta apagava a categoria
+//       daquela organização para todas as rodadas do processo.
 //
-// Por que a invalidação DELETA AS CHAVES e não reatribui o objeto: getOrgCategory
-// (agendor.js:50) é o único leitor e o único escritor do dicionário, e fecha sobre a MESMA
-// referência — reatribuir deixaria a limpeza escrevendo num objeto novo enquanto
-// getOrgCategory segue lendo o antigo, e a invalidação não aconteceria.
+// Como REL-04 é entregue: cada execução de getStaleDeals cria o seu próprio Map de
+// categorias e o passa a getOrgCategory. Não há limpeza a fazer na entrada da função porque
+// não há estado compartilhado entre rodadas — o refetch é estrutural (CR2-01). A redação
+// anterior deste cabeçalho descrevia uma invalidação por delete de chave que não existe mais.
 //
 // ESCOPO DESTE ARQUIVO: exclusivamente o refetch ENTRE execuções SEQUENCIAIS. Os três
 // cenários abaixo rodam getStaleDeals uma execução por vez e nada afirmam sobre execuções
-// sobrepostas — essa garantia mora em agendor.cacheConcurrency.test.js (CR-01), que pina o
-// fato de o laço de enriquecimento consumir um mapa LOCAL à execução em vez de reler o
-// dicionário de módulo. O detector do afrouxamento da exclusão por categoria continua sendo
-// o golden `[101, 103]` de agendor.getStaleDeals.test.js:61 — este arquivo não o substitui,
-// soma-se a ele.
+// SOBREPOSTAS — essa garantia mora em agendor.cacheConcurrency.test.js, que hoje cobre as
+// DUAS direções do entrelaçamento: "a limpeza apaga a leitura futura" (CR-01) e "a escrita
+// tardia de uma execução contamina a vizinha" (CR2-01). O detector do afrouxamento da
+// exclusão por categoria continua sendo o golden `[101, 103]` de
+// agendor.getStaleDeals.test.js — este arquivo não o substitui, soma-se a ele.
 require('./setup');
 
 const { test, before, after, beforeEach, mock } = require('node:test');
@@ -119,7 +120,8 @@ const ORGS_DOS_DEALS_STALE = [201, 203, 205, 206, 207, 210];
 // consultas de uma execução e por isso precisa do cache FRIO — no estado sem invalidação
 // (RED) qualquer caso anterior já teria populado o cache e a contagem cairia para zero,
 // transformando um caso que deve passar em falha por contaminação. Por isso ele vem
-// primeiro. Em GREEN a ordem é indiferente, já que cada execução começa limpando o cache.
+// primeiro. Em GREEN a ordem é indiferente, já que cada execução nasce com o seu próprio
+// cache de categorias, vazio.
 
 test('cenário (2): dentro de UMA execução, cada organização única é consultada exatamente uma vez', async () => {
   fake.get.mock.resetCalls();
@@ -129,9 +131,9 @@ test('cenário (2): dentro de UMA execução, cada organização única é consu
     .map((c) => c.arguments[0])
     .filter((url) => url.startsWith('/organizations/'));
 
-  // Contado, não inferido: se a invalidação por execução fosse implementada como uma
-  // limpeza DENTRO do laço de enriquecimento (ou se o Promise.all de agendor.js:187
-  // deixasse de deduplicar), o número saltaria para uma chamada por deal stale.
+  // Contado, não inferido: se o cache de categorias passasse a nascer DENTRO do laço de
+  // enriquecimento (ou se o Promise.all sobre `uniqueOrgIds` em getStaleDeals deixasse de
+  // deduplicar), o número saltaria para uma chamada por deal stale.
   assert.equal(urlsDeOrganizacao.length, ORGS_DOS_DEALS_STALE.length);
 
   // Nenhuma url de organização repetida na mesma execução.

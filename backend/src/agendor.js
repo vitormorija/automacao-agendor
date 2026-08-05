@@ -44,18 +44,22 @@ async function getUsers() {
   return users;
 }
 
-// Busca categoria de uma organização pelo ID (com cache)
-const orgCategoryCache = {};
-async function getOrgCategory(orgId) {
+// Busca categoria de uma organização pelo ID, memoizando no `cache` DA EXECUÇÃO que chamou.
+// O cache vem por parâmetro de propósito (CR2-01): não existe mais dicionário de módulo, e
+// portanto não existe mais como o resultado de uma rodada atravessar para outra. Quem cria o
+// cache é getStaleDeals — ver o comentário na fase de consulta de categorias, lá embaixo.
+// O valor guardado continua sendo `string | null`, e a falha continua sendo ENGOLIDA: o
+// `null` do catch é a categoria "desconhecida" daquela execução, e só dela.
+async function getOrgCategory(orgId, cache) {
   if (!orgId) return null;
-  if (orgCategoryCache[orgId] !== undefined) return orgCategoryCache[orgId];
+  if (cache.has(orgId)) return cache.get(orgId);
   try {
     const { data } = await api.get(`/organizations/${orgId}`);
     const category = data.data?.category?.name || null;
-    orgCategoryCache[orgId] = category;
+    cache.set(orgId, category);
     return category;
   } catch {
-    orgCategoryCache[orgId] = null;
+    cache.set(orgId, null);
     return null;
   }
 }
@@ -179,31 +183,6 @@ async function fetchDealsPage(page, perPage, retries = 3) {
 
 // Busca negócios criados a partir de 2026, em andamento, com paginação paralela
 async function getStaleDeals(staleDays = 15) {
-  // Invalidação do cache de categorias por EXECUÇÃO (REL-04 / Decisão D-05). Sem isto o
-  // orgCategoryCache é estado de módulo que nunca expira: uma organização recategorizada
-  // para 'Parceiro' no Agendor continuaria sendo notificada até o próximo restart do
-  // processo — sob PM2 single-instance, potencialmente por semanas. Limpar aqui também
-  // zera o `null` que o catch de getOrgCategory (:56-59) grava quando a consulta falha,
-  // que hoje faz UM erro transitório apagar a categoria daquela organização em TODAS as
-  // rodadas seguintes. Dentro da rodada nada se perde: o Promise.all de :211 consulta
-  // cada organização única uma única vez.
-  //
-  // Deleta as CHAVES; NÃO reatribui. getOrgCategory (:50) é o ÚNICO leitor e o único
-  // escritor deste dicionário, e ele fecha sobre ESTA referência: reatribuir a um objeto
-  // vazio deixaria a limpeza escrevendo em um objeto novo enquanto getOrgCategory continua
-  // lendo o antigo, e a invalidação simplesmente não aconteceria.
-  //
-  // O que impede duas execuções SOBREPOSTAS de apagarem o dado uma da outra NÃO é a forma
-  // da limpeza — é o mapa `categoriaPorOrg` local à execução (:211), que o laço de
-  // enriquecimento consome. Enquanto o laço relia este dicionário compartilhado, bastava a
-  // execução B começar (e limpar) entre a população e a leitura da execução A para a leitura
-  // de A dar `undefined`, `?? null` virar `null`, `EXCLUDED_CATEGORIES.includes(null)` ser
-  // `false` e uma organização excluída ser notificada (CR-01). Essa propriedade é pinada por
-  // backend/test/agendor.cacheConcurrency.test.js — não voltar a ler estado de módulo aqui.
-  for (const orgId of Object.keys(orgCategoryCache)) {
-    delete orgCategoryCache[orgId];
-  }
-
   const cutoffDate = new Date(Date.now() - staleDays * 24 * 60 * 60 * 1000);
   const startOf2026 = new Date('2026-01-01T00:00:00.000Z');
   const perPage = 100;
@@ -241,9 +220,32 @@ async function getStaleDeals(staleDays = 15) {
   const uniqueOrgIds = [
     ...new Set(staleRaw.map((d) => d.organization?.id).filter(Boolean)),
   ];
+  // Cache de categorias POR EXECUÇÃO (REL-04 / Decisão D-05 / CR2-01). Ele nasce aqui dentro
+  // e morre com a rodada que o criou. É isso que entrega REL-04: uma organização
+  // recategorizada no Agendor vale já na execução seguinte, porque a seguinte não tem nada
+  // herdado para servir; e o `null` que o catch de getOrgCategory grava num erro transitório
+  // morre junto com a execução que falhou, em vez de decidir quem OUTRA rodada notifica.
+  //
+  // NÃO existe mais limpeza na entrada desta função porque não existe mais estado
+  // compartilhado para limpar. Enquanto o cache era um dicionário de módulo, a limpeza podia
+  // ser VENCIDA por uma escrita tardia: uma execução ainda em voo gravava sua categoria (ou
+  // o `null` do seu erro) DEPOIS de a rodada vizinha ter limpado, a vizinha lia esse valor
+  // sem consultar a API, `EXCLUDED_CATEGORIES.includes(null)` dava `false` e uma organização
+  // 'Parceiro' era notificada por uma rodada que não falhou em nada (CR2-01). Agora o
+  // refetch entre execuções é estrutural, e não uma corrida que dá para perder. As duas
+  // direções do entrelaçamento estão pinadas por backend/test/agendor.cacheConcurrency.test.js,
+  // e o refetch entre rodadas sequenciais por backend/test/agendor.cacheInvalidation.test.js.
+  //
+  // A eficiência dentro da rodada não muda: o Promise.all abaixo percorre `uniqueOrgIds`, que
+  // já deduplicou as organizações antes de qualquer consulta — uma chamada por organização
+  // única, nunca uma por deal.
+  const cacheDaExecucao = new Map();
   const categoriaPorOrg = new Map(
     await Promise.all(
-      uniqueOrgIds.map(async (id) => [id, await getOrgCategory(id)]),
+      uniqueOrgIds.map(async (id) => [
+        id,
+        await getOrgCategory(id, cacheDaExecucao),
+      ]),
     ),
   );
 
