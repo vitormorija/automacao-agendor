@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: "GAP CLOSURE R5 EM ANDAMENTO: o 04-36 fechou o BLOCKER CR5-01 (a chave `skipped` significava recusa do lock E contador de pulados; o toast do disparo manual saia vermelho e vazio). Suite 192 -> 194 verdes, lint backend/frontend exit 0, build do frontend exit 0. A FASE 04 CONTINUA REABERTA: faltam o 04-37 (WR5-01 + reescrita do todo cr4-01b) e o 04-38 (WR5-02..WR5-05 e IN5-01..IN5-04). Proximo: /gsd:execute-phase 4 (plano 04-37)."
-last_updated: "2026-08-05T17:30:00.000Z"
-last_activity: 2026-08-05 -- 04-36 executado (CR5-01 fechado); fase 04 segue reaberta, faltam 04-37 e 04-38
+stopped_at: "GAP CLOSURE R5 EM ANDAMENTO: o 04-37 fechou WR5-01 (o alarme de supressao total era desarmado por QUALQUER `continue` anterior — a dedup do dia inclusive; o numerador passou para o topo do laco) e REESCREVEU o todo cr4-01b, que documentava a causa errada. Suite 194 -> 196 verdes, cobertura exit 0, lint backend/frontend exit 0. A FASE 04 CONTINUA REABERTA: falta o 04-38 (WR5-02..WR5-05 e IN5-01..IN5-04). Proximo: /gsd:execute-phase 4 (plano 04-38)."
+last_updated: "2026-08-05T22:40:00.000Z"
+last_activity: 2026-08-05 -- 04-37 executado (WR5-01 fechado, cr4-01b reescrito); fase 04 segue reaberta, falta o 04-38
 progress:
   total_phases: 8
   completed_phases: 3
   total_plans: 54
-  completed_plans: 52
+  completed_plans: 53
   percent: 38
 ---
 
@@ -26,8 +26,67 @@ See: .planning/PROJECT.md (updated 2026-07-22)
 ## Current Position
 
 Phase: 04 (confiabilidade-das-integra-es) — REABERTA PELA 5a VEZ pelo code review rodada 5
-Plan: 36 de 38 executados (04-01..04-36). A fase NAO esta completa; faltam 04-37 e 04-38.
+Plan: 37 de 38 executados (04-01..04-37). A fase NAO esta completa; falta o 04-38.
 Status: GAP CLOSURE R5 EM ANDAMENTO (2026-08-05)
+
+  O 04-37 fechou WR5-01 — o vizinho que o conserto do CR4-01 abriu, exatamente como o conserto
+  do CR3-01 tinha aberto o CR4-01. O contador que o alarme de supressao total comparava com
+  `results.stale` incrementava DENTRO da guarda de categoria, que e a SEGUNDA do laco de
+  runCheck: a guarda de DEDUP DO DIA vem antes e faz `continue`, entao todo negocio ja
+  notificado hoje SUBTRAIA DO NUMERADOR SEM SUBTRAIR DO DENOMINADOR e a condicao de supressao
+  TOTAL ficava INALCANCAVEL. Nao exige dado faltando no CRM: basta clicar "Enviar" depois do
+  cron das 8h.
+  A REGRA CERTA JA ESTAVA ESCRITA NO MESMO ARQUIVO: o 04-35 poe `funilNaoAvaliado` no TOPO do
+  laco (D-IN3-08-f) justamente para nao reproduzir esse modo de falha, e escreveu o motivo no
+  comentario. Nunca a aplicou de volta ao contador irmao. Este plano aplicou:
+  `results.categoriaIndecidivelNaRodada` nasce no literal, incrementa no TOPO do laco (linha 164,
+  antes do primeiro `continue;`, na 212) e vira o numerador do alarme. O contador da guarda
+  `skippedCategoriaIndecidivel` FICA e foi DESACOPLADO: ele responde a outra pergunta — quantos a
+  GUARDA suprimiu — e o cenario L mede os DOIS valendo numeros DIFERENTES na mesma rodada (1 vs
+  2), que e o que torna o achado conferivel.
+  A MENSAGEM ENTROU NO ESCOPO POR CONSEQUENCIA DO PROPRIO CONSERTO, e isso e decisao
+  (D-04-37-b): com o numerador no topo, a condicao total passa a valer numa rodada COMPOSTA em
+  que alguem ja recebeu as 8h, e ali "nenhum negocio parado DO DIA foi notificado" seria
+  FACTUALMENTE FALSO. A redacao passou a afirmar sobre a RODADA, com a ressalva da dedup escrita
+  por extenso, e esta pinada por ASSERCAO no cenario L (presenca de "desta rodada", ausencia da
+  frase larga) — nao por comentario. So inteiros e texto fixo entram na mensagem.
+  O PAR QUE FECHA O ACHADO: cenario L (apagao total da borda + um negocio DEDUPLICADO -> o alarme
+  DISPARA; zero e-mails para os quatro destinatarios, por igualdade exata) e cenario M (o mesmo
+  deduplicado ao lado de um notificavel com borda SA -> a rodada CALA, r.errors.length 0). Sem o
+  M, um conserto que ligasse o alarme por QUANTIDADE passaria por L e o operador receberia erro
+  em todo dia com dedup — mudez trocada por ruido diario. O helper `marcarComoNotificadoHoje` e a
+  armacao de dedup que a suite INTEIRA nao tinha, e e por isso que o modo de falha atravessou
+  quatro rodadas de review sem nenhum vermelho.
+  RED MEDIDO, reproduzindo a sonda do revisor dentro da suite: L falhou em `r.errors.length`
+  (0 !== 1) depois de (a)-(f) passarem, com r.stale 2, r.notified 0, r.skipped 2,
+  r.skippedCategoriaIndecidivel 1 e r.error undefined; M falhou em
+  `categoriaIndecidivelNaRodada` (undefined !== 0). 11 pass, 2 fail — nenhuma falha na armacao
+  nem no comportamento, que era a condicao de PARADA do plano.
+  O TODO cr4-01b FOI REESCRITO, e nao era burocracia: ele documentava a causa ERRADA e sua
+  "Correcao proposta" consertava o DENOMINADOR quando o defeito estava no NUMERADOR — quem o
+  executasse como estava fecharia o item COM O DEFEITO DE PE. Agora nomeia o MECANISMO (qualquer
+  caminho que impeca a contagem), separa a causa FECHADA da que SOBRA (negocio SEM organizacao
+  nunca recebe a marca), marca a proposta antiga como REJEITADA com o motivo, e PRESERVA a
+  medicao que rejeitou o denominador derivado (organizacao com id valido e SEM NOME faria o
+  alarme falhar ABERTO por um caminho novo). NAO foi renomeado nem movido: continua ABERTO e o
+  nome e citado por artefatos historicos imutaveis.
+  Suite 194 -> 196 verdes; scheduler.js em 88,79% linhas / 79,31% branches (era 87,72 / 79,06);
+  cobertura exit 0; lint backend exit 0 (44 warnings) e frontend exit 0 (60 warnings).
+  ZERO DIVERGENCIAS NUMERICAS — segunda rodada consecutiva sem nenhuma. Todos os 30+ gates das
+  tres tasks bateram. DUAS ARMADILHAS DE MEDICAO foram encontradas e resolvidas no ARTEFATO, nao
+  no numero: os comentarios de M e do alarme CITAVAM literalmente as formas que condenam (o
+  operador frouxo e a frase larga) e os proprios gates acusaram a justificativa — reescritos para
+  descrever a forma sem reproduzi-la (disciplina de R3-26). Numero do plano nao forcado.
+  DIVERGENCIAS DE FERRAMENTAL, registradas: `npm run format` NAO existe na raiz (o Biome do
+  backend reformata 6 arquivos de teste preexistentes alheios ao escopo — o Biome foi invocado
+  POR ARQUIVO); e o wrapper ~/bin/npx aponta para um Node que nao existe mais, enquanto
+  ~/bin/node funciona. Nada foi alterado no ambiente.
+  ESCOPO QUE O 04-37 NAO FECHA: o caminho do negocio SEM organizacao (cr4-01b, aberto e
+  reescrito); WR5-02..WR5-05 e IN5-01..IN5-04 -> plano 04-38. As assercoes de H, I e J NAO foram
+  tocadas (WR5-05 tem dono). O LIMIAR do CR4-01 nao mudou e nao foi reaberto.
+  Commits: 62d8fb1 (RED), 8ef1914 (GREEN), f2bbb79 (todo cr4-01b).
+
+  --- historico da rodada 5 abaixo ---
 
   O 04-36 fechou CR5-01, o BLOCKER da rodada 5 — e o unico achado da fase que estava numa
   SUPERFICIE DE UI, nao no backend. `runCheck` usava a chave `skipped` para DUAS coisas
