@@ -119,7 +119,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] 04-18-PLAN.md — Âncoras estáveis nos comentários e registro de IN2-01..IN2-04 como todos pendentes (WR2-06)
 
 **Gap closure r3** (fonte: `04-REVIEW.md`, `round: 3`, status `issues_found` — 1 critical, 7 warning, 8 info; a rodada 3 verificou ceticamente as conclusões da r2 e REABRIU a fase pela terceira vez). 9 planos **aditivos**, waves 12-20, `gap_closure: true`. Ordem por risco: o blocker primeiro, dividido em borda / consumidor diário / consumidor semanal; depois os warnings de produção; a higiene dos instrumentos de teste por último, antes do resíduo documental. **Requisito estrutural desta rodada:** todo plano de correção inclui também o teste do cenário SIMÉTRICO (a mesma falha na direção oposta, ou o vizinho imediato do caminho corrigido), porque nas três rodadas anteriores o achado seguinte foi sempre o vizinho do conserto anterior:
-- [ ] 04-19-PLAN.md — A consulta de categoria entra no retry da borda e falha como INDECIDÍVEL, em vez de fail-open (CR3-01, parte 1)
+- [x] 04-19-PLAN.md — A consulta de categoria entra no retry da borda e falha como INDECIDÍVEL, em vez de fail-open (CR3-01, parte 1)
 - [ ] 04-20-PLAN.md — Negócio de categoria indecidível fica fora do envio diário, sem abortar a rodada (CR3-01, parte 2)
 - [ ] 04-21-PLAN.md — O resumo semanal individual também não lista negócio indecidível; o consolidado do admin mantém (CR3-01, caminho vizinho)
 - [ ] 04-22-PLAN.md — `/users` e `/deals/:id` entram na política única de retry, e o comentário passa a enumerar as bordas (WR3-01)
@@ -181,7 +181,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | 1. Rede de Testes (Safety-Net) | 5/5 | Complete   | 2026-07-24 |
 | 2. Toolchain de Qualidade & CI | 4/4 | Complete   | 2026-07-29 |
 | 3. Config & Segredos por Ambiente | 7/7 | Complete   | 2026-07-30 |
-| 4. Confiabilidade das Integrações | 18/18 | Reaberta (review r3: CR3-01 blocker) | — |
+| 4. Confiabilidade das Integrações | 19/27 | In Progress|  |
 | 5. Logging & Padronização de Erros | 0/TBD | Not started | - |
 | 6. Hardening de Segurança | 0/TBD | Not started | - |
 | 7. Refatoração Incremental de Arquitetura | 0/TBD | Not started | - |

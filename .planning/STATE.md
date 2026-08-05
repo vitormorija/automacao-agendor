@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-stopped_at: "GAP CLOSURE R3 PLANEJADA E VERIFICADA (2026-08-05): 9 planos aditivos 04-19..04-27 sobre o 04-REVIEW.md round 3, todos autonomous:true (nenhum checkpoint). Plan-checker: VERIFICATION PASSED apos 2 revisoes. Cobertura REL-01..06 = 6/6. Proximo: /gsd:execute-phase 4. || FASE 04 REABERTA pelo code review rodada 3 (2026-08-05): 18/18 planos executados e suite em 148/148, mas o 04-REVIEW.md r3 achou 1 BLOCKER (CR3-01), 7 warnings e 8 info. || anterior: Completed 04-18-PLAN.md — o ULTIMO da Fase 4. WR2-06 fechado (escopo obrigatorio 53 -> 2 referencias por numero de linha; backend/src 12 -> 0; diff dos .js com 0 linhas nao-comentario). IN2-01..IN2-04 registrados como todo pendente. DECISAO C9 aplicada ao ROADMAP e a REQUIREMENTS. FASE 04 COMPLETA (18/18), pronta para verificacao. SEC-01 permanece ABERTO por decisao C8. || anterior: Completed 04-17-PLAN.md — WR2-05 fechado; o transporte recriado no retry serve o destinatario seguinte, sem que o retorno por destinatario mude de forma. Checkpoint C11 APROVADO pelo usuario (2026-08-05), com os tres desvios de medicao aceitos e o todo rel-02b mantido em prioridade alta. Proximo: 04-18, o ULTIMO da fase (WR2-06 + todos IN2-01..IN2-04 + DECISAO C9) — quem despacha e o coordenador. SEC-01 permanece ABERTO por decisao C8."
-last_updated: "2026-08-05T03:33:14.682Z"
-last_activity: 2026-08-05 -- gap closure r3 planejada e verificada (04-19..04-27); pronta para execute-phase 4
+status: 04-19 COMPLETO — CR3-01 fechado NA BORDA (1 de 3 planos do achado)
+stopped_at: Completed 04-19-PLAN.md
+last_updated: "2026-08-05T05:25:11.310Z"
+last_activity: 2026-08-05 -- 04-19 completo (CR3-01 1/3 na borda); suite 148 -> 153
 progress:
   total_phases: 8
   completed_phases: 3
-  total_plans: 34
-  completed_plans: 34
+  total_plans: 43
+  completed_plans: 35
   percent: 38
 ---
 
@@ -25,9 +25,48 @@ See: .planning/PROJECT.md (updated 2026-07-22)
 
 ## Current Position
 
-Phase: 04 (confiabilidade-das-integra-es) — gap closure r3 PLANEJADA, pronta para executar
-Plan: 18 de 27 executados (04-01..04-18). Faltam 04-19..04-27 (gap closure r3).
-Status: 9 PLANOS DA R3 CRIADOS E VERIFICADOS (2026-08-05)
+Phase: 04 (confiabilidade-das-integra-es) — gap closure r3 EM EXECUCAO
+Plan: 19 de 27 executados (04-01..04-19). Faltam 04-20..04-27 (gap closure r3).
+Status: 04-19 COMPLETO — CR3-01 fechado NA BORDA (1 de 3 planos do achado)
+
+  O 04-19 fechou a primeira metade de CR3-01, o BLOCKER da rodada 3. O unico filtro de
+  elegibilidade que dependia de uma segunda chamada HTTP falhava na direcao INSEGURA:
+  `catch { cache.set(orgId, null); return null }` mais `EXCLUDED_CATEGORIES.includes(null)
+  === false` fazia uma organizacao 'Parceiro' ser notificada por um 429 transitorio, com
+  results.error undefined e notification_log em 'sent'.
+  AGORA: /organizations/:id esta dentro da politica UNICA de retry (medido: 3 tentativas no
+  429 persistente, 2 no transitorio, 1 no erro sem response — a politica de D-01 nao mudou),
+  e a exaustao grava a sentinela CATEGORIA_INDECIDIVEL, que getStaleDeals traduz em
+  categoriaIndecidivel: true + orgCategory: null.
+  DECISAO DO USUARIO RESPEITADA POR MEDICAO: o negocio PERMANECE na lista — `continue;` em
+  linhas nao-comentario de agendor.js e 5 antes e 5 depois. A rota rejeitada (abortar a
+  rodada) NAO foi implementada.
+  O CENARIO SIMETRICO EXIGIDO PELA RODADA EXISTE E ESTA NOMEADO: caso (2) de
+  agendor.categoriaIndecidivel.test.js — a organizacao 201 ('Lead', ELEGIVEL) sofre a mesma
+  falha e tambem fica indecidivel. O fail-safe NAO e seletivo, e o custo (um negocio elegivel
+  fora do envio no dia da falha, de volta na rodada seguinte) esta pinado por asseracao.
+  A ASSERCAO QUE RATIFICAVA O FAIL-OPEN morreu: `idsComFalha.includes(305), true` em
+  agendor.cacheInvalidation.test.js virou presenca + categoriaIndecidivel === true. A prova de
+  isolamento de REL-04 da 2a execucao ficou intacta.
+  INFERENCIA DO PLANO CONFIRMADA POR MEDICAO: a entrada do retry NAO mudou a contagem de
+  consultas dos dois arquivos de cache (as falhas injetadas la sao Error sem response,
+  portanto fora do ramo de 429) — `urlsDeOrganizacao.length === 6` e
+  `consultas205NoEspelho === 2` seguem verdes sem edicao.
+  TODOS os criterios de aceite numericos deste plano BATERAM — diferente de 04-15/16/17, onde
+  varios eram aritmeticamente impossiveis por medirem o arquivo inteiro.
+  DESVIO Rule 1 (commit proprio, 806b83a): o comentario do cacheDaExecucao em getStaleDeals
+  ainda citava o `null` que o proprio plano acabara de remover — corrigido, diff exclusivamente
+  de comentario (0 linhas nao-comentario).
+  DIVIDA NOMEADA: o NOME do caso (3) de cacheInvalidation continua dizendo `null`. NAO
+  renomeado de proposito (precedente do 04-18: nome de caso e string e oraculo citado por
+  outros artefatos). O corpo do caso ja descreve o contrato novo.
+  ESCOPO QUE O 04-19 NAO FECHA: scheduler.js e emailer.js intocados — quem deixa de ENVIAR e o
+  04-20 (runCheck) e o 04-21 (sendOwnerWeeklySummary). Ate o 04-20 entrar, o comportamento
+  observavel de envio e o de hoje, EXCETO pelo retry, que sozinho ja elimina o caso dominante.
+  getUsers e getDealById seguem FORA do retry: escopo do 04-22 (WR3-01).
+
+  --- contexto do planejamento da rodada 3 ---
+Status do planejamento: 9 PLANOS DA R3 CRIADOS E VERIFICADOS (2026-08-05)
 
   Planos 04-19..04-27, waves 12-20, cadeia estritamente sequencial, TODOS autonomous:true —
   nenhum checkpoint bloqueante nesta rodada, porque os trade-offs ja foram decididos em
@@ -85,8 +124,10 @@ Origem: CODE REVIEW RODADA 3 (2026-08-05)
   conserta o defeito. Ela precisa ser reescrita junto com a correcao.
 
   DECISAO DO USUARIO sobre CR3-01 (vinculante, 2026-08-05) — ROTA "INDECIDIVEL":
+
   1. Colocar /organizations/:id na politica UNICA de retry da borda (fetchWithRetry), como
      ja fazem /deals e /tasks.
+
   2. Se ainda assim falhar, o deal e marcado INDECIDIVEL: fica FORA do envio, mas PERMANECE
      no dashboard e nos relatorios, com logger.warn nomeando a organizacao.
   NAO abortar a rodada inteira por uma organizacao inatingivel — preserva o fail-safe sem
@@ -345,9 +386,9 @@ Origem: CODE REVIEW RODADA 3 (2026-08-05)
   checkpoints bloqueantes: C9, C10, C11).
   A rodada 1 esta preservada em 04-REVIEW-r1.md (origem dos planos 04-08..04-11).
   SEC-01 permanece ABERTO como risco conscientemente aceito (decisao C8) — nao marcar resolvido.
-Last activity: 2026-08-05 -- 04-18 completo; FASE 04 COMPLETA (18/18), pronta para verificacao
+Last activity: 2026-08-05 -- 04-19 completo (CR3-01 1/3 na borda); suite 148 -> 153
 
-Progress: [██████████] 100% (18 de 18 planos da fase 04 completos; WR2-06 fechado, C9 aplicada)
+Progress: [███████░░░] 70% (19 de 27 planos da fase 04 completos; CR3-01 fechado na borda)
 
 ## Performance Metrics
 
@@ -401,6 +442,7 @@ Progress: [██████████] 100% (18 de 18 planos da fase 04 comp
 | Phase 04 P16 | 16min | 2 tasks | 3 files |
 | Phase 04 P17 | 22min | 3 tasks (C11 aprovado) | 2 files |
 | Phase 04 P18 | 26min | 2 tasks tasks | 16 files files |
+| Phase 04 P19 | 21min | 3 tasks tasks | 4 files files |
 
 ## Accumulated Context
 
@@ -536,6 +578,7 @@ Recent decisions affecting current work:
 - [Phase 04]: 04-17: TERCEIRA ocorrencia do mesmo achado estrutural da rodada — criterio de aceite por grep contado sobre escopo diferente do que o plano descreve em prosa (arquivo inteiro vs. as duas funcoes); os valores REAIS medidos ficam registrados no SUMMARY, nao os previstos
 - [Phase 04]: 04-17 [C11, decisao vinculante do usuario, 2026-08-05]: aprovado por escrito — D-03 intacta (3 tentativas, 3s/6s, exaustao sem lancar), transporte sem vazamento para results, RED reproduzido de fato e caminho feliz com uma conexao por rodada; os tres desvios de medicao ficam ACEITOS
 - [Phase 04]: 04-17 [C11 (2), usuario, 2026-08-05]: o todo rel-02b-deadline-global-smtp MANTEM prioridade alta / pre-go-live — esta mudanca reduz o pior caso de tempo por rodada mas nao toca a causa (connectionTimeout por endereco A/AAAA resolvido desde o nodemailer 8, sem deadline acumulada); o arquivo do todo NAO foi editado
+- [Phase ?]: [04-19 / CR3-01] Rota INDECIDIVEL implementada conforme decisao do usuario de 2026-08-05: /organizations/:id entrou no fetchWithRetry e a exaustao grava a sentinela CATEGORIA_INDECIDIVEL; o negocio fica FORA do envio (a partir do 04-20) mas PERMANECE no painel — nenhum continue novo em getStaleDeals, medido 5 antes e 5 depois
 
 ### Pending Todos
 
@@ -588,6 +631,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-05T03:33:14.670Z
-Stopped at: Completed 04-18-PLAN.md — o ULTIMO da Fase 4. WR2-06 fechado (escopo obrigatorio 53 -> 2 referencias por numero de linha; backend/src 12 -> 0; diff dos .js com 0 linhas nao-comentario). IN2-01..IN2-04 registrados como todo pendente. DECISAO C9 aplicada ao ROADMAP e a REQUIREMENTS. FASE 04 COMPLETA (18/18), pronta para verificacao. SEC-01 permanece ABERTO por decisao C8. || anterior: Completed 04-17-PLAN.md — WR2-05 fechado; o transporte recriado no retry serve o destinatario seguinte, sem que o retorno por destinatario mude de forma. Checkpoint C11 APROVADO pelo usuario (2026-08-05), com os tres desvios de medicao aceitos e o todo rel-02b mantido em prioridade alta. Proximo: 04-18, o ULTIMO da fase (WR2-06 + todos IN2-01..IN2-04 + DECISAO C9) — quem despacha e o coordenador. SEC-01 permanece ABERTO por decisao C8.
+Last session: 2026-08-05T05:25:05.306Z
+Stopped at: Completed 04-19-PLAN.md
 Resume file: None
