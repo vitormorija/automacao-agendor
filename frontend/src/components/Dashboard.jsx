@@ -107,6 +107,18 @@ export default function Dashboard({ onTabChange }) {
 
   const lastRun = status?.lastRunResult;
   const staleCount = checkResult?.total ?? lastRun?.stale ?? '—';
+  // Quantos vão de fato RECEBER. A rota de verificação responde "quem vai receber", e é este
+  // número que o rótulo do botão de envio escreve — o card logo abaixo continua contando negócios
+  // parados, que é outra pergunta. Quem marca cada negócio é runCheckOnly, em
+  // backend/src/scheduler.js. O fallback para o total existe porque a resposta anterior é
+  // restaurada de `dashboard_check_cache` ao montar o componente e pode ter vindo de um backend
+  // sem o campo; sem ele o botão diria zero logo após o deploy e o operador concluiria, errado,
+  // que não há ninguém a notificar.
+  const aNotificarCount = !checkResult
+    ? 0
+    : checkResult.deals?.some((d) => d.seraNotificado !== undefined)
+      ? checkResult.deals.filter((d) => d.seraNotificado).length
+      : checkResult.total;
   const notifiedCount = status?.totalSent ?? '—';
   const lastRunAt = status?.lastSentAt ?? lastRun?.ranAt ?? null;
 
@@ -242,7 +254,7 @@ export default function Dashboard({ onTabChange }) {
               )}
               {sending
                 ? 'Enviando...'
-                : `Enviar notificações (${checkResult.total} negócios)`}
+                : `Enviar notificações (${aNotificarCount} a notificar)`}
             </button>
           )}
         </div>
