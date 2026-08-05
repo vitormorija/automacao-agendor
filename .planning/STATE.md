@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: "Completed 04-29-PLAN.md — WR4-01 e WR4-05 FECHADOS: as TRES paginacoes de agendor.js tem o mesmo teto e o mesmo tratamento de envelope, com as irmas VERIFICADAS por teste e nao presumidas. Suite 174 -> 178, agendor.js em 100% linhas / 91,6% branches, lint exit 0. Faltam 04-30..04-34 da gap closure r4. || anterior: Completed 04-28-PLAN.md — CR4-01 (o BLOCKER da r4) FECHADO. || GAP CLOSURE R4 PLANEJADA E VERIFICADA (2026-08-05): 7 planos aditivos 04-28..04-34 sobre o 04-REVIEW.md round 4. Plan-checker: VERIFICATION PASSED NA PRIMEIRA PASSADA. Cobertura REL-01..06 = 6/6. || FASE 04 REABERTA PELA 4a VEZ pelo code review rodada 4: 1 BLOCKER (CR4-01), 7 warnings e 6 info."
-last_updated: "2026-08-05T13:50:00.000Z"
-last_activity: 2026-08-05 -- 04-29 completo (WR4-01 teto na terceira paginacao + WR4-05 guarda de envelope em getUsers); suite 178/178, lint exit 0
+stopped_at: "Completed 04-30-PLAN.md — WR4-04 e IN4-01 FECHADOS: a unica borda do modulo com fan-out proporcional ao VOLUME DE DADOS ganhou teto de CONCORRENCIA (LOTE_DE_ORGS), sem mudar o resultado de getStaleDeals, e o lote IRMAO da paginacao esta VERIFICADO por medicao. Suite 178 -> 181, agendor.js 100% linhas / 91,72% branches, lint exit 0. Faltam 04-31..04-34 da gap closure r4. || anterior: Completed 04-29-PLAN.md — WR4-01 e WR4-05 FECHADOS: as TRES paginacoes de agendor.js tem o mesmo teto e o mesmo tratamento de envelope, com as irmas VERIFICADAS por teste e nao presumidas. Suite 174 -> 178, agendor.js em 100% linhas / 91,6% branches, lint exit 0. Faltam 04-30..04-34 da gap closure r4. || anterior: Completed 04-28-PLAN.md — CR4-01 (o BLOCKER da r4) FECHADO. || GAP CLOSURE R4 PLANEJADA E VERIFICADA (2026-08-05): 7 planos aditivos 04-28..04-34 sobre o 04-REVIEW.md round 4. Plan-checker: VERIFICATION PASSED NA PRIMEIRA PASSADA. Cobertura REL-01..06 = 6/6. || FASE 04 REABERTA PELA 4a VEZ pelo code review rodada 4: 1 BLOCKER (CR4-01), 7 warnings e 6 info."
+last_updated: "2026-08-05T15:20:00.000Z"
+last_activity: 2026-08-05 -- 04-30 completo (WR4-04 teto de concorrencia na consulta de categoria + IN4-01 comentario do lote irmao); suite 181/181, lint exit 0
 progress:
   total_phases: 8
   completed_phases: 3
   total_plans: 50
-  completed_plans: 45
+  completed_plans: 46
   percent: 38
 ---
 
@@ -26,8 +26,76 @@ See: .planning/PROJECT.md (updated 2026-07-22)
 ## Current Position
 
 Phase: 04 (confiabilidade-das-integra-es) — gap closure r4 EM EXECUCAO
-Plan: 29 de 34 executados (04-01..04-29). Faltam 04-30..04-34 (gap closure r4).
-Status: WR4-01 E WR4-05 FECHADOS PELO 04-29 (2026-08-05)
+Plan: 30 de 34 executados (04-01..04-30). Faltam 04-31..04-34 (gap closure r4).
+Status: WR4-04 E IN4-01 FECHADOS PELO 04-30 (2026-08-05)
+
+  O 04-30 fechou o achado que nasceu como CONSEQUENCIA NAO AVALIADA do 04-19: o retry da borda
+  entrou no UNICO ponto do modulo cujo fan-out e proporcional ao VOLUME DE DADOS. getOrgCategory
+  dispara uma requisicao por organizacao unica, todas simultaneas num Promise.all, e desde CR3-01
+  cada uma passa por fetchWithRetry — sob HTTP 429, N requisicoes viram 3N. O erro retentado e
+  justamente o que a API usa para pedir MENOS trafego, entao retentar em massa PROLONGA a propria
+  janela de rate limit que causou a falha, e e essa janela que produz a supressao em massa que o
+  04-28 tornou audivel.
+  O AGRAVANTE, MEDIDO: getStaleDeals e tambem o caminho de LEITURA do painel. Sao OITO invocacoes
+  de getStaleDeals( fora do agendor.js — 3 no scheduler.js, 1 em routes/deals.js, 1 em
+  routes/reports.js e TRES em routes/notifications.js (o plano media 6, contando notifications
+  uma vez so). Com o auto-refresh do DealsList.jsx, cada atualizacao de tela com a API rate-
+  limitada passou a custar 3N requisicoes e ate ~15 s dentro do handler HTTP.
+  AGORA: LOTE_DE_ORGS = 10, constante de modulo EXPORTADA, e a fase de categorias saiu do
+  Promise.all unico para um `for` sobre fatias de uniqueOrgIds com Promise.all por fatia. O par
+  [id, categoria] foi preservado byte a byte — e ele que impede a categoria trocada que reabriria
+  o fail-open de CR3-01 por caminho novo. SEM pausa entre lotes (D-WR4-04-b): a pausa da
+  paginacao existe porque cada requisicao de la traz 100 registros; aqui o objetivo e limitar
+  CONCORRENCIA, nao taxa. Promise.all nao-comentario em agendor.js continua em 2, e nenhum
+  setTimeout novo entrou no diff. O lote vive DENTRO de getStaleDeals, entao as OITO invocacoes
+  herdam de graca — zero linhas de rota no diff.
+  O ORACULO E CONCORRENCIA EM VOO, NAO CONTAGEM TOTAL (D-WR4-04-d), e a distincao e o proprio
+  conserto: totalOrganizacoes vale 25 nos DOIS estados, antes e depois. Contagem total nao
+  distingue "10 de cada vez" de "25 de uma vez". O stub mantem emVoo/maxEmVoo/total por borda e
+  resolve por setImmediate — um stub sincrono resolveria antes de a proxima chamada do map sair e
+  o maximo medido seria SEMPRE 1, marcando concorrencia 1 em QUALQUER implementacao (R4-15, nao
+  materializado porque a mitigacao estava prescrita).
+  RED literal, previsao do plano batendo nos tres casos: (1) vermelho com
+  `maximo em voo medido = 25`, (2) SIMETRICO e (3) IRMAO VERIFICADO verdes ja no estado atual. A
+  condicao de PARAR nao foi atingida.
+  IN4-01 FECHADO DENTRO DESTE PLANO, e por necessidade e nao por carona (D-WR4-04-e): o
+  comentario dizia "batches de 10" logo acima de `const batchSize = 5;`, e este plano introduziu
+  uma SEGUNDA constante de lote cujo valor E 10 — a frase errada ao lado dela tornaria os dois
+  lotes indistinguiveis. O numero foi REMOVIDO em vez de corrigido: o comentario aponta para o
+  identificador batchSize, que nao pode divergir de si mesmo. grep "batches de 10" = 0.
+  QUATRO DIVERGENCIAS DE MEDICAO, todas registradas e nenhuma forcada: (1) ORGS_UNICAS NAO e
+  derivada de LOTE_DE_ORGS e sim ASSERIDA contra ela (`LOTE_DE_ORGS < ORGS_UNICAS`) — no instante
+  do RED a constante nao existe, o import devolve undefined e uma derivacao daria NaN, apagando
+  a propria medicao de 25 em voo que o plano exige; a guarda explicita e MAIS FORTE contra o
+  falso positivo, porque uma derivacao faria a fixture crescer EM SILENCIO junto com o teto;
+  (2) os greps de IN4-02 e IN4-05 devolvem 1 e nao 0 pelo CONTEXTO do diff e pelo cabecalho de
+  hunk — com `git diff -U0` os dois dao 0, e as duas conclusoes sobrevivem por medicao; (3) os
+  "6 pontos de chamada" de getStaleDeals sao 8 invocacoes, o que torna o inventario MAIS forte;
+  (4) Promise.all nao-comentario em backend/src = 11 (bate), mas as linhas que casam subiram de
+  14 para 16 por MENCAO em comentario novo.
+  SEXTA rodada da fase com divergencia de contagem; a de nº 2 e da mesma classe da nº 2 do 04-29
+  (forma do padrao de grep), e a nº 1 e de classe NOVA: decisao de instrumento tomada dentro da
+  acao porque a prescricao era impossivel no instante do RED.
+  IN4-02 e IN4-05 AUSENTES do diff por criterio (-U0 = 0 nos dois). Contratos herdados medidos e
+  nao regredidos: await api.get( = 0, fetchWithRetry( = 6, api.get( = 5, MAX_PAGES nao-comentario
+  = 10, of data.data) = 0. Os DEZ arquivos vizinhos verdes SEM edicao (55 casos); em particular
+  agendor.cacheInvalidation.test.js verde e byte a byte — e ELE a evidencia de que o RESULTADO
+  nao mudou (git diff --name-only -- backend/test/ VAZIO na Task 2). Suite 178 -> 181, agendor.js
+  100% linhas / 91,72% branches (era 100% / 91,6%), lint exit 0 (44 warnings, baseline).
+  ZERO DESVIOS de escopo: nenhuma Rule 1-4 acionada, nenhum pacote instalado.
+  ESCOPO QUE O 04-30 NAO FECHA: jitter e circuit breaker (o achado os nomeia; este plano entrega
+  so o teto de concorrencia, e D-WR4-04-b exige medir antes) e o fan-out gemeo de
+  GET /api/notifications/resolved — o TERCEIRO Promise.all proporcional ao dado do backend, com
+  getNotifiedDeals() sem LIMIT; dono: todo `wr4-04b`, a criar no 04-34.
+  ATENCAO: agendor.loteDeOrganizacoes.test.js e o oraculo de CONCORRENCIA, e a distincao importa —
+  ele fica vermelho se alguem "otimizar" o lote de volta para um Promise.all unico, e continua
+  verde se o total de requisicoes mudar. Uma sexta borda com fan-out proporcional ao dado entra
+  ali com o trio completo: teto medido em voo, simetrico de resultado inalterado, irmao
+  VERIFICADO. A guarda de nao-vacuidade do caso (1) e deliberada e NAO deve ser "simplificada"
+  para uma derivacao.
+  Commits: adbe279 (RED), 531479e (GREEN), 0ede631 (SUMMARY).
+
+Status anterior: WR4-01 E WR4-05 FECHADOS PELO 04-29 (2026-08-05)
 
   O 04-29 fechou os dois vizinhos de codigo que a r3 deixou abertos no MESMO modulo, e os dois
   terminavam no mesmo lugar: o finally de runCheck que devolve isRunning a false.
