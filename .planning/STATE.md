@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: 04-22 COMPLETO — WR3-01 FECHADO (as cinco bordas do modulo sob a mesma politica de retry)
-stopped_at: Completed 04-22-PLAN.md
-last_updated: "2026-08-05T06:05:00.000Z"
-last_activity: 2026-08-05 -- 04-22 completo (WR3-01: /users e /deals/:id no fetchWithRetry); suite 160 -> 164
+status: 04-23 COMPLETO — WR3-02 FECHADO (as tres operacoes de banco do laco de runCheck protegidas)
+stopped_at: Completed 04-19-PLAN.md
+last_updated: "2026-08-05T06:01:07.421Z"
+last_activity: "2026-08-05 -- 04-23 completo (WR3-02: a leitura de dedup deixa de abortar a rodada); suite 164 -> 166"
 progress:
   total_phases: 8
   completed_phases: 3
   total_plans: 43
-  completed_plans: 38
+  completed_plans: 39
   percent: 38
 ---
 
@@ -26,8 +26,62 @@ See: .planning/PROJECT.md (updated 2026-07-22)
 ## Current Position
 
 Phase: 04 (confiabilidade-das-integra-es) — gap closure r3 EM EXECUCAO
-Plan: 22 de 27 executados (04-01..04-22). Faltam 04-23..04-27 (gap closure r3).
-Status: 04-22 COMPLETO — WR3-01 FECHADO (as cinco bordas do modulo sob a mesma politica de retry)
+Plan: 23 de 27 executados (04-01..04-23). Faltam 04-24..04-27 (gap closure r3).
+Status: 04-23 COMPLETO — WR3-02 FECHADO (as tres operacoes de banco do laco de runCheck protegidas)
+
+  O 04-23 fechou WR3-02, o vizinho de WR2-02 uma construcao ACIMA. O 04-15 protegeu a
+  GRAVACAO do desfecho argumentando que "a conexao SQLite pode estar indisponivel — e
+  justamente uma das origens possiveis da excecao que trouxe o fluxo ate aqui — e
+  updateNotificationStatus usa a MESMA conexao". O argumento estava correto e INCOMPLETO:
+  alreadyNotifiedToday(deal.id) usa a mesma conexao, e a PRIMEIRA operacao de banco do laco
+  e vivia fora de qualquer try interno.
+  RED MEDIDO, e desta vez a previsao do plano BATEU: results.error preenchido com "The
+  database connection is not open", E vermelho, D e F verdes. A prova operacional veio no
+  log do proprio SUT com o ponto exato da morte da rodada — "[ERROR] [Scheduler] Erro na
+  verificacao ... at runCheck (scheduler.js:93:11)", e o catch que capturou e o EXTERNO,
+  o que encerra a funcao inteira. O valor de r.deals.length no estado defeituoso foi medido
+  a parte (a asseracao de r.error dispara primeiro) e vale ZERO, nao 1: mesmo achado
+  estrutural do 04-15 e do 04-16 — results.deals.push fica no FIM do corpo do laco, entao a
+  rodada perde tambem o registro do negocio que disparou a falha. 0 negocios processados, 0
+  e-mails, num dia em que dois deveriam sair.
+  AGORA: a leitura vive num try/catch proprio, variavel inicializada em FALSE, catch
+  (erroDeDedup) logando APENAS a mensagem com tag [Scheduler] (CR-02 do 04-09). Diff de 26
+  insercoes e 2 remocoes — e as 2 remocoes sao exatamente as duas linhas reescritas.
+  AS TRES OPERACOES DE BANCO DO LACO ESTAO PROTEGIDAS: alreadyNotifiedToday (este plano),
+  logNotification (ja nascia dentro do try do bloco de envio) e updateNotificationStatus
+  (04-15). Nenhuma delas pode mais abortar a rodada.
+  A RESSALVA DO REVISOR ESTA HONRADA NO CODIGO, nao so no SUMMARY: C10 NAO cobria este caso
+  — la o custo era uma linha 'pending' retentavel amanha, aqui era a rodada inteira. O que
+  C10 decide e vale aqui e a DIRECAO do fail-safe (entre reenviar e silenciar, reenviar); a
+  MAGNITUDE esta registrada por escrito no comentario.
+  O CENARIO SIMETRICO/VIZINHO EXIGIDO PELA RODADA EXISTE E ESTA NOMEADO: cenario F —a falha
+  no INSERT. Ele JA PASSAVA no RED, e e por isso que entrou: o vizinho imediato da operacao
+  consertada precisava ser VERIFICADO e pinado, nao presumido. Se alguem mover o insert para
+  fora do try do bloco de envio, F fica vermelho.
+  O CENARIO E ASSERE 4 ENVIOS E r.notified === 2 de proposito: a metade do contrato que mais
+  parece descuido e a que precisa estar pinada. Inicializar a variavel em TRUE ("na duvida,
+  nao envia") pareceria conservador e seria a pior classe de falha do Core Value.
+  TODOS os criterios numericos bateram, EXCETO UM, de contagem do proprio criterio: o plano
+  esperava 3 ocorrencias de `mock.method(db`; o grep devolve 4 — as 3 instalacoes reais
+  (linhas 183, 201, 213) mais 1 MENCAO dentro do bloco de comentario que explica a armadilha
+  de CommonJS, que ja existia antes desta rodada. A INTENCAO (nenhum mock depois do require
+  do scheduler, linha 222) esta satisfeita e medida. Valor medido registrado, numero do
+  plano NAO forcado.
+  runCheckOnly INTOCADA, e isso e decisao registrada (D-WR3-02-d), nao esquecimento: e a
+  previa somente-leitura do painel e uma falha la vira erro HTTP visivel na tela, nao
+  silencio. Por isso o total nao-comentario de alreadyNotifiedToday(deal.id) continua 2 e
+  nao 1. `git diff | grep -c runCheckOnly` = 0.
+  Suite 164 -> 166, cobertura de scheduler.js em 80,79% linhas / 76,47% branches, lint exit
+  0 (44 warnings). Os 7 arquivos vizinhos verdes SEM edicao; git diff --name-only -- test/
+  na Task 2 saiu VAZIO. ZERO DESVIOS: nenhuma Rule 1-4 acionada, nenhum pacote instalado.
+  ESCOPO QUE O 04-23 NAO FECHA: WR3-03 — o endurecimento do canal parcial valida o
+  CONTEINER (Array.isArray) e nao os ELEMENTOS, entao [null] continua reabrindo a rodada
+  abortada. E o 04-24. A semantica da dedup quando a leitura FUNCIONA nao mudou (db.dedup
+  verde sem edicao), e a guarda de categoria do 04-20 logo abaixo ficou byte a byte.
+  ATENCAO para quem seguir: notificationStatus.registroResiliente.test.js deixou de ser o
+  oraculo de UMA falha e virou o da CLASSE — o cabecalho lista as tres operacoes de banco do
+  laco com o papel de cada uma. Uma quarta operacao de banco no laco deve entrar acompanhada
+  do seu cenario nesse arquivo.
 
   O 04-22 fechou WR3-01, o primeiro achado INDEPENDENTE da rodada 3 (CR3-01 ja estava
   fechado nos tres caminhos pelos 04-19/20/21). O comentario da politica em agendor.js abria
@@ -509,9 +563,9 @@ Origem: CODE REVIEW RODADA 3 (2026-08-05)
   checkpoints bloqueantes: C9, C10, C11).
   A rodada 1 esta preservada em 04-REVIEW-r1.md (origem dos planos 04-08..04-11).
   SEC-01 permanece ABERTO como risco conscientemente aceito (decisao C8) — nao marcar resolvido.
-Last activity: 2026-08-05 -- 04-21 completo (CR3-01 3/3 no resumo semanal individual); suite 156 -> 160
+Last activity: 2026-08-05 -- 04-23 completo (WR3-02: a leitura de dedup deixa de abortar a rodada); suite 164 -> 166
 
-Progress: [█████████░] 88%
+Progress: [█████████░] 91%
 
 ## Performance Metrics
 
@@ -569,6 +623,7 @@ Progress: [█████████░] 88%
 | Phase 04 P20 | 16min | 2 tasks tasks | 2 files files |
 | Phase 04 P21 | 12 | 2 tasks | 2 files |
 | Phase 04 P22 | 14min | 2 tasks | 2 files |
+| Phase 04 P23 | 12 | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -710,6 +765,8 @@ Recent decisions affecting current work:
 - [Phase 04]: D-CR3-01-l/m/n/o aplicadas no 04-21: o e-mail individual do comercial exclui o negocio indecidivel; o consolidado do admin e o snapshot MANTEM (medido nas duas direcoes). Filtro em DOIS PASSOS separados, skippedByFunnel inalterado (3 antes, 3 depois), contagem propria avisada por logger.warn [Emailer]. LOG-01 nao antecipado: console.* em emailer.js = 4 antes e 4 depois.
 - [Phase ?]: 04-22 (WR3-01): as CINCO chamadas HTTP de agendor.js sob a mesma politica de retry — 'await api.get(' = 0; o comentario passou a ENUMERAR as bordas com o ponto de chamada de cada uma
 - [Phase ?]: 04-22: a guarda de tipo do id (WR-03) fica FORA do callback do retry — o helper da retentativa, nao permissao; caso (8) assere 0 requisicoes para '../users'
+- [Phase ?]: 04-23 (WR3-02): a leitura de dedup vive num try/catch proprio com a variavel em false — falhar a leitura significa NOTIFICAR (direcao do fail-safe decidida em C10); a magnitude que C10 nao cobria (a rodada inteira, nao uma linha) esta registrada no comentario do codigo
+- [Phase ?]: 04-23 (D-WR3-02-d): runCheckOnly NAO entra no escopo — e a previa somente-leitura do painel e uma falha la vira erro HTTP visivel, nao silencio; por isso o total nao-comentario de alreadyNotifiedToday(deal.id) continua 2
 
 ### Pending Todos
 
@@ -762,6 +819,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-05T05:49:35.583Z
+Last session: 2026-08-05T06:00:44.483Z
 Stopped at: Completed 04-19-PLAN.md
 Resume file: None
