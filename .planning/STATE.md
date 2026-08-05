@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: 04-12 COMPLETO (CR2-01 fechado) — checkpoint C9 APROVADO pelo usuario. Executando 04-13. SEC-01 permanece ABERTO por decisao C8.
-last_updated: "2026-08-05T00:14:46.325Z"
-last_activity: 2026-08-05 -- C9 aprovado; 04-12 completo; entrando no 04-13
+stopped_at: "Completed 04-13-PLAN.md — WR2-03 fechado; avancarRelogioAte normaliza o desfecho e o envelope local do retry429 sumiu. Proximo: 04-14 (WR2-01). SEC-01 permanece ABERTO por decisao C8."
+last_updated: "2026-08-05T00:27:28.614Z"
+last_activity: 2026-08-05 -- 04-13 completo (WR2-03 fechado); proximo 04-14
 progress:
   total_phases: 8
   completed_phases: 3
   total_plans: 34
-  completed_plans: 28
+  completed_plans: 29
   percent: 38
 ---
 
@@ -26,8 +26,22 @@ See: .planning/PROJECT.md (updated 2026-07-22)
 ## Current Position
 
 Phase: 04 (confiabilidade-das-integra-es) — EXECUTING
-Plan: 12 de 18 completos (04-01..04-12). Faltam 04-13..04-18.
-Status: C9 APROVADO (2026-08-05) — 04-12 fechado, executando 04-13
+Plan: 13 de 18 completos (04-01..04-13). Faltam 04-14..04-18.
+Status: 04-13 COMPLETO (2026-08-05) — WR2-03 fechado; proximo e o 04-14 (WR2-01)
+  O 04-13 fechou WR2-03: avancarRelogioAte (test/helpers/fakeTimers.js) tratava so o ramo
+  de SUCESSO da promessa observada, entao numa rejeicao a promessa derivada ficava ORFA e
+  aflorava como unhandledRejection — que o node:test credita ao caso que estiver correndo,
+  podendo reprovar um caso VIZINHO com a mensagem de outro. RED medido com a saida literal
+  (failureType: 'unhandledRejection', error: 'ERRO REAL DO SUT'), nao afirmado. Agora o then
+  tem os DOIS ramos e o erro real e relancado sem embrulho.
+  DESVIO DELIBERADO do snippet do 04-REVIEW: a falha explicita por nao-conclusao vem ANTES
+  do await encerrada (o review propunha o inverso, o que TRAVARIA a suite quando a promessa
+  nunca assenta). Coberto pelo caso (3) do meta-teste novo, fakeTimers.helper.test.js.
+  Uma das 3 variantes do helper deixou de existir: o envelope local de agendor.retry429.test.js
+  sumiu, com ZERO asseracoes alteradas. A cópia de emailer.timeout.test.js FICA de proposito —
+  e oraculo de REL-02 e o emailer.js muda no 04-17. Suite 140 -> 143, todos verdes; nenhuma
+  linha de producao tocada.
+
   O 04-12 fechou CR2-01, o achado CRITICO da rodada 2: getOrgCategory passou a receber o
   cache da execucao por parametro, getStaleDeals passou a cria-lo, e o dicionario de modulo
   orgCategoryCache mais a limpeza por execucao deixaram de existir. O refetch entre execucoes
@@ -65,9 +79,9 @@ Status: C9 APROVADO (2026-08-05) — 04-12 fechado, executando 04-13
   checkpoints bloqueantes: C9, C10, C11).
   A rodada 1 esta preservada em 04-REVIEW-r1.md (origem dos planos 04-08..04-11).
   SEC-01 permanece ABERTO como risco conscientemente aceito (decisao C8) — nao marcar resolvido.
-Last activity: 2026-08-05 -- C9 aprovado; 04-12 completo; entrando no 04-13
+Last activity: 2026-08-05 -- 04-13 completo (WR2-03 fechado); proximo 04-14
 
-Progress: [███████░░░] 67% (12 de 18 planos da fase 04 completos; CR2-01 fechado, C9 aprovado)
+Progress: [████████░░] 72% (13 de 18 planos da fase 04 completos; WR2-03 fechado)
 
 ## Performance Metrics
 
@@ -115,6 +129,7 @@ Progress: [███████░░░] 67% (12 de 18 planos da fase 04 compl
 | Phase 04 P10 | 14min | 3 tasks | 5 files |
 | Phase 04 P11 | 22min | 2 tasks tasks | 2 files files |
 | Phase 04 P12 | 26min | 2 tasks (+C9 pendente) | 3 files |
+| Phase 04 P13 | 8min | 3 tasks tasks | 3 files files |
 
 ## Accumulated Context
 
@@ -216,6 +231,11 @@ Recent decisions affecting current work:
 - [Phase 04]: 04-12: o caso espelho assere o CONTADOR de consultas (1 -> 2) alem do golden — prova o MECANISMO (B reconsultou) e nao so o desfecho, que poderia coincidir por acaso
 - [Phase 04]: 04-12: o Map e declarado junto ao seu unico consumidor (acima do Promise.all das organizacoes) e nao no topo de getStaleDeals — declarar no topo exigiria um comentario apontando para codigo dezenas de linhas abaixo, exatamente o ponteiro que envelhece que WR2-06 corrige
 - [Phase ?]: 04-11: avancarRelogioAte (04-10) so observa promessas pelo caminho de SUCESSO — numa rejeicao substitui o erro real por 'a promessa nao concluiu'; contornado por envelope LOCAL no arquivo de teste, sem editar o helper compartilhado; dedupar/estender fica para a Fase 5/7
+- [Phase 04]: 04-13: o helper avancarRelogioAte criava a promessa derivada com um then de UM argumento — sem handler de rejeicao; numa rejeicao ela ficava orfa e aflorava como unhandledRejection, que o node:test credita ao caso em execucao NAQUELE momento e portanto pode reprovar um caso VIZINHO com a mensagem de outro (WR2-03)
+- [Phase 04]: 04-13: DESVIO deliberado do snippet do 04-REVIEW — a falha explicita por nao-conclusao vem ANTES do await encerrada, e nao depois; a ordem do review travaria a suite quando a promessa nunca assenta, e um teste que trava nao da diagnostico nenhum. Uma promessa derivada pendente para sempre e inofensiva porque tem handler de rejeicao anexado (caso (3) do meta-teste e o guarda-corpo)
+- [Phase 04]: 04-13: o erro real do SUT e relancado sem embrulho (throw desfecho.erro) e a mensagem de nao-conclusao ficou byte-a-byte igual a anterior — e o assert.rejects do arquivo consumidor que continua sendo o oraculo
+- [Phase 04]: 04-13: restam 2 variantes do helper em circulacao (eram 3) — o envelope local avancarRelogioAteDesfecho de agendor.retry429.test.js sumiu com ZERO asseracoes alteradas; a copia de emailer.timeout.test.js FICA de proposito, porque e oraculo de REL-02 e o emailer.js muda no 04-17 (trocar o instrumento e o objeto medido na mesma rodada e o que a constraint de processo do CLAUDE.md proibe)
+- [Phase 04]: 04-13: o RED foi medido pela saida literal do runner (failureType: 'unhandledRejection' com error: 'ERRO REAL DO SUT') — a rejeicao orfa PREEMPTOU o proprio assert.rejects do caso, o que prova que o try/catch do autor do teste nao contem o defeito
 
 ### Pending Todos
 
@@ -268,6 +288,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-04T22:41:06.150Z
-Stopped at: Completed 04-11-PLAN.md — WR-02 fechado; retry de 429 unificado em fetchWithRetry e aplicado tambem a /tasks. Gap closure da Fase 04 (04-08..04-11) COMPLETO. SEC-01 permanece ABERTO por decisao C8.
+Last session: 2026-08-05T00:27:28.610Z
+Stopped at: Completed 04-13-PLAN.md — WR2-03 fechado; avancarRelogioAte normaliza o desfecho e o envelope local do retry429 sumiu. Proximo: 04-14 (WR2-01). SEC-01 permanece ABERTO por decisao C8.
 Resume file: None
