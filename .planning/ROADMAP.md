@@ -17,7 +17,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 1: Rede de Testes (Safety-Net)** - Testes de caracterização fixam o comportamento atual da lógica crítica de notificação antes de qualquer mudança (completed 2026-07-24)
 - [x] **Phase 2: Toolchain de Qualidade & CI** - Lint, formatação, scripts npm e pipeline de CI que bloqueia PRs com falha (completed 2026-07-29)
 - [x] **Phase 3: Config & Segredos por Ambiente** - Segredos fora do código, `.env.example`, separação dev/prod e validação no boot (completed 2026-07-30)
-- [ ] **Phase 4: Confiabilidade das Integrações** - Timeouts em Agendor/SMTP, cron resiliente a falhas e isolamento de estado por execução (18/18 planos executados em 2026-08-05, suíte 148/148; **reaberta pela 3ª rodada de review** — 04-REVIEW round 3 com CR3-01 BLOCKER: a exclusão por categoria falha ABERTA — um 429 em `/organizations` faz uma organização de categoria excluída ser notificada silenciosamente, e a rodada reporta sucesso. Gap closure r3 planejada: 9 planos, 04-19 a 04-27)
+- [x] **Phase 4: Confiabilidade das Integrações** - Timeouts em Agendor/SMTP, cron resiliente a falhas e isolamento de estado por execução (27/27 planos executados em 2026-08-05, suíte 172/172; a fase foi reaberta **três** vezes por code review — a r3 trouxe CR3-01 BLOCKER: a exclusão por categoria falhava ABERTA, e um 429 em `/organizations` fazia uma organização de categoria excluída ser notificada silenciosamente com a rodada reportando sucesso. Gap closure r3 executada em 9 planos, 04-19 a 04-27; os 8 achados Info da r3 estão registrados como todos pendentes) (completed 2026-08-05)
 - [ ] **Phase 5: Logging & Padronização de Erros** - `console.*` residual migrado para `logger` estruturado e resposta de erro consistente
 - [ ] **Phase 6: Hardening de Segurança** - Riscos do CONCERNS.md fechados; mudanças comportamentais só com teste do novo fluxo (ou adiadas com justificativa)
 - [ ] **Phase 7: Refatoração Incremental de Arquitetura** - Extrair `getEnrichedStaleDeals` e serviço de agregação, sem alterar comportamento, protegido pelos testes
@@ -128,7 +128,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] 04-24-PLAN.md — O canal do resultado parcial é validado no elemento, não só no contêiner (WR3-03)
 - [x] 04-25-PLAN.md — Teto de páginas com falha explícita nas duas paginações sem limite (WR3-06)
 - [x] 04-26-PLAN.md — Relógio por caso, helper único e estado neutro em `beforeEach` (WR3-04, WR3-05, WR3-07)
-- [ ] 04-27-PLAN.md — IN3-01..IN3-08 como todos pendentes e o critério do fail-safe de categoria no ROADMAP
+- [x] 04-27-PLAN.md — IN3-01..IN3-08 como todos pendentes e o critério do fail-safe de categoria no ROADMAP
 
 ### Phase 5: Logging & Padronização de Erros
 **Goal**: Logging é estruturado e consistente em todo o backend, e o tratamento/resposta de erro nas rotas segue um padrão único.
@@ -182,7 +182,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | 1. Rede de Testes (Safety-Net) | 5/5 | Complete   | 2026-07-24 |
 | 2. Toolchain de Qualidade & CI | 4/4 | Complete   | 2026-07-29 |
 | 3. Config & Segredos por Ambiente | 7/7 | Complete   | 2026-07-30 |
-| 4. Confiabilidade das Integrações | 26/27 | In Progress|  |
+| 4. Confiabilidade das Integrações | 27/27 | Complete   | 2026-08-05 |
 | 5. Logging & Padronização de Erros | 0/TBD | Not started | - |
 | 6. Hardening de Segurança | 0/TBD | Not started | - |
 | 7. Refatoração Incremental de Arquitetura | 0/TBD | Not started | - |
