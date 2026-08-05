@@ -38,7 +38,7 @@ Requisitos desta etapa de estabilização. A ordem reflete dependência: testes 
 - [x] **REL-01**: Timeout explícito nas chamadas HTTP à API Agendor (instância axios compartilhada + chamada ad-hoc em `/resolved`)
 - [x] **REL-02**: Timeout e tratamento de falha no envio SMTP (nodemailer)
 - [x] **REL-03**: Falha em uma execução do cron é registrada e não derruba o agendador (tratamento de erro em `runCheck`/`runWeeklySummary`)
-- [x] **REL-04**: `orgCategoryCache` ganha TTL/invalidação para não usar categoria obsoleta indefinidamente
+- [x] **REL-04**: O estado de categorias de organização é isolado por execução de `getStaleDeals` — nenhuma execução lê, apaga, reutiliza ou contamina o estado de outra, e categoria obsoleta nunca é usada entre execuções (redação atualizada por decisão C9, 2026-08-05: a formulação original pedia "TTL/invalidação do `orgCategoryCache`", um mecanismo que deixou de existir no 04-12 — o cache virou um `Map` criado dentro da própria execução; a remoção da limpeza está aprovada pelo usuário e não é regressão)
 - [x] **REL-05**: Status de envio consistente em falhas — `'sent'` somente após envio confirmado; falha total registra `'error'` e permite retentativa na rodada seguinte; dedup de envios realmente bem-sucedidos preservada (derivado de DESC-1 / Decisão Q1, 04-DELIVERY-CONTRACT.md, 2026-08-04)
 - [x] **REL-06**: Falha na consulta de tarefas futuras aborta a rodada sem disparar notificações — resultado completo ou falha explícita, nunca proteção parcial silenciosa (derivado de DESC-2 / Decisão Q2, 04-DELIVERY-CONTRACT.md, 2026-08-04)
 
