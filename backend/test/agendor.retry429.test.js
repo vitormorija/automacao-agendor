@@ -108,27 +108,17 @@ const fake = installFakeAxios((url) => {
 
 const { getDealsWithFutureTasks, getStaleDeals } = require('../src/agendor');
 
-// `avancarRelogioAte` (helpers/fakeTimers.js, criado no 04-10) só observa a promessa pelo caminho
-// de SUCESSO: numa rejeição a flag interna nunca vira true, o laço estoura as 20 iterações e o
-// erro real é substituído por "a promessa não concluiu" — mensagem que esconderia o 429 que este
-// arquivo inteiro está medindo. Este envelope normaliza o desfecho para um VALOR, deixa o helper
-// avançar o relógio, e só então relança. Assim `assert.rejects` continua sendo o oráculo e o
-// helper compartilhado permanece intocado (ele é oráculo estável do 04-10; dedupá-lo/estendê-lo é
-// trabalho futuro, junto com a cópia local de emailer.timeout.test.js).
+// Este arquivo chamava `avancarRelogioAte` (helpers/fakeTimers.js) através de um envelope local
+// que normalizava o desfecho para um VALOR antes de relançar — necessário enquanto o helper só
+// observava a promessa pelo caminho de SUCESSO e substituía o erro real por "a promessa não
+// concluiu", mensagem que esconderia o 429 que este arquivo inteiro está medindo. O 04-13 (WR2-03)
+// levou essa normalização para DENTRO do helper compartilhado, então o envelope deixou de ter o
+// que compensar e foi removido: as chamadas abaixo são diretas.
 //
-// Usado também nos casos que HOJE rejeitam mas amanhã podem retentar: com `setTimeout` mockado,
-// uma espera não tickada nunca resolve, e um caso escrito sem avanço de relógio TRAVARIA a suíte
-// em vez de falhar. Aqui ele falha, com contagem legível.
-async function avancarRelogioAteDesfecho(promessa) {
-  const desfecho = await avancarRelogioAte(
-    promessa.then(
-      (valor) => ({ tipo: 'sucesso', valor }),
-      (erro) => ({ tipo: 'falha', erro }),
-    ),
-  );
-  if (desfecho.tipo === 'falha') throw desfecho.erro;
-  return desfecho.valor;
-}
+// Restam duas variantes do helper em circulação. A segunda, a cópia local de
+// `emailer.timeout.test.js`, continua de propósito: aquele arquivo é o oráculo de REL-02 e o
+// `emailer.js` ainda muda nesta rodada de gap closure — trocar o instrumento e o objeto medido na
+// mesma rodada é o que a constraint de processo do CLAUDE.md proíbe.
 
 after(() => {
   mock.timers.reset();
@@ -156,7 +146,7 @@ beforeEach(() => {
 test('(1) 429 transitório em /tasks é retentado e a rodada conclui', async () => {
   modoTasks = '429-uma-vez';
 
-  const tarefas = await avancarRelogioAteDesfecho(getDealsWithFutureTasks());
+  const tarefas = await avancarRelogioAte(getDealsWithFutureTasks());
 
   // O ponto do caso: um rate limit momentâneo NÃO pode custar o dia inteiro de notificações.
   assert.equal(
@@ -175,7 +165,7 @@ test('(2) 429 sempre: esgotadas as 3 tentativas, a falha PROPAGA (o fail-safe de
   modoTasks = '429-sempre';
 
   await assert.rejects(
-    () => avancarRelogioAteDesfecho(getDealsWithFutureTasks()),
+    () => avancarRelogioAte(getDealsWithFutureTasks()),
     /429/,
     'retry não pode virar "engolir o erro": um Set parcial notificaria indevidamente deals que TÊM tarefa futura (Decisão Q2)',
   );
@@ -189,7 +179,7 @@ test('(3) timeout NÃO é retentado: propaga na PRIMEIRA requisição (D-01)', a
   modoTasks = 'timeout';
 
   await assert.rejects(
-    () => avancarRelogioAteDesfecho(getDealsWithFutureTasks()),
+    () => avancarRelogioAte(getDealsWithFutureTasks()),
     /timeout of 15000ms exceeded/,
     'o timeout precisa chegar ao chamador com a mensagem original',
   );
@@ -207,9 +197,7 @@ test('(3) timeout NÃO é retentado: propaga na PRIMEIRA requisição (D-01)', a
 test('(4) caracterização: o 429 de /deals continua retentado, e o golden não se move', async () => {
   modoDeals = '429-uma-vez';
 
-  const ids = (await avancarRelogioAteDesfecho(getStaleDeals(15))).map(
-    (d) => d.id,
-  );
+  const ids = (await avancarRelogioAte(getStaleDeals(15))).map((d) => d.id);
 
   // Este caso JÁ PASSA hoje. Ele é a rede que protege a extração do laço de retry para um helper
   // compartilhado: se a extração mudar a condição, o número de tentativas ou o tempo de espera,
