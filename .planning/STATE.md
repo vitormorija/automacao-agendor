@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: "Completed 04-32-PLAN.md — WR4-07 FECHADO: um responsavel SEM NOME deixou de derrubar o resumo semanal de TODOS os comerciais. O rotulo do relatorio individual passou a resolver pelo CADASTRO (negocio -> users[d.ownerId]?.name -> rotulo neutro) e o template ganhou a guarda gemea como defesa em profundidade. Suite 183 -> 186, cobertura exit 0, lint exit 0 (44 warnings). Faltam 04-33 e 04-34 da gap closure r4. || anterior: Completed 04-31-PLAN.md — WR4-06 FECHADO: a PREVIA do envio (runCheckOnly) passou a MARCAR quem sera notificado, com os MESMOS quatro predicados de runCheck, e o rotulo do botao do painel deixou de contar negocios parados para contar destinatarios. A divergencia entre previa e envio virou VERMELHO (cenarios F e G), nao comentario. Suite 181 -> 183, lint exit 0 no backend e no frontend, build do frontend exit 0. Faltam 04-32..04-34 da gap closure r4. || anterior: Completed 04-30-PLAN.md — WR4-04 e IN4-01 FECHADOS: a unica borda do modulo com fan-out proporcional ao VOLUME DE DADOS ganhou teto de CONCORRENCIA (LOTE_DE_ORGS), sem mudar o resultado de getStaleDeals, e o lote IRMAO da paginacao esta VERIFICADO por medicao. Suite 178 -> 181, agendor.js 100% linhas / 91,72% branches, lint exit 0. Faltam 04-31..04-34 da gap closure r4. || anterior: Completed 04-29-PLAN.md — WR4-01 e WR4-05 FECHADOS: as TRES paginacoes de agendor.js tem o mesmo teto e o mesmo tratamento de envelope, com as irmas VERIFICADAS por teste e nao presumidas. Suite 174 -> 178, agendor.js em 100% linhas / 91,6% branches, lint exit 0. Faltam 04-30..04-34 da gap closure r4. || anterior: Completed 04-28-PLAN.md — CR4-01 (o BLOCKER da r4) FECHADO. || GAP CLOSURE R4 PLANEJADA E VERIFICADA (2026-08-05): 7 planos aditivos 04-28..04-34 sobre o 04-REVIEW.md round 4. Plan-checker: VERIFICATION PASSED NA PRIMEIRA PASSADA. Cobertura REL-01..06 = 6/6. || FASE 04 REABERTA PELA 4a VEZ pelo code review rodada 4: 1 BLOCKER (CR4-01), 7 warnings e 6 info."
-last_updated: "2026-08-05T18:30:00.000Z"
-last_activity: 2026-08-05 -- 04-32 completo (WR4-07: o rotulo do relatorio individual resolve pelo cadastro e um responsavel sem nome nao custa mais o resumo de todos); suite 186/186, cobertura exit 0, lint exit 0
+stopped_at: "Completed 04-33-PLAN.md — WR4-02 e WR4-03 FECHADOS: os comentarios da suite deixaram de afirmar que existe uma copia do helper de relogio que foi removida, e as 4 ancoras por numero de linha do oraculo de REL-02 viraram ancoras NOMEADAS, cada uma conferida contra o emailer.js atual antes de escrita. UNICO plano da r4 com DIFF DE PRODUCAO ZERO por criterio (backend/src/ vazio nas duas tasks). Inventario medido: 4 linhas em 4 arquivos sobre a copia, 45 -> 41 linhas com referencia por numero; residual de 39 linhas em 9 arquivos vai para o todo wr4-03b (04-34). Suite 186/186 (mesmo total da entrada), cobertura exit 0, lint exit 0 (44 warnings). Falta so o 04-34 da gap closure r4. || anterior: Completed 04-32-PLAN.md — WR4-07 FECHADO: um responsavel SEM NOME deixou de derrubar o resumo semanal de TODOS os comerciais. O rotulo do relatorio individual passou a resolver pelo CADASTRO (negocio -> users[d.ownerId]?.name -> rotulo neutro) e o template ganhou a guarda gemea como defesa em profundidade. Suite 183 -> 186, cobertura exit 0, lint exit 0 (44 warnings). Faltam 04-33 e 04-34 da gap closure r4. || anterior: Completed 04-31-PLAN.md — WR4-06 FECHADO: a PREVIA do envio (runCheckOnly) passou a MARCAR quem sera notificado, com os MESMOS quatro predicados de runCheck, e o rotulo do botao do painel deixou de contar negocios parados para contar destinatarios. A divergencia entre previa e envio virou VERMELHO (cenarios F e G), nao comentario. Suite 181 -> 183, lint exit 0 no backend e no frontend, build do frontend exit 0. Faltam 04-32..04-34 da gap closure r4. || anterior: Completed 04-30-PLAN.md — WR4-04 e IN4-01 FECHADOS: a unica borda do modulo com fan-out proporcional ao VOLUME DE DADOS ganhou teto de CONCORRENCIA (LOTE_DE_ORGS), sem mudar o resultado de getStaleDeals, e o lote IRMAO da paginacao esta VERIFICADO por medicao. Suite 178 -> 181, agendor.js 100% linhas / 91,72% branches, lint exit 0. Faltam 04-31..04-34 da gap closure r4. || anterior: Completed 04-29-PLAN.md — WR4-01 e WR4-05 FECHADOS: as TRES paginacoes de agendor.js tem o mesmo teto e o mesmo tratamento de envelope, com as irmas VERIFICADAS por teste e nao presumidas. Suite 174 -> 178, agendor.js em 100% linhas / 91,6% branches, lint exit 0. Faltam 04-30..04-34 da gap closure r4. || anterior: Completed 04-28-PLAN.md — CR4-01 (o BLOCKER da r4) FECHADO. || GAP CLOSURE R4 PLANEJADA E VERIFICADA (2026-08-05): 7 planos aditivos 04-28..04-34 sobre o 04-REVIEW.md round 4. Plan-checker: VERIFICATION PASSED NA PRIMEIRA PASSADA. Cobertura REL-01..06 = 6/6. || FASE 04 REABERTA PELA 4a VEZ pelo code review rodada 4: 1 BLOCKER (CR4-01), 7 warnings e 6 info."
+last_updated: "2026-08-05T19:15:00.000Z"
+last_activity: 2026-08-05 -- 04-33 completo (WR4-02 e WR4-03: comentarios da suite alinhados ao instrumento unico e ancoras nomeadas no oraculo de REL-02); diff de producao ZERO, suite 186/186, cobertura exit 0, lint exit 0
 progress:
   total_phases: 8
   completed_phases: 3
   total_plans: 50
-  completed_plans: 48
+  completed_plans: 49
   percent: 38
 ---
 
@@ -26,8 +26,70 @@ See: .planning/PROJECT.md (updated 2026-07-22)
 ## Current Position
 
 Phase: 04 (confiabilidade-das-integra-es) — gap closure r4 EM EXECUCAO
-Plan: 32 de 34 executados (04-01..04-32). Faltam 04-33 e 04-34 (gap closure r4).
-Status: WR4-07 FECHADO PELO 04-32 (2026-08-05)
+Plan: 33 de 34 executados (04-01..04-33). Falta o 04-34 (ultimo da gap closure r4).
+Status: WR4-02 E WR4-03 FECHADOS PELO 04-33 (2026-08-05)
+
+  O 04-33 e o UNICO plano da r4 com DIFF DE PRODUCAO ZERO por criterio de aceite
+  (`git diff --name-only backend/src/` vazio nas DUAS tasks) — precedente: 04-26 e 04-27.
+  Os dois achados sao sobre o INSTRUMENTO, nao sobre o produto.
+  WR4-02 — o commit 46cf90a (WR3-05, plano 04-26) removeu a copia local do helper de
+  relogio mas atualizou apenas 2 dos 4 comentarios que a declaravam viva. DOIS ARQUIVOS DO
+  REPOSITORIO AFIRMAVAM O OPOSTO SOBRE O MESMO FATO: helpers/fakeTimers.js dizia "NAO
+  existe mais nenhuma" e agendor.retry429.test.js dizia "Restam duas variantes ... continua
+  de proposito", com um motivo que o proprio 04-26 extinguiu. E
+  agendor.cacheConcurrency.test.js apontava para "o helper homonimo de
+  emailer.timeout.test.js", simbolo que nao existe mais naquele arquivo.
+  A FONTE DA VERDADE E helpers/fakeTimers.js (D-WR4-02-a) e ficou BYTE A BYTE — `git diff
+  --name-only backend/test/helpers/` vazio nas duas tasks. Os que contradiziam foram
+  alinhados a ela, nunca o contrario: foi a inversao desse sentido que produziu o achado na
+  primeira vez. O paragrafo do envelope local do 04-13 foi PRESERVADO (D-WR4-02-b): so saiu
+  a afirmacao das duas variantes.
+  WR4-03 — emailer.timeout.test.js mantinha 4 referencias por numero de linha a emailer.js
+  e AS 4 APONTAVAM PARA O LUGAR ERRADO, porque o modulo foi reescrito por 04-17, 04-21 e
+  04-24 depois de o teste ter sido escrito. E o defeito que a convencao de WR2-06 descreve,
+  no arquivo que e o ORACULO DE REL-02.
+  CADA ANCORA FOI LOCALIZADA NO emailer.js ATUAL ANTES DE SER ESCRITA (mitigacao de R4-31):
+  sendMailWithRetry; o termo de MENSAGEM da condicao isNetworkError (com o porque escrito —
+  com code 'ESOCKET' os dois termos que olham err.code nao casam); a recriacao do transporte
+  dentro do catch; e a guarda authorEmail !== ownerEmail de sendStaleNotification. O que as
+  linhas antigas apontavam hoje: :178 = `<!-- Footer -->`, :188 = `</body>`, :197 = linha de
+  comentario, :229 = fecha-bloco do ramo de retry.
+  A REFERENCIA AO FONTE DO nodemailer PERMANECE (D-WR4-03-b), com a exclusao DECLARADA por
+  escrito no cabecalho: e arquivo de dependencia, versionado pelo lockfile e nao por este
+  repositorio, entao o numero nao se desloca a cada commit daqui. Mesma forma da decisao
+  registrada em in3-06 sobre o nome do caso — para que a assimetria nao pareca esquecimento.
+  INVENTARIO DE IRMAOS ENTREGUE, com os dois numeros do plano batendo exatamente: 4 linhas
+  em 4 arquivos para "copia local|helper homonimo" (2 corrigidas, 2 verificadas-e-sas, uma
+  delas a fonte da verdade) e 45 linhas em 11 arquivos com referencia por numero na ENTRADA,
+  41 na SAIDA (so emailer.timeout mudou, de 5 para 1). Verificadas-e-sas por MEDICAO, nao
+  por leitura: a frase de emailer.timeout esta no PASSADO e descreve corretamente o 04-26;
+  agendor.loteDeOrganizacoes.test.js tem 0; backend/src tem 0 em todos os arquivos.
+  RESIDUAL COM DONO, medido: 39 linhas em 9 arquivos (scheduler.failsafe 12,
+  notificationStatus 11, agendor.timeout 8, notifications.resolved 3, e 1 em cada um de
+  config.route.smtpPass, db.smtpPassMigration.clear, db.smtpPassMigration.keep,
+  emailer.smtpPass e setup.js) — o in3-06 nomeia APENAS scheduler.resilience.test.js. Dono:
+  todo `wr4-03b`, a criar no 04-34, junto do gate de CI de in3-04.
+  DUAS DIVERGENCIAS DE MEDICAO, registradas e nao forcadas: (1) o cabecalho novo ficou com 8
+  linhas de texto e o plano pedia "3 a 5" — sao DUAS declaracoes independentes e cada uma
+  precisa carregar o seu porque; encurtar exigiria cortar um deles. NONA rodada da fase com
+  divergencia de contagem, e de classe NOVA (orcamento de prosa, nao forma de grep nem
+  reformatacao do Biome); (2) emailer.js:229 nao e `error: err.message` como o plano dizia,
+  e sim o fecha-bloco do ramo de retry (a atribuicao esta na 232) — a conclusao que importa
+  (a referencia aponta para lugar sem relacao) sobrevive e fica ate mais forte.
+  IN4-02 INTOCADO: `grep -c "tres vezes"` no diff = 0 (mitigacao de R4-36).
+  TODOS OS DEMAIS NUMEROS PRESCRITOS BATERAM: copia local|helper homonimo = 0 nos dois
+  corrigidos e 2 linhas nos dois corretos, emailer.js:N = 0, .js:N = 1, 0 assercoes no diff
+  das duas tasks, 8/3/9 casos preservados. Suite 186 -> 186 (o mesmo total da entrada, como
+  exigido de um plano sem mudanca de comportamento), cobertura exit 0, lint exit 0 (44
+  warnings, baseline). emailer.js em 89,78% linhas / 63,7% branches — identico ao 04-32.
+  ZERO DESVIOS: nenhuma Rule 1-4 acionada, nenhum pacote instalado.
+  ATENCAO PARA QUEM SEGUIR: quem for fechar o wr4-03b precisa CONFERIR cada referencia
+  contra o arquivo apontado antes de converte-la — este plano converteu 4 e as 4 estavam
+  erradas; trocar numero por nome sem conferir reproduz o defeito com outra sintaxe, e ai
+  ele fica invisivel para o grep que hoje o encontra.
+  Commits: 70721d5 (WR4-02), 8356ed1 (WR4-03).
+
+Status anterior: WR4-07 FECHADO PELO 04-32 (2026-08-05)
 
   O 04-32 fechou o achado cujo dano NAO E PROPORCIONAL A CAUSA: `ownerWeeklyHtml`
   desreferenciava `ownerName` sem guarda, e `getStaleDeals` produz `ownerName: null`
