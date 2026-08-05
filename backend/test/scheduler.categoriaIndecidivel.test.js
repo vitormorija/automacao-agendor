@@ -20,6 +20,19 @@
 //   A  a organização do PRIMEIRO negócio é inatingível  -> ele não recebe nada; o 2º recebe
 //   B  SIMÉTRICO: a organização do SEGUNDO é inatingível -> o 1º recebe; o 2º não
 //   C  não-regressão: nada falha                        -> os DOIS recebem
+//   D  APAGÃO: as organizações dos DOIS são inatingíveis -> ninguém recebe, e a rodada AVISA
+//   E  SIMÉTRICO DE CAUSA: os DOIS no funil Beefor       -> ninguém recebe, e a rodada CALA
+//
+// Por que D e E existem (CR4-01). Os cenários A e B medem supressão de 1 de 2, e por isso
+// "supressão parcial" e "apagão total" produziam o MESMO resultado observável: campo de erro
+// vazio, array de erros vazio, nenhuma linha de log agregado e o mesmo `results.skipped` — que
+// é o MESMO contador incrementado pela dedup do dia, pelo funil e por "sem destinatário". Uma
+// rodada em que a borda de organizações caiu INTEIRA ficava indistinguível de um dia em que
+// todo mundo já tinha sido notificado às 8h. O cenário D fecha essa lacuna pelo lado do alarme.
+// O cenário E fecha pelo lado oposto, e é ele que impede o alarme de virar ruído diário: com o
+// MESMO `results.skipped`, o MESMO `notified: 0` e a MESMA linha de conclusão, uma supressão
+// total por OUTRA causa continua silenciosa. O par existe para provar que o alarme discrimina
+// a CAUSA da supressão, e não apenas a QUANTIDADE de negócios suprimidos.
 //
 // Referências por âncora nomeada — função, identificador ou caso de teste —, nunca por número
 // de linha (WR2-06). PC-13: nada aqui captura, assere ou imprime o objeto de opções do
@@ -100,6 +113,22 @@ function servirDeals(idPrimeiro, idSegundo) {
   ];
 }
 
+// Irmã de `servirDeals` para o cenário E: os MESMOS dois clones, com os MESMOS donos e autores,
+// trocando exclusivamente o funil. É essa igualdade que faz o cenário medir a CAUSA da supressão
+// e não outra coisa.
+//
+// O `name` da ETAPA é PRESERVADO do molde de propósito: `isExcludedStage(deal.dealStage?.name)`
+// roda ANTES em getStaleDeals, então uma etapa trocada por descuido excluiria o negócio ainda na
+// borda — ele nunca chegaria ao `for` de runCheck, `results.stale` seria 0 e o caso mediria uma
+// lista vazia em vez de uma supressão por funil.
+function servirDealsDoFunilBeefor(idPrimeiro, idSegundo) {
+  servirDeals(idPrimeiro, idSegundo);
+  dealsServidos = dealsServidos.map((deal) => ({
+    ...deal,
+    dealStage: { name: MOLDE.dealStage.name, funnel: { name: 'Beefor' } },
+  }));
+}
+
 const USUARIOS = {
   data: [
     { id: 31, name: 'Ana Vendas', contact: { email: DONO_1 } },
@@ -113,7 +142,11 @@ const USUARIOS = {
 // ── Controle mutável das bordas ───────────────────────────────────────────────
 // O stub NUNCA é reinstalado entre casos (depois do require de agendor.js a instância `api` já
 // existe e um novo mock.method não teria efeito): o routeHandler ramifica por estas variáveis.
-let orgQueFalha = null;
+// A falha é injetada por um CONJUNTO de ids de organização, e não por um id solto, porque o
+// cenário D precisa derrubar as organizações dos DOIS negócios na MESMA rodada — com uma
+// variável escalar o apagão total seria inexprimível. A conversão não muda nada do que A, B e
+// C mediam: cada um deles povoa o conjunto com um id ou com nenhum.
+let orgsQueFalham = new Set();
 let consultasPorOrg = {};
 
 // Erro fiel ao que o axios produz num rate limit: o que fetchWithRetry consulta é a PRESENÇA de
@@ -139,9 +172,9 @@ installFakeAxios((url) => {
   if (url.startsWith('/organizations/')) {
     const id = Number(url.split('/').pop());
     consultasPorOrg[id] = (consultasPorOrg[id] || 0) + 1;
-    // 429 SEMPRE para a organização escolhida: é a falha PERSISTENTE, a única que sobrevive ao
-    // retry da borda (04-19) e portanto a única que chega ao agendador como indecidível.
-    if (id === orgQueFalha) return Promise.reject(erro429());
+    // 429 SEMPRE para as organizações escolhidas: é a falha PERSISTENTE, a única que sobrevive
+    // ao retry da borda (04-19) e portanto a única que chega ao agendador como indecidível.
+    if (orgsQueFalham.has(id)) return Promise.reject(erro429());
     // 'Lead' não está em EXCLUDED_CATEGORIES: as demais organizações são elegíveis.
     return { data: { data: { category: { name: 'Lead' } } } };
   }
@@ -199,7 +232,7 @@ after(() => {
 beforeEach(() => {
   mock.timers.reset();
   mock.timers.enable({ apis: ['Date', 'setTimeout'], now: FIXED_NOW });
-  orgQueFalha = null;
+  orgsQueFalham = new Set();
   consultasPorOrg = {};
   transportesCriados = 0;
   enviosPorDestinatario = {};
@@ -221,7 +254,7 @@ test('A: negócio de categoria indecidível não recebe e-mail nem linha de log,
   const primeiro = 2301;
   const segundo = 2302;
   servirDeals(primeiro, segundo);
-  orgQueFalha = organizacaoDe(primeiro);
+  orgsQueFalham = new Set([organizacaoDe(primeiro)]);
 
   const r = await avancarRelogioAte(runCheck());
 
@@ -229,7 +262,7 @@ test('A: negócio de categoria indecidível não recebe e-mail nem linha de log,
   // tentado de verdade. Sem ela, um cenário em que a borda nem consultou passaria como se
   // tivesse provado alguma coisa (lição de WR-05).
   assert.equal(
-    consultasPorOrg[orgQueFalha],
+    consultasPorOrg[organizacaoDe(primeiro)],
     3,
     'pré-condição: a consulta de categoria precisa ter esgotado as 3 tentativas do retry',
   );
@@ -240,6 +273,23 @@ test('A: negócio de categoria indecidível não recebe e-mail nem linha de log,
     undefined,
     'uma organização inatingível não aborta a verificação do dia',
   );
+
+  // É este caso e o B que fixam o limiar do alarme de CR4-01 POR BAIXO: com 1 de 2 negócios
+  // suprimidos, a rodada continua sem NENHUM sinal agregado de erro. Qualquer limiar
+  // proporcional abaixo de 100% — inclusive "metade ou mais", que com 2 negócios dá 1 — deixa
+  // estes dois casos vermelhos, porque a rodada passaria a se ANUNCIAR como falha num cenário
+  // que o contrato de CR3-01 fixou como normal.
+  assert.equal(
+    r.skippedCategoriaIndecidivel,
+    1,
+    'o contador dedicado existe e separa esta supressão da dedup, do funil e do "sem destinatário"',
+  );
+  assert.equal(
+    r.errors.length,
+    0,
+    'supressão PARCIAL não entra no array de erros que a UI renderiza',
+  );
+
   assert.equal(
     r.deals.length,
     2,
@@ -297,12 +347,12 @@ test('B: SIMÉTRICO — a falha na organização do SEGUNDO negócio produz o es
   const primeiro = 2311;
   const segundo = 2312;
   servirDeals(primeiro, segundo);
-  orgQueFalha = organizacaoDe(segundo);
+  orgsQueFalham = new Set([organizacaoDe(segundo)]);
 
   const r = await avancarRelogioAte(runCheck());
 
   assert.equal(
-    consultasPorOrg[orgQueFalha],
+    consultasPorOrg[organizacaoDe(segundo)],
     3,
     'pré-condição: a consulta de categoria precisa ter esgotado as 3 tentativas do retry',
   );
@@ -311,6 +361,20 @@ test('B: SIMÉTRICO — a falha na organização do SEGUNDO negócio produz o es
     undefined,
     'uma organização inatingível não aborta a verificação do dia',
   );
+
+  // O limiar por baixo vale igualmente quando o afetado é o ÚLTIMO da rodada: 1 de 2 suprimidos
+  // continua sendo supressão parcial, e supressão parcial não produz sinal agregado de erro.
+  assert.equal(
+    r.skippedCategoriaIndecidivel,
+    1,
+    'o contador dedicado conta o negócio suprimido também na ordem inversa',
+  );
+  assert.equal(
+    r.errors.length,
+    0,
+    'supressão PARCIAL não entra no array de erros que a UI renderiza',
+  );
+
   assert.equal(r.deals.length, 2);
 
   // O primeiro, agora elegível, é notificado normalmente.
@@ -351,11 +415,17 @@ test('C: rodada sã — sem falha de categoria, os dois negócios são notificad
   const primeiro = 2321;
   const segundo = 2322;
   servirDeals(primeiro, segundo);
-  orgQueFalha = null;
+  // `orgsQueFalham` permanece VAZIA (o beforeEach a rearma assim): é a AUSÊNCIA de falha que
+  // faz este caso medir a não-regressão.
 
   const r = await avancarRelogioAte(runCheck());
 
   assert.equal(r.error, undefined);
+  assert.equal(
+    r.skippedCategoriaIndecidivel,
+    0,
+    'o contador dedicado é zero numa rodada sã — ele não pode contar o que a guarda não suprimiu',
+  );
   assert.equal(r.deals.length, 2);
   assert.equal(
     r.deals.some((d) => d.skipped === true),
@@ -379,4 +449,144 @@ test('C: rodada sã — sem falha de categoria, os dois negócios são notificad
   assert.equal(linhasDoDeal(segundo)[0].status, 'sent');
 
   assert.equal(r.notified, 2, 'os dois negócios elegíveis foram notificados');
+});
+
+// ── D — APAGÃO: as organizações dos DOIS negócios são inatingíveis ────────────
+//
+// Sem este caso, o apagão total e o dia calmo continuam sendo o MESMO resultado observável: A e
+// B só medem 1 de 2, e a testemunha notificada que eles usam é justamente o que desaparece
+// quando a borda inteira cai. Aqui não há testemunha — é a rodada que precisa falar por si.
+//
+// A metade "permanece no painel" da decisão do usuário continua medida MESMO no apagão: os dois
+// negócios seguem em `r.deals`, marcados e com motivo escrito. Sinalizar a rodada como erro não
+// pode virar desculpa para sumir com eles do painel.
+test('D: 2 de 2 — a supressão TOTAL por categoria indecidível vira erro da rodada', async () => {
+  const primeiro = 2331;
+  const segundo = 2332;
+  servirDeals(primeiro, segundo);
+  orgsQueFalham = new Set([organizacaoDe(primeiro), organizacaoDe(segundo)]);
+
+  const r = await avancarRelogioAte(runCheck());
+
+  // Pré-condição, a mesma de A e B: a falha é PERSISTENTE nas DUAS organizações, depois de o
+  // retry do 04-19 ter tentado de verdade.
+  assert.equal(
+    consultasPorOrg[organizacaoDe(primeiro)],
+    3,
+    'pré-condição: a organização do primeiro negócio esgotou as 3 tentativas do retry',
+  );
+  assert.equal(
+    consultasPorOrg[organizacaoDe(segundo)],
+    3,
+    'pré-condição: a organização do segundo negócio esgotou as 3 tentativas do retry',
+  );
+
+  assert.equal(
+    r.skippedCategoriaIndecidivel,
+    2,
+    'os DOIS negócios foram suprimidos pela guarda de categoria',
+  );
+
+  // As DUAS superfícies do alarme. O campo de erro é o que a decisão do usuário nomeia; o array
+  // é o único que o Dashboard de fato renderiza (`lastRun?.errors?.length > 0`).
+  assert.equal(
+    typeof r.error === 'string' && r.error.length > 0,
+    true,
+    'a rodada totalmente suprimida preenche o campo de erro',
+  );
+  assert.equal(
+    r.errors.length,
+    1,
+    'e entra UMA vez no array de erros que a UI renderiza — um alarme por rodada, não um por negócio',
+  );
+
+  assert.equal(r.notified, 0, 'nenhuma notificação saiu nesta rodada');
+
+  // A metade "permanece no painel": o apagão não pode custar a visibilidade dos negócios.
+  assert.equal(
+    r.deals.length,
+    2,
+    'os dois negócios PERMANECEM no resultado mesmo no apagão',
+  );
+  for (const id of [primeiro, segundo]) {
+    const item = r.deals.find((d) => d.id === id);
+    assert.notEqual(item, undefined);
+    assert.equal(item.skipped, true);
+    assert.equal(
+      typeof item.skipReason === 'string' && item.skipReason.length > 0,
+      true,
+      'o motivo continua escrito por negócio, além do alarme agregado',
+    );
+  }
+
+  // O efeito irreversível: nenhum e-mail para nenhum dos quatro destinatários.
+  assert.equal(envios(DONO_1), 0);
+  assert.equal(envios(AUTOR_1), 0);
+  assert.equal(envios(DONO_2), 0);
+  assert.equal(envios(AUTOR_2), 0);
+
+  // E nenhum vestígio no notification_log: não houve evento de envio (T-04-20-03). O alarme
+  // mora no resultado da rodada, não numa linha de histórico que mentiria sobre um envio.
+  assert.equal(linhasDoDeal(primeiro).length, 0);
+  assert.equal(linhasDoDeal(segundo).length, 0);
+});
+
+// ── E — SIMÉTRICO: 2 de 2 por OUTRA causa NÃO dispara o alarme ────────────────
+//
+// Este é o par que fecha o achado. O cenário D prova que o apagão passa a ser audível; o E prova
+// que o alarme não vira ruído. Uma rodada com o MESMO `results.skipped`, o MESMO `notified: 0` e
+// a MESMA linha de conclusão continua SILENCIOSA quando a causa é determinística, lida do payload
+// do próprio negócio e já tem motivo escrito.
+//
+// Sem o E, qualquer implementação que ligasse o alarme em `results.notified === 0` — ou em
+// `results.skipped === results.stale` — passaria, e o operador receberia um erro todo dia em que
+// só houvesse negócios do funil Beefor parados. Um alarme que dispara sem causa é um alarme que
+// se aprende a ignorar, e aí o apagão real volta a passar despercebido.
+//
+// A ordem das asserções é deliberada: as do funil vêm ANTES da do contador. Assim o vermelho do
+// RED distingue "a armação do funil não produziu a supressão" de "o contador ainda não existe".
+test('E: SIMÉTRICO — 2 de 2 suprimidos por FUNIL não disparam o alarme de categoria', async () => {
+  const primeiro = 2341;
+  const segundo = 2342;
+  servirDealsDoFunilBeefor(primeiro, segundo);
+  // `orgsQueFalham` VAZIA: as categorias são consultadas com sucesso. A supressão aqui é do
+  // funil, e é essa diferença de CAUSA que o caso mede.
+
+  const r = await avancarRelogioAte(runCheck());
+
+  // Pré-condição: os dois negócios chegaram ao `for` de runCheck e foram suprimidos lá — não
+  // filtrados antes, na borda, por `isExcludedStage`.
+  assert.equal(
+    r.stale,
+    2,
+    'pré-condição: os dois negócios entraram na rodada (a etapa do molde foi preservada)',
+  );
+  assert.equal(
+    r.skipped,
+    2,
+    'os dois foram suprimidos — o MESMO contador compartilhado do cenário D',
+  );
+  assert.equal(r.notified, 0, 'e o MESMO notified: 0 do cenário D');
+
+  assert.equal(envios(DONO_1), 0);
+  assert.equal(envios(AUTOR_1), 0);
+  assert.equal(envios(DONO_2), 0);
+  assert.equal(envios(AUTOR_2), 0);
+
+  // O que MUDA em relação ao D, e é o ponto inteiro deste caso: nenhum sinal de alarme.
+  assert.equal(
+    r.skippedCategoriaIndecidivel,
+    0,
+    'nenhuma supressão por categoria: o contador dedicado discrimina a CAUSA',
+  );
+  assert.equal(
+    r.error,
+    undefined,
+    'supressão total por OUTRA causa não preenche o campo de erro',
+  );
+  assert.equal(
+    r.errors.length,
+    0,
+    'nem entra no array de erros que a UI renderiza — o alarme não é ruído diário',
+  );
 });
