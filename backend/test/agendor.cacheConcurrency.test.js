@@ -30,11 +30,13 @@ const assert = require('node:assert/strict');
 const { installFakeAxios } = require('./helpers/fakeAxios');
 
 // Relógio fixo: now = 2026-06-01T00:00:00.000Z -> cutoffDate = now - 15d = 2026-05-17T00:00:00.000Z.
-// Mesmo instante do golden de agendor.getStaleDeals.test.js:14, para que a fixture compartilhada
+// Mesmo instante do golden de agendor.getStaleDeals.test.js (a constante FIXED_NOW de lá), para
+// que a fixture compartilhada
 // signifique exatamente a mesma coisa nos dois arquivos.
 //
 // Só o relógio é mockado. Os temporizadores NÃO são: a fixture tem 10 deals numa página única,
-// então nada dorme dentro de getStaleDeals — mockar a espera entre lotes (agendor.js:196-197)
+// então nada dorme dentro de getStaleDeals — mockar a espera entre lotes de páginas de
+// getStaleDeals (o setTimeout de 1s entre batches, em agendor.js)
 // não compraria nada e ainda congelaria o setImmediate real de que cederEventLoop depende.
 const FIXED_NOW = new Date('2026-06-01T00:00:00.000Z').getTime();
 
@@ -190,7 +192,7 @@ async function cederEventLoop() {
 }
 
 // Falha explícita em vez de travar a suíte, no mesmo espírito de avancarRelogioAte
-// (emailer.timeout.test.js:98-113).
+// (o helper homônimo de emailer.timeout.test.js).
 async function esperarAte(condicao, descricao) {
   for (let i = 0; i < 20 && !condicao(); i++) {
     await cederEventLoop();

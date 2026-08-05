@@ -6,7 +6,7 @@
 // Como o cron é DIÁRIO, um 429 transitório — o erro que a API Agendor usa justamente para dizer
 // "tente de novo" — custa 24 HORAS SEM NENHUMA NOTIFICAÇÃO, em silêncio: o único vestígio é uma
 // string em `results.error` que ninguém lê a menos que abra o dashboard. E 429 é provável
-// exatamente aqui, porque scheduler.js:55-59 dispara `getStaleDeals`, `getUsers` e
+// exatamente aqui, porque runCheck (scheduler.js) dispara `getStaleDeals`, `getUsers` e
 // `getDealsWithFutureTasks` no MESMO `Promise.all`, martelando a API simultaneamente.
 //
 // A decisão Q2 ("Set completo ou falha explícita") NÃO é revisitada: o caso 2 existe para provar
@@ -29,7 +29,8 @@ const { avancarRelogioAte } = require('./helpers/fakeTimers');
 // Relógio fixo, com `setTimeout` TAMBÉM mockado: as esperas entre tentativas são de 5s e 10s
 // reais, e sem relógio falso este arquivo levaria 15s de parede por caso de exaustão.
 // Mockar `setTimeout` aqui não congela mais nada do SUT: a única outra espera do módulo é a
-// pausa de 1s entre lotes de páginas (agendor.js:209-210), e ela nunca é atingida porque o
+// pausa de 1s entre lotes de páginas de `getStaleDeals` (agendor.js), e ela nunca é atingida
+// porque o
 // `meta.totalCount` da fixture cabe em UMA página.
 const FIXED_NOW = new Date('2026-06-01T00:00:00.000Z').getTime();
 
@@ -64,7 +65,8 @@ function erro429() {
   });
 }
 
-// Erro fiel a um timeout de client (mesmo molde de agendor.timeout.test.js:45-49): ECONNABORTED e,
+// Erro fiel a um timeout de client (mesmo molde do erro sintético de agendor.timeout.test.js):
+// ECONNABORTED e,
 // o que importa aqui, SEM `response`. É a AUSÊNCIA de `response` que mantém o timeout fora do
 // retry (D-01) — retentá-lo levaria o pior caso de uma requisição de ~15s para ~60s.
 function erroDeTimeout() {

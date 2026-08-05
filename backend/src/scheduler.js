@@ -112,7 +112,7 @@ async function runCheck() {
         // Registro do envio em DUAS etapas (REL-05, Decisão Q1). O insert continua
         // vindo ANTES do envio porque o log_id é o que identifica o clique no link
         // de tracking — mas ele não pode mais nascer 'sent', senão uma falha deixa
-        // a linha mentindo e, como alreadyNotifiedToday (db.js:223-232) filtra
+        // a linha mentindo e, como alreadyNotifiedToday (em db.js) filtra
         // status = 'sent', o deal nunca seria retentado.
         //
         // Por que o status inicial é 'pending': se o processo morrer no meio do
@@ -128,7 +128,8 @@ async function runCheck() {
         // A MESMA razão vale no caminho de EXCEÇÃO (WR-01), e é por isso que
         // sendStaleNotification anexa ao erro o resultado por destinatário que já
         // tinha coletado: ela pode lançar DEPOIS de um envio confirmado (o retry
-        // de emailer.js:211 recria o transporte dentro do próprio catch, e essa
+        // de sendMailWithRetry, em emailer.js, recria o transporte dentro do próprio
+        // catch, e essa
         // recriação lê o SQLite). Rebaixar a linha para 'error' sem olhar o parcial
         // reabre a duplicata — a linha deixa de deduplicar e a rodada de amanhã
         // reenvia para quem já recebeu.
@@ -428,6 +429,7 @@ module.exports = { scheduleTask, runCheck, runCheckOnly, getStatus, stopTasks };
 // `runWeeklySummary` é registrada direto no cron por scheduleTask() e nenhum
 // consumidor de produção a importa — por isso ela nunca esteve no export acima.
 // Esta linha a expõe SOMENTE para a caracterização de REL-03, que precisa provar
-// que uma falha de borda dentro dela é registrada e NÃO relançada (catch de :242).
+// que uma falha de borda dentro dela é registrada e NÃO relançada (o catch que fecha o
+// corpo de runWeeklySummary, logando '[Scheduler] Erro no resumo semanal:').
 // Acrescentar a propriedade não muda o que scheduleTask agenda nem quem chama o quê.
 module.exports.runWeeklySummary = runWeeklySummary;

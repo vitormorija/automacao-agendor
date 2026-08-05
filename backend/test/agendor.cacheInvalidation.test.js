@@ -30,7 +30,8 @@ const assert = require('node:assert/strict');
 const { installFakeAxios } = require('./helpers/fakeAxios');
 
 // Relógio fixo: now = 2026-06-01T00:00:00.000Z -> cutoffDate = now - 15d = 2026-05-17T00:00:00.000Z.
-// Mesmo instante do golden de agendor.getStaleDeals.test.js:14, para que a fixture
+// Mesmo instante do golden de agendor.getStaleDeals.test.js (a constante FIXED_NOW de lá),
+// para que a fixture
 // compartilhada signifique exatamente a mesma coisa nos dois arquivos.
 const FIXED_NOW = new Date('2026-06-01T00:00:00.000Z').getTime();
 
@@ -104,7 +105,8 @@ after(() => {
 });
 
 // Zera o contador antes de cada caso para que a contagem do cenário (2) reflita UMA única
-// execução de getStaleDeals (o mock.fn acumula) — padrão de agendor.futureTasks.test.js:81-83.
+// execução de getStaleDeals (o mock.fn acumula) — padrão do beforeEach de
+// agendor.futureTasks.test.js.
 beforeEach(() => {
   fake.get.mock.resetCalls();
 });

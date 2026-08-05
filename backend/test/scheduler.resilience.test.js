@@ -2,19 +2,23 @@
 // três bordas stubadas (HTTP Agendor via installFakeAxios, SMTP via nodemailer, SQLite
 // em arquivo temporário) e um relógio fixo. Pina o comportamento ATUAL — não o ideal:
 //   (1) uma falha de borda durante runCheck vira `results.error` e NÃO é relançada;
-//   (2) o `finally` de scheduler.js:174 libera o lock `isRunning` mesmo na falha;
-//   (3) a execução SEGUINTE a uma falha roda normalmente (o guard de :27 não trava);
+//   (2) o `finally` do try principal de runCheck (scheduler.js) libera o lock `isRunning`
+//       mesmo na falha;
+//   (3) a execução SEGUINTE a uma falha roda normalmente (o guard `if (isRunning)` do topo
+//       de runCheck não trava);
 //   (4) uma chamada concorrente recebe `{ skipped: true }` sem executar;
-//   (5) runWeeklySummary resolve sem lançar quando a borda falha (catch de :242).
+//   (5) runWeeklySummary resolve sem lançar quando a borda falha (o catch que fecha o corpo
+//       daquela função, logando '[Scheduler] Erro no resumo semanal:').
 //
 // REL-03 (D-04): somente caracterização, nenhuma mudança de comportamento. Fecha a
 // lacuna de 10,65% de cobertura de scheduler.js — o arquivo que os planos 04-02 e 04-06
-// vão alterar. Se o lock vazasse, o guard de :27 recusaria TODA execução seguinte e o
+// vão alterar. Se o lock vazasse, o guard `if (isRunning)` recusaria TODA execução seguinte e o
 // sistema pararia de notificar EM SILÊNCIO: é essa classe de falha que estes testes
 // existem para deixar vermelha no CI.
 //
 // Por que a borda que falha aqui é `/users` e não `/tasks`: hoje getDealsWithFutureTasks
-// engole erros (agendor.js:224-227) e o plano 04-02 muda exatamente esse caminho.
+// engole erros (o catch do laço de páginas em agendor.js) e o plano 04-02 muda exatamente
+// esse caminho.
 // Falhando por `/users` — que getUsers propaga sem catch — estes 5 cenários seguem
 // válidos e verdes depois do fail-safe do 04-02.
 
@@ -47,7 +51,7 @@ const ORG_CATEGORY = {
 const dealsPage = require('./fixtures/synthetic/deals-page.json');
 
 // Usuários responsáveis pelos dois deals que sobrevivem aos filtros (owners 11 e 13).
-// `links` sem `next` encerra a paginação de getUsers (agendor.js:26) na primeira volta.
+// `links` sem `next` encerra a paginação de getUsers (agendor.js) na primeira volta.
 const USUARIOS = {
   data: [
     { id: 11, name: 'Ana Vendas', contact: { email: 'ana@exemplo.invalid' } },
@@ -131,7 +135,8 @@ const { runCheck, runWeeklySummary, getStatus } = require('../src/scheduler');
 
 before(() => {
   // Só 'Date': habilitar 'setTimeout' congelaria a espera entre lotes de páginas
-  // (agendor.js:143). Com totalCount = 10 não há segunda página, então nada espera.
+  // (o setTimeout entre batches de getStaleDeals, em agendor.js). Com totalCount = 10 não há
+  // segunda página, então nada espera.
   mock.timers.enable({ apis: ['Date'], now: FIXED_NOW });
 });
 
@@ -150,7 +155,8 @@ beforeEach(() => {
 test('(1) falha na borda HTTP durante runCheck é registrada em results.error e NÃO é relançada', async () => {
   usuariosDevemFalhar = true;
 
-  // Se o catch de scheduler.js:171 sumisse, esta linha rejeitaria e o teste quebraria:
+  // Se o catch externo de runCheck (scheduler.js) sumisse, esta linha rejeitaria e o teste
+  // quebraria:
   // é exatamente o await "nu" que prova a não-propagação.
   const r = await runCheck();
 
@@ -171,7 +177,8 @@ test('(2) o lock isRunning é liberado mesmo quando a execução falha', async (
   usuariosDevemFalhar = true;
   await runCheck();
 
-  // Pina o `finally` de scheduler.js:174-177. Um lock vazado não derruba nada —
+  // Pina o `finally` do try principal de runCheck (scheduler.js). Um lock vazado não derruba
+  // nada —
   // faz o sistema parar de notificar em silêncio, que é o pior modo de falha daqui.
   assert.equal(
     getStatus().isRunning,
@@ -188,9 +195,11 @@ test('(3) a execução seguinte a uma falha roda normalmente (o guard de :27 nã
 
   const r = await runCheck();
 
-  // O guard de :27 devolve { skipped: true, reason: 'Verificação já em andamento' }.
+  // O guard `if (isRunning)` do topo de runCheck devolve
+  // { skipped: true, reason: 'Verificação já em andamento' }.
   // Uma execução REAL devolve o objeto results completo, em que `skipped` é a CONTAGEM
-  // de deals pulados (número, inicializada em 0 na :36) e `reason` nunca existe.
+  // de deals pulados (número, inicializado em 0 no literal `results` de runCheck) e `reason`
+  // nunca existe.
   // Por isso a prova de "não foi recusada" é `reason === undefined`, não `skipped`.
   assert.equal(
     r.reason,
@@ -227,7 +236,8 @@ test('(4) chamada concorrente devolve { skipped: true } sem executar', async () 
   suspenderUsuarios();
 
   // Sem `await`: runCheck() roda sincronamente até o primeiro await, e nesse trecho já
-  // executou `isRunning = true` (scheduler.js:29). É a janela que o guard protege.
+  // executou `isRunning = true` (a instrução logo após o guard, em scheduler.js). É a janela
+  // que o guard protege.
   const emAndamento = runCheck();
 
   const concorrente = await runCheck();
@@ -258,7 +268,8 @@ test('(5) runWeeklySummary resolve sem lançar quando a borda falha', async () =
   // Reafirma o estado neutro que este caso espera (o cenário 4 deixou a borda sã).
   usuariosDevemFalhar = true;
 
-  // Pina o catch de scheduler.js:242-244: registra o erro e NÃO relança. Note que
+  // Pina o catch que fecha o corpo de runWeeklySummary (scheduler.js): registra o erro e NÃO
+  // relança. Note que
   // runWeeklySummary NÃO tem lock `isRunning` — é o comportamento ATUAL, deliberadamente
   // pinado como está; nada aqui pede que ela ganhe um.
   await assert.doesNotReject(
@@ -267,10 +278,10 @@ test('(5) runWeeklySummary resolve sem lançar quando a borda falha', async () =
   );
 
   // `assert.doesNotReject` sozinho é insuficiente (WR-05): runWeeklySummary tem um
-  // early-return em scheduler.js:210 (`if (!notificationsEnabled) return;`) ANTES do
+  // early-return (`if (!notificationsEnabled) return;`, em runWeeklySummary) ANTES do
   // Promise.all que falha. Qualquer coisa que faça a função sair cedo mantém o caso
   // verde sem NUNCA tocar o catch que ele afirma pinar. A asserção abaixo prova que a
-  // execução passou do early-return e chegou à borda: o beforeEach de :146-148 zera
+  // execução passou do early-return e chegou à borda: o `beforeEach` deste arquivo zera
   // fake.get.mock.calls, então a contagem é local a este caso.
   assert.ok(
     fake.get.mock.calls.some((c) => c.arguments[0] === '/users'),

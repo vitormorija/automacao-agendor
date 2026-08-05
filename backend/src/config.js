@@ -6,7 +6,7 @@
 // cobrir os dois ramos (produção derruba / desenvolvimento avisa) na suíte de testes.
 //
 // Este módulo NÃO carrega o dotenv de propósito: quem carrega o .env é o boot
-// (src/index.js:1, por caminho absoluto). A suíte requer este arquivo, e o
+// (a chamada de dotenv no topo de src/index.js, por caminho absoluto). A suíte requer este arquivo, e o
 // backend/.env real jamais deve ser lido por um teste (é a razão de existir do test/setup.js).
 
 const logger = require('./logger');

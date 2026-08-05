@@ -1,3 +1,5 @@
+// Convenção (WR2-06): comentário referencia outro trecho por âncora nomeada — função, identificador,
+// arquivo ou caso de teste —, nunca por número de linha, que se desloca no próprio commit que o escreve.
 const axios = require('axios');
 const logger = require('./logger');
 
@@ -72,7 +74,7 @@ async function getOrgCategory(orgId, cache) {
 // 15s acima. Centralizar a chamada aqui é o que impede esse ponto órfão de reaparecer: quem
 // quiser consultar um deal usa getDealById e herda baseURL, header e teto de tempo de graça.
 //
-// Diferente de getOrgCategory (:35-47), NÃO engole a falha: quem absorve é o catch por item
+// Diferente de getOrgCategory, logo acima, NÃO engole a falha: quem absorve é o catch por item
 // do Promise.all da rota, que já existe. Engolir aqui devolveria null e faria a rota tratar
 // "não consegui consultar" como "não mudou nada" — sem nenhum sinal de que a consulta falhou.
 async function getDealById(id) {
@@ -149,7 +151,8 @@ function getDealType(orgCategory) {
 // D-01 — não entra aqui de propósito, e retentá-lo levaria o pior caso de uma requisição de ~15s
 // para ~60s, comendo a janela do cron.
 //
-// Por que um helper e não uma segunda cópia do laço: a consulta de tarefas futuras (:281) precisa
+// Por que um helper e não uma segunda cópia do laço: a consulta de tarefas futuras, em
+// getDealsWithFutureTasks (neste mesmo arquivo, mais abaixo), precisa
 // exatamente da mesma regra, e desde o fail-safe de REL-06 qualquer falha dela ABORTA a rodada
 // inteira. Como o cron é diário, um 429 transitório lá custa 24 horas sem nenhuma notificação, em
 // silêncio. Duplicar a regra dentro do MESMO módulo e da MESMA borda criaria um segundo lugar
@@ -317,13 +320,14 @@ async function getDealsWithFutureTasks() {
       if (tasks.length < 100) break;
       page++;
       // Contrato desta função: o Set é COMPLETO ou a chamada FALHA — nunca parcial.
-      // O motivo é que scheduler.js:61 usa este Set como decisão de quem NÃO recebe
+      // O motivo é que runCheck, em scheduler.js, usa este Set como decisão de quem NÃO recebe
       // notificação (`staleDeals.filter((d) => !futureTasks.has(d.id))`). Engolir o erro
       // e devolver o que já foi coletado (o antigo `break`) faz deals que TÊM tarefa
       // futura agendada serem notificados indevidamente — e ninguém percebe, porque a
       // rodada termina "com sucesso". Falha explícita é preferível a proteção parcial:
-      // a rejeição sobe até o catch de scheduler.js:171, que registra em results.error,
-      // o finally de :174 libera o lock, e a rodada seguinte executa normalmente.
+      // a rejeição sobe até o catch externo de runCheck (scheduler.js), que registra em
+      // results.error; o finally daquele mesmo try libera o lock `isRunning`, e a rodada
+      // seguinte executa normalmente.
       // Só a mensagem é logada: o objeto de erro do axios carrega `config.headers`
       // com `Authorization: Token <AGENDOR_TOKEN>` (REL-06 / Decisão Q2).
       //
