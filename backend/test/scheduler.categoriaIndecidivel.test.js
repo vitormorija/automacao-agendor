@@ -24,6 +24,22 @@
 //   E  SIMÉTRICO DE CAUSA: os DOIS no funil Beefor       -> ninguém recebe, e a rodada CALA
 //   F  PRÉVIA x ENVIO, por categoria indecidível         -> a prévia promete exatamente quem recebe
 //   G  SIMÉTRICO DE FILTRO: PRÉVIA x ENVIO, por FUNIL    -> idem, pelo outro filtro
+//   H  RENOMEAÇÃO: o funil vira 'Beefor Comercial'       -> suprime no envio E na prévia
+//   I  FORMA DO PAYLOAD: os DOIS sem funil               -> os dois recebem, e a rodada AVISA
+//   J  SIMÉTRICO DE CAUSA: funil presente e não-Beefor   -> os dois recebem, e a rodada CALA
+//
+// Por que H, I e J existem (in3-08). H fecha o MODO 2 — a comparação de funil era por
+// igualdade EXATA, então bastava um administrador renomear o funil no CRM para a supressão
+// deixar de casar e o responsável voltar a receber cobrança de um negócio que a regra de negócio
+// manda suprimir. H mede isso pelos DOIS consumidores do scheduler ao mesmo tempo: o envio
+// (`runCheck`) e a prévia (`runCheckOnly`), com a mesma igualdade de conjuntos de F e G.
+// I e J são o par ALARME/SILÊNCIO do MODO 1, com exatamente o mesmo papel que D e E têm para o
+// alarme de categoria: I prova que uma mudança de FORMA do payload da Agendor — negócios sem a
+// estrutura de funil — deixa de ser invisível; J prova que o sinal discrimina a CAUSA e não a
+// quantidade, porque uma rodada com funil presente e não-Beefor continua silenciosa. Sem o J,
+// uma implementação que ligasse o alarme sempre, ou por `notified === 0`, passaria por I.
+// A direção da falha do MODO 1 NÃO muda e é medida em I: funil ausente CONTINUA notificando
+// (fail-open deliberado). O que a decisão do usuário acrescentou foi observabilidade.
 //
 // Por que F e G existem (WR4-06). Até eles, este arquivo media apenas o ENVIO — `runCheck`. A
 // PRÉVIA (`runCheckOnly`, a rota que o painel chama antes de disparar) não tinha NENHUM caso em
@@ -149,6 +165,39 @@ function servirDealsDoFunilBeefor(idPrimeiro, idSegundo, idsNoBeefor = null) {
           dealStage: { name: MOLDE.dealStage.name, funnel: { name: 'Beefor' } },
         }
       : deal,
+  );
+}
+
+// Irmã de `servirDealsDoFunilBeefor` para os cenários H, I e J — ADITIVA: aquela fica intocada,
+// porque é a armação de E e G e qualquer mudança lá mexeria em casos que este plano não toca.
+//
+// As duas diferenças em relação à irmã: o nome do funil vem por PARÂMETRO, e `nomeDoFunil === null`
+// significa `dealStage` SEM a chave `funnel` — a forma que um payload de forma mudada teria, e que é
+// o que `getStaleDeals` traduz para `funnel: null` na lista enriquecida. Passar uma string vazia não
+// serviria: o que se quer medir é a AUSÊNCIA da estrutura, não um nome vazio.
+//
+// O `name` da ETAPA continua vindo do molde, pelo mesmo motivo já escrito acima para a irmã:
+// `isExcludedStage(deal.dealStage?.name)` roda ANTES em getStaleDeals, então uma etapa trocada por
+// descuido excluiria o negócio ainda na borda e o caso mediria uma lista vazia.
+//
+// O quarto parâmetro escolhe QUAIS dos dois recebem o funil informado; omitido, os dois recebem —
+// a forma que I e J usam. H precisa de apenas um deles renomeado, ao lado de uma testemunha
+// elegível, porque o que ele mede é a marcação POR NEGÓCIO: uma rodada inteiramente suprimida não
+// distingue "a prévia enxerga o funil renomeado" de "a prévia não promete nada".
+function servirDealsComFunil(
+  idPrimeiro,
+  idSegundo,
+  nomeDoFunil,
+  idsAlvo = null,
+) {
+  servirDeals(idPrimeiro, idSegundo);
+  const alvo = idsAlvo ?? new Set([idPrimeiro, idSegundo]);
+  const etapa =
+    nomeDoFunil === null
+      ? { name: MOLDE.dealStage.name }
+      : { name: MOLDE.dealStage.name, funnel: { name: nomeDoFunil } };
+  dealsServidos = dealsServidos.map((deal) =>
+    alvo.has(deal.id) ? { ...deal, dealStage: etapa } : deal,
   );
 }
 
@@ -756,5 +805,215 @@ test('G: SIMÉTRICO por outro filtro — o negócio do funil Beefor também vem 
     idsNotificadosDeFato(r),
     prometidos,
     'a igualdade entre prometido e notificado vale para o filtro de funil tanto quanto para o de categoria',
+  );
+});
+
+// ── H — RENOMEAÇÃO: 'Beefor Comercial' suprime no ENVIO e na PRÉVIA ───────────
+//
+// O modo de falha que este cenário fecha não depende de erro nenhum: a comparação de funil era por
+// igualdade EXATA, então bastava alguém renomear o funil dentro do Agendor — 'Beefor' vira
+// 'Beefor Comercial' — para a supressão deixar de casar e o responsável voltar a ser cobrado por um
+// negócio que a regra de negócio diz não ser dele. O cenário G mede o nome EXATO; este mede o
+// renomeado, e os dois juntos são o que impede a correção de ser desfeita por engano.
+//
+// Os dois consumidores do scheduler entram no mesmo caso, porque chamam a MESMA função exportada:
+// a prévia (rótulo do botão de disparo) e o envio, com a igualdade de conjuntos herdada de F e G.
+test('H: RENOMEAÇÃO — o funil "Beefor Comercial" suprime a notificação no envio e na prévia', async () => {
+  const primeiro = 2371;
+  const segundo = 2372;
+  // Só o PRIMEIRO é renomeado; o segundo mantém o funil do molde ('Comercial') e é a testemunha
+  // elegível — sem ela o caso não distinguiria "a supressão nova funciona" de "ficou larga demais".
+  servirDealsComFunil(
+    primeiro,
+    segundo,
+    'Beefor Comercial',
+    new Set([primeiro]),
+  );
+  // `orgsQueFalham` VAZIA: nenhuma categoria é indecidível aqui, e é essa diferença de CAUSA que
+  // mantém o cenário medindo o funil e não outra coisa.
+
+  // A PRÉVIA vem primeiro, e a ordem é obrigatória (a mesma razão de F e G): `runCheckOnly` é
+  // somente leitura e `runCheck` grava no notification_log. Invertida, a linha 'sent' mudaria a
+  // resposta da dedup DENTRO da prévia e o oráculo mediria o rastro do próprio teste.
+  const previa = await avancarRelogioAte(runCheckOnly());
+
+  const previstoPrimeiro = previa.find((d) => d.id === primeiro);
+  const previstoSegundo = previa.find((d) => d.id === segundo);
+  assert.notEqual(previstoPrimeiro, undefined);
+  assert.notEqual(previstoSegundo, undefined);
+
+  // (a) pré-condição: o negócio chegou com o funil RENOMEADO, e não com o nome exato do cenário G.
+  assert.equal(
+    previstoPrimeiro.funnel,
+    'Beefor Comercial',
+    'pré-condição: o negócio chegou à prévia com o funil RENOMEADO no CRM',
+  );
+
+  // (b) é aqui que o achado fica vermelho enquanto a comparação for por igualdade exata.
+  assert.equal(
+    previstoPrimeiro.seraNotificado,
+    false,
+    'um funil renomeado que contém o termo continua suprimindo a notificação ao responsável',
+  );
+
+  // (c) a supressão nova não é larga demais.
+  assert.equal(
+    previstoSegundo.seraNotificado,
+    true,
+    'o negócio do funil "Comercial" continua prometido — a substring não pode suprimir o inocente',
+  );
+
+  // (d) guarda de NÃO-VACUIDADE: sem ela, dois conjuntos vazios satisfariam a igualdade abaixo.
+  const prometidos = idsPrometidosPelaPrevia(previa);
+  assert.deepEqual(
+    prometidos,
+    [segundo],
+    'a prévia promete exatamente o negócio elegível — e promete alguém',
+  );
+
+  const r = await avancarRelogioAte(runCheck());
+
+  // (e) a igualdade prévia-x-envio, herdada de F e G.
+  assert.deepEqual(
+    idsNotificadosDeFato(r),
+    prometidos,
+    'o conjunto NOTIFICADO pelo envio precisa ser IGUAL ao conjunto PROMETIDO pela prévia',
+  );
+
+  // (f) o efeito irreversível, medido por destinatário.
+  assert.equal(envios(DONO_1), 0, 'o dono do negócio renomeado não recebe');
+  assert.equal(envios(AUTOR_1), 0, 'o autor do negócio renomeado não recebe');
+  assert.equal(envios(DONO_2) >= 1, true, 'o dono do negócio elegível recebe');
+  assert.equal(
+    envios(AUTOR_2) >= 1,
+    true,
+    'o autor do negócio elegível recebe',
+  );
+
+  // (g) funil RENOMEADO é funil PRESENTE. Um conserto que tratasse rename como ausência de funil
+  // ficaria vermelho aqui — e trocaria a supressão exigida por uma notificação indevida.
+  assert.equal(
+    r.funilNaoAvaliado,
+    0,
+    'nenhum negócio ficou sem funil: a regra pôde ser avaliada nos dois',
+  );
+});
+
+// ── I — FORMA DO PAYLOAD: funil ausente continua notificando, e a rodada AVISA ─
+//
+// A direção da falha NÃO muda aqui, e essa é a metade mais importante do caso: negócio sem a
+// estrutura de funil CONTINUA sendo notificado (fail-open deliberado). A razão medida está escrita
+// no oráculo unitário `agendor.funnel.test.js`: 15 de 15 negócios das fixtures do repositório trazem
+// a estrutura, então funil ausente é caminho de EXCEÇÃO. Um fail-safe uniforme faria "não sei o
+// funil" virar o estado padrão de qualquer payload que mudasse de forma, reintroduzindo a supressão
+// em massa invisível que o cenário D acabou de tornar audível.
+//
+// O que MUDA é a observabilidade — e a ordem das asserções abaixo é instrumento, não estilo: TODAS
+// as de COMPORTAMENTO (símbolos que já existiam) vêm antes de TODAS as de INSTRUMENTO (símbolos
+// introduzidos junto com o sinal). Assim o vermelho distingue "o fail-open regrediu" de "o
+// instrumento ainda não existe".
+test('I: FORMA DO PAYLOAD — os dois negócios sem funil continuam notificados, e a rodada registra que a regra não pôde ser avaliada', async () => {
+  const primeiro = 2381;
+  const segundo = 2382;
+  // Os DOIS sem a chave `funnel`: é a rodada inteira que perde a estrutura, que é o desfecho de uma
+  // mudança de forma do payload da borda.
+  servirDealsComFunil(primeiro, segundo, null);
+
+  const previa = await avancarRelogioAte(runCheckOnly());
+  const r = await avancarRelogioAte(runCheck());
+
+  const previstoPrimeiro = previa.find((d) => d.id === primeiro);
+  const previstoSegundo = previa.find((d) => d.id === segundo);
+  assert.notEqual(previstoPrimeiro, undefined);
+  assert.notEqual(previstoSegundo, undefined);
+
+  // ── COMPORTAMENTO — símbolos que já existem; estas asserções NÃO podem ficar vermelhas ──
+  // (a) pré-condição: os dois entraram na rodada (a etapa do molde foi preservada).
+  assert.equal(r.stale, 2, 'pré-condição: os dois negócios entraram na rodada');
+
+  // (b) O FAIL-OPEN É A ASSERÇÃO QUE NÃO PODE MUDAR.
+  assert.equal(
+    r.notified,
+    2,
+    'funil ausente CONTINUA notificando — fail-open deliberado, não descuido',
+  );
+  assert.equal(envios(DONO_1) >= 1, true);
+  assert.equal(envios(AUTOR_1) >= 1, true);
+  assert.equal(envios(DONO_2) >= 1, true);
+  assert.equal(envios(AUTOR_2) >= 1, true);
+
+  // (c) e a prévia não promete MENOS do que o envio entrega.
+  assert.equal(previstoPrimeiro.seraNotificado, true);
+  assert.equal(previstoSegundo.seraNotificado, true);
+
+  // ── INSTRUMENTO — símbolos do sinal novo; é aqui que o RED precisa parar ──
+  // (d) o contador da rodada.
+  assert.equal(
+    r.funilNaoAvaliado,
+    2,
+    'a rodada conta quantos negócios ficaram sem a regra de funil avaliada',
+  );
+
+  // (e) o campo por negócio atravessa o spread `{ ...deal }` de runCheckOnly — VERIFICADO por
+  // medição, não presumido pela leitura do código.
+  assert.equal(
+    previstoPrimeiro.funilAusente,
+    true,
+    'o campo derivado na borda chega à prévia sem ninguém precisar reimplementar o critério',
+  );
+
+  // (f) a mudança de forma deixou de ser invisível, nas duas superfícies do resultado.
+  assert.equal(
+    r.errors.length,
+    1,
+    'UM alarme por rodada no array que a UI renderiza — não um por negócio',
+  );
+  assert.equal(typeof r.error, 'string');
+  assert.equal(
+    r.error.includes('funil'),
+    true,
+    'a mensagem precisa nomear a causa: quem lê o campo de erro tem de saber que é o funil',
+  );
+});
+
+// ── J — SIMÉTRICO DE CAUSA: funil presente e não-Beefor não dispara nada ──────
+//
+// Construção IDÊNTICA à de I, mudando EXCLUSIVAMENTE o nome do funil — é essa igualdade que faz o
+// par medir a CAUSA e não outra coisa. Sem o J, qualquer implementação que ligasse o alarme em
+// `notified === 0`, em `skipped === stale` ou simplesmente sempre passaria por I, e o operador
+// receberia um erro por rodada. Um alarme que dispara sem causa é um alarme que se aprende a
+// ignorar — e aí a mudança de forma real volta a passar despercebida.
+test('J: SIMÉTRICO DE CAUSA — com funil presente e não-Beefor a rodada notifica os dois e CALA', async () => {
+  const primeiro = 2391;
+  const segundo = 2392;
+  servirDealsComFunil(primeiro, segundo, 'Comercial');
+
+  const r = await avancarRelogioAte(runCheck());
+
+  // (a) o comportamento é o mesmo de I — o que muda é só o sinal.
+  assert.equal(r.stale, 2, 'pré-condição: os dois negócios entraram na rodada');
+  assert.equal(r.notified, 2, 'os dois negócios elegíveis foram notificados');
+  assert.equal(envios(DONO_1) >= 1, true);
+  assert.equal(envios(AUTOR_1) >= 1, true);
+  assert.equal(envios(DONO_2) >= 1, true);
+  assert.equal(envios(AUTOR_2) >= 1, true);
+
+  // (b) o contador discrimina a CAUSA: funil presente não é funil não avaliado.
+  assert.equal(
+    r.funilNaoAvaliado,
+    0,
+    'nenhum negócio ficou sem a regra de funil avaliada numa rodada de forma íntegra',
+  );
+
+  // (c) e (d) as DUAS superfícies do resultado continuam limpas.
+  assert.equal(
+    r.error,
+    undefined,
+    'uma rodada de forma íntegra não preenche o campo de erro',
+  );
+  assert.equal(
+    r.errors.length,
+    0,
+    'nem entra no array de erros que a UI renderiza — o alarme não é ruído diário',
   );
 });
