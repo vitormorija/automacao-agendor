@@ -606,7 +606,7 @@ function ownerWeeklyHtml({ ownerName, deals, weekLabel, staleDays }) {
       .join('');
   }
 
-  const firstName = ownerName.split(' ')[0];
+  const firstName = (ownerName || 'Comercial').split(' ')[0];
 
   return `<!DOCTYPE html>
 <html>
@@ -811,12 +811,36 @@ async function sendOwnerWeeklySummary({ deals, users }) {
   const results = [];
 
   // Agrupa deals por dono
+  //
+  // WR4-07 — O RÓTULO DO GRUPO RESOLVE PELA MELHOR FONTE, e não pelo negócio apenas.
+  // `getStaleDeals` produz `ownerName` NULO quando o payload da borda traz o responsável
+  // sem nome, e esse nulo chegava aqui intacto e seguia direto para o template.
+  // O custo não era um e-mail perdido: o corpo do relatório é montado DENTRO do laço de
+  // destinatários abaixo e ANTES do `try/catch` que envolve o envio, então a exceção
+  // escapava desta função, subia até o `catch` de `runWeeklySummary` (scheduler) e
+  // encerrava o resumo semanal de TODOS os comerciais — inclusive os que já teriam
+  // recebido —, deixando como único vestígio uma linha genérica de log.
+  // O encadeamento prefere o nome do CADASTRO ao rótulo neutro porque o dicionário de
+  // `getUsers` tem o nome do responsável mesmo quando o negócio não tem: usar a melhor
+  // fonte disponível é o conserto de verdade; só evitar a exceção seria trocar um erro
+  // por uma saudação genérica. A assimetria que denunciava o descuido está medida — a
+  // rota de teste do relatório individual (`POST /test-owner-summary`) já guardava este
+  // mesmo campo por conta própria, e o caminho de produção não guardava nada.
+  // A guarda gêmea em `ownerWeeklyHtml` é DEFESA EM PROFUNDIDADE e NÃO tem caso dedicado
+  // (D-WR4-07-c): com esta guarda aplicada o rótulo nunca chega nulo lá pelo caminho de
+  // produção, o outro chamador já guarda o campo, e pinar a do template exigiria um seam
+  // novo num módulo que não exporta a função. Mesmo precedente e mesma forma de
+  // declaração de D-WR3-03-b (04-24). Oráculo: `emailer.resumoIndecidivel.test.js`,
+  // cenários 5 a 7 — e o (6) é o que mede o custo AGREGADO.
   const byOwner = {};
   for (const d of notifiable) {
     const owner = users[d.ownerId];
     if (!owner?.email) continue;
     if (!byOwner[owner.email])
-      byOwner[owner.email] = { name: d.ownerName, deals: [] };
+      byOwner[owner.email] = {
+        name: d.ownerName || users[d.ownerId]?.name || 'Comercial',
+        deals: [],
+      };
     byOwner[owner.email].deals.push(d);
   }
 
