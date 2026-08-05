@@ -26,9 +26,17 @@
 // é isso que isola o defeito no canal e mantém os dois consertos revertíveis de forma
 // independente.
 //
-// O cenário:
+// Os cenários:
 //   E (WR2-04)  o parcial chega com tipo errado, num erro congelado -> a rodada CONTINUA,
 //               a linha do 1º deal vai para 'error' (nada confirmado) e o 2º é notificado
+//   F (WR3-03)  o parcial é um ARRAY BEM FORMADO NO CONTÊINER e corrompido no ELEMENTO
+//               ([null]) -> `Array.isArray` deixa passar e o `.some` lança de dentro do
+//               próprio catch: mesmo desfecho de WR2-04, um nível mais fundo. A rodada
+//               precisa CONTINUAR, com a linha do 1º deal em 'error'
+//   G (SIMÉTRICO de F — a direção oposta)  o parcial mistura um elemento corrompido com um
+//               sucesso GENUÍNO ([null, { success: true }]) -> endurecer a leitura não pode
+//               custar a confirmação que realmente aconteceu: linha 'sent', dedup verdadeira
+//               e r.notified === 2
 //
 // PC-13: nada aqui assere nem imprime o objeto de opções do transporte SMTP — ele carrega
 // `auth.pass`.
@@ -119,7 +127,11 @@ installFakeAxios((url) => {
 // ── Controle do envio ────────────────────────────────────────────
 // Variáveis mutáveis de módulo lidas DENTRO do stub: o mock nunca é reinstalado no meio do
 // arquivo (`node --test` isola por arquivo, não por `test()`).
-let modoEnvio = 'ok'; // 'ok' | 'canal-corrompido'
+// 'ok'                    — envio saudável, nenhum erro injetado
+// 'canal-corrompido'      — cenário E: o parcial não é sequer um array
+// 'canal-elemento-nulo'   — cenário F: o parcial é array, o elemento é `null`
+// 'canal-elemento-misto'  — cenário G: array com elemento `null` E um sucesso genuíno
+let modoEnvio = 'ok';
 
 // Contadores que são a PRÉ-CONDIÇÃO do cenário: sem eles o caso poderia ficar verde por
 // coincidência (lição de WR-05 — um teste que não prova o caminho que afirma medir).
@@ -145,6 +157,39 @@ const ERRO_CONGELADO = Object.freeze(
   ),
 );
 
+// WR3-03 — o mesmo molde do erro acima, com UMA diferença: a propriedade improvisada agora
+// É um array. `Array.isArray` fica VERDADEIRO e a guarda do 04-16 deixa o valor passar
+// inteiro para o `.some`, que desreferencia cada elemento. O contêiner está correto; o
+// elemento, não. A premissa do cenário E (um erro congelado de biblioteca carregando uma
+// propriedade homônima "de qualquer tipo") não dá nenhuma razão para supor que esse tipo
+// seria preferencialmente string e não array.
+const ERRO_CONGELADO_ELEMENTO_NULO = Object.freeze(
+  Object.assign(
+    new Error('transporte SMTP indisponível ao recriar a conexão (elemento nulo)'),
+    { resultadosParciais: [null] },
+  ),
+);
+
+// O SIMÉTRICO: um elemento corrompido AO LADO de uma confirmação genuína. É a entrada que
+// separa "a leitura parou de lançar" de "a leitura parou de lançar sem perder nada" — uma
+// validação que descartasse o array inteiro ao ver o `null` rebaixaria a linha para 'error',
+// ela deixaria de deduplicar, e a rodada de amanhã reenviaria para quem já recebeu.
+const ERRO_CONGELADO_ELEMENTO_MISTO = Object.freeze(
+  Object.assign(
+    new Error('transporte SMTP indisponível ao recriar a conexão (parcial misto)'),
+    { resultadosParciais: [null, { success: true }] },
+  ),
+);
+
+// O erro que cada modo injeta na recriação do transporte. A tabela existe para que os três
+// cenários compartilhem exatamente o mesmo caminho de código do stub: o que muda entre eles
+// é APENAS o valor que chega ao consumidor do canal parcial.
+const ERRO_DO_MODO = {
+  'canal-corrompido': ERRO_CONGELADO,
+  'canal-elemento-nulo': ERRO_CONGELADO_ELEMENTO_NULO,
+  'canal-elemento-misto': ERRO_CONGELADO_ELEMENTO_MISTO,
+};
+
 // Erro classificado como DE REDE por sendMailWithRetry (a mensagem contém 'timeout'). É o
 // que faz o retry entrar no ramo que espera 3s e RECRIA o transporte, em vez de devolver
 // { success:false } de imediato — e é dentro dessa recriação, ou seja DENTRO do `try` de
@@ -163,8 +208,8 @@ mock.method(nodemailer, 'createTransport', () => {
   // A 2ª chamada é a recriação do transporte de dentro do catch do laço de retry — logo,
   // DENTRO do `try` de sendStaleNotification. A 1ª (fábrica inicial daquela função, que
   // fica FORA do try) e a 3ª (fábrica inicial do SEGUNDO deal) funcionam normalmente.
-  if (modoEnvio === 'canal-corrompido' && transportesCriados === 2) {
-    throw ERRO_CONGELADO;
+  if (ERRO_DO_MODO[modoEnvio] && transportesCriados === 2) {
+    throw ERRO_DO_MODO[modoEnvio];
   }
 
   // O índice fica preso no fecho: é ele que distingue o transporte do PRIMEIRO deal (cujos
@@ -175,7 +220,7 @@ mock.method(nodemailer, 'createTransport', () => {
   return {
     verify: async () => true,
     sendMail: async () => {
-      if (modoEnvio === 'canal-corrompido' && indiceDoTransporte === 1) {
+      if (ERRO_DO_MODO[modoEnvio] && indiceDoTransporte === 1) {
         throw erroDeRede();
       }
       enviosConfirmados++;
@@ -313,5 +358,187 @@ test('E: um resultado parcial de tipo errado não pode abortar a rodada — a li
     r.notified,
     1,
     'exatamente uma notificação confirmada na rodada — a do segundo deal',
+  );
+});
+
+// ── F (WR3-03) — o parcial é array, e o ELEMENTO é que está corrompido ──
+test('F: um elemento não-objeto dentro do parcial não pode abortar a rodada — o contêiner válido não basta', async () => {
+  const primeiro = 2205;
+  const segundo = 2206;
+  servirDeals(primeiro, segundo);
+  modoEnvio = 'canal-elemento-nulo';
+
+  const r = await avancarRelogioAte(runCheck());
+
+  // Pré-condições avaliadas ANTES da asserção central: elas valem tanto no estado defeituoso
+  // quanto no corrigido e provam que o CAMINHO medido é o pretendido.
+  assert.ok(
+    transportesCriados >= 2,
+    'pré-condição: a exceção precisa ter vindo da recriação do transporte (dentro do try), não da fábrica inicial',
+  );
+  assert.equal(
+    enviosConfirmadosDoPrimeiroDeal,
+    0,
+    'pré-condição: nenhum destinatário do primeiro deal confirmou — é por isso que o desfecho correto é "error"',
+  );
+  assert.deepEqual(
+    ERRO_CONGELADO_ELEMENTO_NULO.resultadosParciais,
+    [null],
+    'pré-condição: a anexação do produtor falhou EM SILÊNCIO no erro congelado e o array com o elemento nulo chegou intacto ao consumidor',
+  );
+  assert.equal(
+    Array.isArray(ERRO_CONGELADO_ELEMENTO_NULO.resultadosParciais),
+    true,
+    'pré-condição: o CONTÊINER é válido — este cenário passa pela guarda do 04-16, ele não a contorna',
+  );
+
+  // A asserção central de WR3-03. `Array.isArray` valida o CONTÊINER e nada mais: um array
+  // cujos elementos não sejam objetos passa pela guarda, e a desreferência de `r.success`
+  // sobre `null` faz o `.some` lançar DENTRO do próprio catch do bloco de envio. Uma exceção
+  // nascida ali não tem quem a segure: sobe para o catch externo de runCheck, aborta o `for`
+  // e deixa os negócios restantes sem processar — o mesmo desfecho que WR2-04 existia para
+  // impedir, pela mesma porta, um nível mais fundo. A guarda correta valida as DUAS camadas.
+  assert.equal(
+    r.error,
+    undefined,
+    'um elemento não-objeto no parcial não pode abortar a rodada',
+  );
+  assert.equal(
+    r.deals.length,
+    2,
+    'os deals seguintes da rodada precisam continuar sendo processados',
+  );
+
+  // Pré-condição forte, depois das centrais: no estado defeituoso a rodada morre no primeiro
+  // deal e o terceiro transporte nunca nasce, então esta contagem produziria um vermelho
+  // sobre o instrumento em vez de sobre o defeito.
+  assert.equal(
+    transportesCriados,
+    3,
+    'pré-condição: 1 fábrica inicial + 1 recriação que lança + 1 do segundo deal',
+  );
+
+  // Nada foi confirmado (o único elemento do parcial não é uma confirmação), então o desfecho
+  // fail-safe é 'error' — que não deduplica e é retentável amanhã.
+  const linhasPrimeiro = linhasDoDeal(primeiro);
+  assert.equal(linhasPrimeiro.length, 1, 'uma notificação, uma linha');
+  assert.equal(
+    linhasPrimeiro[0].status,
+    'error',
+    'nada foi confirmado: o desfecho fail-safe da linha é "error"',
+  );
+  assert.equal(
+    db.alreadyNotifiedToday(primeiro),
+    false,
+    'a linha error não deduplica: a rodada de amanhã retenta',
+  );
+
+  const linhasSegundo = linhasDoDeal(segundo);
+  assert.equal(linhasSegundo.length, 1, 'uma notificação, uma linha');
+  assert.equal(
+    linhasSegundo[0].status,
+    'sent',
+    'o deal seguinte foi notificado normalmente',
+  );
+  assert.equal(
+    enviosConfirmados,
+    2,
+    'o segundo deal ENVIOU de verdade (dono e autor), não apenas gravou uma linha',
+  );
+  assert.equal(
+    r.notified,
+    1,
+    'exatamente uma notificação confirmada na rodada — a do segundo deal',
+  );
+});
+
+// ── G (SIMÉTRICO de F) — validar o elemento não pode custar uma confirmação real ──
+//
+// Por que este cenário é o simétrico EXIGIDO e não um extra: endurecer a leitura para que ela
+// deixe de LANÇAR é só metade do conserto. A outra metade é não PERDER uma confirmação
+// genuína por causa de um elemento corrompido ao lado dela. A forma mais natural de "resolver"
+// F — desconfiar do array inteiro assim que um elemento não for objeto — produziria
+// exatamente esse defeito: a linha do negócio seria rebaixada para 'error' apesar de um
+// destinatário ter recebido o e-mail de verdade; 'error' NÃO deduplica; e a rodada de amanhã
+// reenviaria para quem já recebeu — que é precisamente o desfecho que WR-01 (04-10) existe
+// para impedir. F e G se apoiam em direções opostas e é o par que fecha WR3-03.
+//
+// O conteúdo do array é a ENTRADA SOB TESTE, não uma afirmação sobre a realidade do envio: no
+// stub deste arquivo nenhum e-mail do primeiro deal chega a sair, e é a leitura do canal — e
+// só ela — que decide o status gravado.
+test('G: um elemento corrompido ao lado de um sucesso genuíno não pode custar a confirmação — o simétrico de F', async () => {
+  const primeiro = 2207;
+  const segundo = 2208;
+  servirDeals(primeiro, segundo);
+  modoEnvio = 'canal-elemento-misto';
+
+  const r = await avancarRelogioAte(runCheck());
+
+  assert.ok(
+    transportesCriados >= 2,
+    'pré-condição: a exceção precisa ter vindo da recriação do transporte (dentro do try), não da fábrica inicial',
+  );
+  assert.deepEqual(
+    ERRO_CONGELADO_ELEMENTO_MISTO.resultadosParciais,
+    [null, { success: true }],
+    'pré-condição: o parcial chegou intacto ao consumidor, com o elemento corrompido ANTES do sucesso genuíno — é o primeiro que o `.some` avalia',
+  );
+
+  assert.equal(
+    r.error,
+    undefined,
+    'um parcial misto não pode abortar a rodada',
+  );
+  assert.equal(
+    r.deals.length,
+    2,
+    'os deals seguintes da rodada precisam continuar sendo processados',
+  );
+  assert.equal(
+    transportesCriados,
+    3,
+    'pré-condição: 1 fábrica inicial + 1 recriação que lança + 1 do segundo deal',
+  );
+
+  // O coração do simétrico: houve envio confirmado no parcial, então a linha é 'sent' e a
+  // dedup passa a proteger quem recebeu.
+  const linhasPrimeiro = linhasDoDeal(primeiro);
+  assert.equal(linhasPrimeiro.length, 1, 'uma notificação, uma linha');
+  assert.equal(
+    linhasPrimeiro[0].status,
+    'sent',
+    'o sucesso genuíno do parcial precisa sobreviver ao elemento corrompido — rebaixar para "error" reabriria a duplicata que WR-01 fechou',
+  );
+  assert.equal(
+    db.alreadyNotifiedToday(primeiro),
+    true,
+    'a linha sent deduplica: a rodada de amanhã NÃO reenvia para quem já recebeu',
+  );
+
+  // A assimetria intencional pinada desde o 04-14: `results.notified` conta envio real (e o
+  // parcial confirmado é envio real), enquanto `dealResult.notified` responde outra pergunta
+  // — "todos os destinatários confirmaram?" —, e no sucesso parcial a resposta é não.
+  assert.equal(
+    r.notified,
+    2,
+    'duas notificações confirmadas: o primeiro pelo parcial e o segundo pelo envio real',
+  );
+  assert.equal(
+    r.deals[0].notified,
+    false,
+    'no sucesso parcial dealResult.notified permanece false — nem todos os destinatários confirmaram',
+  );
+
+  const linhasSegundo = linhasDoDeal(segundo);
+  assert.equal(linhasSegundo.length, 1, 'uma notificação, uma linha');
+  assert.equal(
+    linhasSegundo[0].status,
+    'sent',
+    'o deal seguinte foi notificado normalmente',
+  );
+  assert.equal(
+    enviosConfirmados,
+    2,
+    'o segundo deal ENVIOU de verdade (dono e autor) — nenhum envio do primeiro chegou a sair',
   );
 });
