@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Gap closure r2 PLANEJADA e verificada (04-12..04-18, waves 5-11; 0 blockers). Fase 04 NAO esta completa — bloqueada por CR2-01. Proximo passo: /gsd:execute-phase 04, retomando na wave 5 (04-12). auto_advance OFF (checkpoints C9, C10, C11). SEC-01 permanece ABERTO por decisao C8.
-last_updated: "2026-08-05T00:00:40.643Z"
-last_activity: 2026-08-05 -- Phase 04 planning complete
+stopped_at: 04-12 implementado (CR2-01 fechado) — PAUSADO no checkpoint C9, gate humano bloqueante. Nao entrar no 04-13 sem o sinal de retomada. SEC-01 permanece ABERTO por decisao C8.
+last_updated: "2026-08-05T00:14:46.325Z"
+last_activity: 2026-08-05 -- 04-12 executado; aguardando checkpoint C9
 progress:
   total_phases: 8
   completed_phases: 3
   total_plans: 34
-  completed_plans: 27
+  completed_plans: 28
   percent: 38
 ---
 
@@ -25,10 +25,19 @@ See: .planning/PROJECT.md (updated 2026-07-22)
 
 ## Current Position
 
-Phase: 04 (confiabilidade-das-integra-es) — REABERTA; gap closure r2 PLANEJADA
-Plan: 11 de 18 executados. Os 7 novos (04-12..04-18, waves 5-11) estao planejados e verificados,
-  nenhum executado ainda.
-Status: Ready to execute — retomar na wave 5 (04-12)
+Phase: 04 (confiabilidade-das-integra-es) — EXECUTING (PAUSADA no checkpoint C9)
+Plan: 12 de 18 executados (04-01..04-12). Faltam 04-13..04-18.
+Status: AGUARDANDO CHECKPOINT C9 (human-verify, gate bloqueante)
+  O 04-12 fechou CR2-01, o achado CRITICO da rodada 2: getOrgCategory passou a receber o
+  cache da execucao por parametro, getStaleDeals passou a cria-lo, e o dicionario de modulo
+  orgCategoryCache mais a limpeza por execucao deixaram de existir. O refetch entre execucoes
+  virou ESTRUTURAL. RED medido e registrado (A e B -> [101, 103, 105], contador em 1);
+  GREEN medido (B -> [101, 103], contador 1 -> 2). Suite 139 -> 140, todos verdes.
+  ATENCAO para quem verificar a fase: a remocao do delete/limpeza NAO e regressao de REL-04 —
+  os 3 cenarios de agendor.cacheInvalidation.test.js seguem verdes SEM edicao de asseracao.
+  O C9 exige decisao humana explicita sobre a redacao de REL-04 / Success Criteria 4 do
+  ROADMAP (manter, ou ajustar no 04-18). Nao entrar no 04-13 sem o sinal de retomada.
+
   A 2a rodada de code review (04-REVIEW.md, round: 2) verificou as conclusoes da r1 CETICAMENTE
   e reabriu a fase:
 
@@ -50,9 +59,9 @@ Status: Ready to execute — retomar na wave 5 (04-12)
   checkpoints bloqueantes: C9, C10, C11).
   A rodada 1 esta preservada em 04-REVIEW-r1.md (origem dos planos 04-08..04-11).
   SEC-01 permanece ABERTO como risco conscientemente aceito (decisao C8) — nao marcar resolvido.
-Last activity: 2026-08-05 -- Phase 04: gap closure r2 planejada (04-12..04-18), verificacao passou
+Last activity: 2026-08-05 -- 04-12 executado (CR2-01 fechado); pausado no checkpoint C9
 
-Progress: [██████░░░░] 61% (11 de 18 planos executados; fase bloqueada por CR2-01)
+Progress: [███████░░░] 67% (12 de 18 planos da fase 04 executados; CR2-01 fechado, C9 pendente)
 
 ## Performance Metrics
 
@@ -99,6 +108,7 @@ Progress: [██████░░░░] 61% (11 de 18 planos executados; fase
 | Phase 04 P09 | 7min | 4 tasks tasks | 10 files files |
 | Phase 04 P10 | 14min | 3 tasks | 5 files |
 | Phase 04 P11 | 22min | 2 tasks tasks | 2 files files |
+| Phase 04 P12 | 26min | 2 tasks (+C9 pendente) | 3 files |
 
 ## Accumulated Context
 
@@ -194,6 +204,11 @@ Recent decisions affecting current work:
 - [Phase ?]: 04-11: retentar nao e engolir — esgotadas as 3 tentativas a falha continua propagando e o contrato Q2 do 04-02 (Set completo ou excecao) permanece; scheduler.failsafe.test.js rodou sem edicao
 - [Phase ?]: 04-11: timeout continua FORA do retry (D-01) e agora esta pinado nos DOIS consumidores — e a ausencia de err.response que o mantem fora; retenta-lo levaria o pior caso de uma requisicao de ~15s para ~60s
 - [Phase ?]: 04-11: o relogio falso precisa ser rearmado em beforeEach quando o proprio SUT avanca o tempo — o avanco do retry de um caso adiantava o cutoff de 15 dias do caso seguinte e fazia os deals 102 e 104 entrarem no golden (contaminacao de ordem, nao defeito)
+- [Phase 04]: 04-12: o cache de categorias deixou de ser dicionario de MODULO e passou a ser um Map criado dentro de getStaleDeals e entregue a getOrgCategory por parametro (D-CR2-01-a) — CR2-01, o achado critico da rodada 2
+- [Phase 04]: 04-12: a limpeza por delete de chave do 04-07 foi REMOVIDA (D-CR2-01-c) porque nao ha mais o que limpar. Isso NAO e regressao de REL-04: a propriedade observavel continua provada pelos MESMOS 3 cenarios de agendor.cacheInvalidation.test.js, sem edicao de asseracao — o diff daquele arquivo e 100% comentario
+- [Phase 04]: 04-12: a limpeza era uma corrida que dava para PERDER — uma execucao em voo gravava (ou gravava o null do seu erro) DEPOIS da limpeza da vizinha, e a vizinha lia esse valor sem consultar a API; EXCLUDED_CATEGORIES.includes(null) e false, entao uma organizacao 'Parceiro' era notificada por uma rodada que nao falhou em nada
+- [Phase 04]: 04-12: o caso espelho assere o CONTADOR de consultas (1 -> 2) alem do golden — prova o MECANISMO (B reconsultou) e nao so o desfecho, que poderia coincidir por acaso
+- [Phase 04]: 04-12: o Map e declarado junto ao seu unico consumidor (acima do Promise.all das organizacoes) e nao no topo de getStaleDeals — declarar no topo exigiria um comentario apontando para codigo dezenas de linhas abaixo, exatamente o ponteiro que envelhece que WR2-06 corrige
 - [Phase ?]: 04-11: avancarRelogioAte (04-10) so observa promessas pelo caminho de SUCESSO — numa rejeicao substitui o erro real por 'a promessa nao concluiu'; contornado por envelope LOCAL no arquivo de teste, sem editar o helper compartilhado; dedupar/estender fica para a Fase 5/7
 
 ### Pending Todos
