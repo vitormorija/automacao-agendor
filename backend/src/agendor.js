@@ -25,11 +25,18 @@ const api = axios.create({
   timeout: 15000,
 });
 
+// Teto de páginas das paginações que encerram por condição vinda da RESPOSTA (WR3-06):
+// 200 páginas de 100 registros são 20.000 por borda, ordens de magnitude acima do uso real.
+// Ele NÃO existe para limitar volume — existe para transformar uma não-terminação silenciosa
+// numa falha legível em segundos. Exportado para que o teste (agendor.paginacao.test.js)
+// DERIVE o número em vez de duplicar o literal, que continuaria verde se a constante mudasse.
+const MAX_PAGES = 200;
+
 // Busca todos os usuários com seus emails
 async function getUsers() {
   const users = {};
   let page = 1;
-  while (true) {
+  while (page <= MAX_PAGES) {
     const { data } = await fetchWithRetry(() =>
       api.get('/users', { params: { page, per_page: 100 } }),
     );
@@ -42,6 +49,19 @@ async function getUsers() {
     }
     if (!data.links?.next) break;
     page++;
+  }
+  // O caminho normal sai pelo `break` acima, com `page` ainda dentro do teto — só a
+  // não-terminação chega aqui. A forma importa: um `break` no lugar deste `throw` devolveria
+  // um dicionário PARCIAL, e um responsável ausente dele perde o e-mail em silêncio.
+  //
+  // Por que getStaleDeals NÃO recebe teto: ela deriva `totalPages` de `meta.totalCount` e
+  // percorre um `for` sobre um array finito de páginas — é limitada por construção, e não
+  // existe ali condição de parada vinda da resposta a ser frustrada. A ausência do teto lá é
+  // decisão registrada, não esquecimento.
+  if (page > MAX_PAGES) {
+    throw new Error(
+      `[Agendor] paginação de /users excedeu ${MAX_PAGES} páginas — a borda pode estar ignorando o parâmetro page`,
+    );
   }
   return users;
 }
@@ -373,7 +393,7 @@ async function getDealsWithFutureTasks() {
   const dealIds = new Set();
 
   let page = 1;
-  while (true) {
+  while (page <= MAX_PAGES) {
     try {
       const { data } = await fetchWithRetry(() =>
         api.get('/tasks', {
@@ -414,12 +434,24 @@ async function getDealsWithFutureTasks() {
     }
   }
 
+  // FORA do try acima de propósito (WR3-06): o catch existe para logar e relançar erros da
+  // borda, e esta mensagem já é explícita — passar por ele só duplicaria a linha de log.
+  // Propagar é coerente com o contrato desta função ("Set completo ou falha explícita",
+  // Decisão Q2): a rejeição sobe ao catch EXTERNO de runCheck (scheduler.js), cujo `finally`
+  // libera o lock `isRunning` — que é exatamente o que a não-terminação impedia de acontecer.
+  if (page > MAX_PAGES) {
+    throw new Error(
+      `[Agendor] paginação de /tasks excedeu ${MAX_PAGES} páginas — a borda pode estar ignorando o parâmetro page`,
+    );
+  }
+
   console.log(`[Agendor] ${dealIds.size} deals protegidos por tarefa futura`);
   return dealIds;
 }
 
 module.exports = {
   CATEGORIA_INDECIDIVEL,
+  MAX_PAGES,
   getUsers,
   getStaleDeals,
   getDealById,
