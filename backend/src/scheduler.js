@@ -66,12 +66,25 @@ async function runCheck() {
     stale: 0,
     notified: 0,
     skipped: 0,
-    // Nasce no literal, e não sob demanda, porque nenhum consumidor deve ter de distinguir
-    // `undefined` de zero para saber se a borda de organizações respondeu (CR4-01). É ESTE
-    // contador — e não `results.skipped`, que QUATRO causas diferentes incrementam (dedup do
-    // dia, categoria indecidível, funil e "sem destinatário") — que separa "dia calmo" de "a
-    // borda de organizações caiu". Ele conta SEMPRE, independente do limiar do alarme abaixo.
+    // Quantos negócios a GUARDA de categoria suprimiu. Nasce no literal, e não sob demanda,
+    // porque nenhum consumidor deve ter de distinguir `undefined` de zero (CR4-01).
+    //
+    // ELE NÃO É MAIS O NUMERADOR DO ALARME, e a separação é o conserto de WR5-01: ele incrementa
+    // DENTRO da guarda de categoria, que é a SEGUNDA do laço, então qualquer `continue` anterior
+    // — a dedup do dia, à frente dele — o impede de alcançar o denominador. A pergunta que ele
+    // responde continua sendo legítima e por isso ele FICA: "quantos a guarda tirou do envio".
+    // Só não é a mesma pergunta do alarme. O cenário L de scheduler.categoriaIndecidivel.test.js
+    // mede os dois contadores valendo números DIFERENTES na MESMA rodada, e é essa diferença que
+    // documenta a separação melhor do que qualquer comentário.
     skippedCategoriaIndecidivel: 0,
+    // O NUMERADOR do alarme de supressão total: quantos negócios da rodada vieram da borda
+    // marcados com a categoria indecidível. Nasce no literal pela mesma razão dos irmãos.
+    //
+    // O nome não começa com `skipped` DE PROPÓSITO, como o do contador de funil abaixo: ele não
+    // conta supressão, conta a MARCA que a borda pôs no negócio — a supressão é consequência, e
+    // quem a mede é o contador acima. Incrementa no TOPO do laço: ver o comentário do incremento,
+    // e o bloco do alarme depois do laço.
+    categoriaIndecidivelNaRodada: 0,
     // Mesma razão do contador acima para nascer no literal: o campo existe SEMPRE no payload da
     // rodada, e nenhum consumidor precisa distinguir `undefined` de zero (in3-08, MODO 1).
     // O nome NÃO começa com `skipped` DE PROPÓSITO: nada foi suprimido aqui — estes negócios
@@ -117,15 +130,38 @@ async function runCheck() {
       results.checked++;
 
       // Contagem de forma do payload (in3-08, MODO 1). A POSIÇÃO é decisão, não acaso: ela fica no
-      // TOPO do laço, antes de qualquer guarda, enquanto o contador de categoria indecidível mora
-      // dentro da guarda que ele conta. O motivo é o residual `cr4-01b` já registrado nesta fase —
-      // um contador que só incrementa depois de outra guarda ter feito `continue` não consegue
-      // alcançar o denominador `results.stale` numa rodada MISTA, e o alarme falha ABERTO. Aqui
-      // numerador e denominador percorrem exatamente o mesmo conjunto de negócios.
+      // TOPO do laço, antes de qualquer guarda — um contador que só incrementa depois de outra
+      // guarda ter feito `continue` não consegue alcançar o denominador `results.stale` numa
+      // rodada MISTA, e o alarme falha ABERTO. Aqui numerador e denominador percorrem exatamente
+      // o mesmo conjunto de negócios.
+      // A regra vale agora nos DOIS contadores agregados: o de categoria indecidível ficou 60
+      // linhas abaixo, dentro da guarda que ele contava, e isso reabriu CR4-01 pelo caminho da
+      // dedup do dia (WR5-01). O incremento logo abaixo é a aplicação desta mesma regra lá.
       // Este `if` NÃO faz `continue`, não escreve `skipped` e não decide destinatário nenhum:
       // funil ausente continua NOTIFICANDO (fail-open deliberado), e o negócio segue o fluxo
       // normal logo abaixo. Oráculo: cenários I e J de scheduler.categoriaIndecidivel.test.js.
       if (deal.funilAusente) results.funilNaoAvaliado++;
+
+      // O NUMERADOR do alarme de supressão total por categoria (WR5-01), no TOPO do laço pela
+      // mesma razão do contador acima, e é essa posição o conserto inteiro.
+      //
+      // O QUE ESTAVA ERRADO: o contador que o alarme comparava com `results.stale` incrementava
+      // DENTRO da guarda de categoria, a SEGUNDA do laço. A guarda de dedup do dia vem ANTES e
+      // faz `continue`, então todo negócio já notificado hoje subtraía do numerador sem subtrair
+      // do denominador, e a condição de supressão TOTAL ficava INALCANÇÁVEL. A sonda do revisor
+      // mediu o desfecho: apagão total da borda de organizações, três negócios parados, ZERO
+      // e-mails, campo de erro vazio e array de erros vazio — a rodada indistinguível de um dia
+      // calmo, que é literalmente o enunciado de CR4-01, reaberto por um caminho que nenhum plano
+      // nomeou. O caso não exige dado faltando no CRM: basta o operador disparar o envio manual
+      // depois do cron das 8h.
+      //
+      // A marca é lida da lista enriquecida que getStaleDeals devolve, e portanto não depende de
+      // guarda nenhuma deste laço — numerador e denominador percorrem `dealsToNotify` inteiro.
+      //
+      // Este `if` NÃO faz `continue`, NÃO escreve `dealResult.skipped`, NÃO toca `results.skipped`
+      // e NÃO decide destinatário nenhum: quem tira o negócio indecidível do envio continua sendo
+      // a guarda mais abaixo, byte a byte. Oráculo: cenários L e M.
+      if (deal.categoriaIndecidivel) results.categoriaIndecidivelNaRodada++;
 
       const owner = users[deal.ownerId];
       const ownerEmail = owner?.email || null;
@@ -458,15 +494,44 @@ async function runCheck() {
     // extenso. E o alarme discrimina a CAUSA, não a quantidade: uma supressão total por OUTRA
     // causa continua silenciosa, e o guarda-corpo disso é o cenário E do oráculo. Só inteiros e
     // texto fixo entram na mensagem — nenhum objeto de erro (CR-02 do 04-09).
+    //
+    // O NUMERADOR É O CONTADOR DO TOPO DO LAÇO, e não o da guarda (WR5-01). O alarme comparava
+    // `results.skippedCategoriaIndecidivel` — que incrementa DENTRO da segunda guarda — com o
+    // denominador, então QUALQUER `continue` anterior o desarmava, e o mais banal deles é a dedup
+    // do dia. A regra já estava escrita no comentário do contador de forma do funil, no topo deste
+    // mesmo laço, e simplesmente não fora aplicada aqui, onde nasceu. O contador da guarda FICA,
+    // respondendo a outra pergunta — quantos ela suprimiu —, e o cenário L mede os dois valendo
+    // números DIFERENTES na mesma rodada.
+    //
+    // A AFIRMAÇÃO DA MENSAGEM É ESTREITA DE PROPÓSITO, e a redação larga é PROIBIDA: nunca
+    // escrever que ninguém foi notificado NO DIA. Com o numerador no topo do laço a condição
+    // passa a valer também numa rodada COMPOSTA, em que algum dos negócios contados já havia
+    // recebido HOJE pela rodada do cron — e ali a afirmação sobre o dia inteiro seria
+    // factualmente FALSA. Uma mitigação que mente em parte dos casos é pior que nenhuma: o
+    // operador que conclui ter perdido envios dispara a rodada de novo e gera DUPLICATAS
+    // (T-04-35-05). É a mesma disciplina de redação já adotada para o alarme de FORMA acima; a
+    // diferença é que aqui ela está pinada por asserção, no cenário L, e não só por este
+    // comentário — que evita, de propósito, reproduzir a frase larga que condena.
+    //
+    // E o par que impede o alarme de virar ruído diário são os cenários L e M: M tem construção
+    // idêntica à de L e muda EXCLUSIVAMENTE a saúde da borda, então uma implementação que ligasse
+    // o alarme por QUANTIDADE — `notified === 0`, `skipped > 0`, ou sempre — fica vermelha lá.
+    //
+    // O QUE ESTE BLOCO AINDA NÃO COBRE, e é residual conhecido: um negócio SEM organização nunca
+    // é consultado (o conjunto de organizações é montado descartando valores falsos) e portanto
+    // nunca recebe a marca de indecidível — nesse caminho o numerador continua sem alcançar o
+    // denominador. Dono: o todo `cr4-01b`, que permanece aberto e foi reescrito pelo mecanismo.
     if (
       results.stale > 0 &&
-      results.skippedCategoriaIndecidivel === results.stale
+      results.categoriaIndecidivelNaRodada === results.stale
     ) {
       const mensagem =
-        `Nenhum dos ${results.stale} negócio(s) parado(s) do dia foi notificado: a categoria ` +
-        'da organização não pôde ser consultada em nenhum deles. A borda de organizações da ' +
-        'Agendor pode estar indisponível. A rodada CONCLUIU — este é um alarme de supressão ' +
-        'total, não uma interrupção.';
+        `Em nenhum dos ${results.stale} negócio(s) parado(s) desta rodada a categoria da ` +
+        'organização pôde ser consultada, e nenhum e-mail saiu nesta rodada. A borda de ' +
+        'organizações da Agendor pode estar indisponível. A rodada CONCLUIU — este é um alarme ' +
+        'de supressão total, não uma interrupção. Alguns destes negócios podem ter sido pulados ' +
+        'também por outra guarda (a dedup do dia), portanto isto NÃO afirma que ninguém foi ' +
+        'notificado hoje.';
       results.error = mensagem;
       results.errors.push(mensagem);
       logger.error(`[Scheduler] ${mensagem}`);
