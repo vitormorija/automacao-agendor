@@ -17,7 +17,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 1: Rede de Testes (Safety-Net)** - Testes de caracterização fixam o comportamento atual da lógica crítica de notificação antes de qualquer mudança (completed 2026-07-24)
 - [x] **Phase 2: Toolchain de Qualidade & CI** - Lint, formatação, scripts npm e pipeline de CI que bloqueia PRs com falha (completed 2026-07-29)
 - [x] **Phase 3: Config & Segredos por Ambiente** - Segredos fora do código, `.env.example`, separação dev/prod e validação no boot (completed 2026-07-30)
-- [ ] **Phase 4: Confiabilidade das Integrações** - Timeouts em Agendor/SMTP, cron resiliente a falhas e isolamento de estado por execução (34/34 planos executados em 2026-08-05, suíte 186/186; a fase foi reaberta **quatro** vezes por code review. A gap closure r4 — 7 planos, 04-28 a 04-34 — fechou o CR4-01 (a supressão em massa por categoria indecidível virou erro da rodada, com contador dedicado e alarme aditivo) e os 7 warnings da r4. Aguarda o code review rodada 5 antes de fechar; 33 todos pendentes, incluindo `in3-08`, o último filtro de elegibilidade fail-open ainda aberto)
+- [ ] **Phase 4: Confiabilidade das Integrações** - Timeouts em Agendor/SMTP, cron resiliente a falhas e isolamento de estado por execução (35/35 planos executados em 2026-08-05, suíte 192/192; a fase foi reaberta **quatro** vezes por code review. A gap closure r4 — 7 planos, 04-28 a 04-34 — fechou o CR4-01 (a supressão em massa por categoria indecidível virou erro da rodada, com contador dedicado e alarme aditivo) e os 7 warnings da r4. O 04-35 fechou `in3-08`, o último filtro de elegibilidade fail-open ainda aberto, por decisão do usuário: a comparação de funil passou a ser por substring — um rename no CRM não desliga mais a regra em silêncio — e o funil ausente continua notificando de propósito, agora contado e avisado. Aguarda o code review rodada 5 antes de fechar; 34 todos pendentes)
 - [ ] **Phase 5: Logging & Padronização de Erros** - `console.*` residual migrado para `logger` estruturado e resposta de erro consistente
 - [ ] **Phase 6: Hardening de Segurança** - Riscos do CONCERNS.md fechados; mudanças comportamentais só com teste do novo fluxo (ou adiadas com justificativa)
 - [ ] **Phase 7: Refatoração Incremental de Arquitetura** - Extrair `getEnrichedStaleDeals` e serviço de agregação, sem alterar comportamento, protegido pelos testes
@@ -139,6 +139,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] 04-32-PLAN.md — Responsável sem nome deixa de derrubar o resumo semanal de todos os comerciais (WR4-07)
 - [x] 04-33-PLAN.md — Comentários da suíte alinhados ao instrumento único e âncoras nomeadas no oráculo de REL-02 (WR4-02, WR4-03)
 - [x] 04-34-PLAN.md — IN4-02..IN4-06 e os cinco residuais do inventário de irmãos como todos pendentes, e o critério de observabilidade no ROADMAP
+- [x] 04-35-PLAN.md — Um funil renomeado no CRM volta a suprimir a notificação ao responsável, e um payload sem funil deixa de fazê-lo em silêncio (in3-08)
 
 ### Phase 5: Logging & Padronização de Erros
 **Goal**: Logging é estruturado e consistente em todo o backend, e o tratamento/resposta de erro nas rotas segue um padrão único.
@@ -192,7 +193,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | 1. Rede de Testes (Safety-Net) | 5/5 | Complete   | 2026-07-24 |
 | 2. Toolchain de Qualidade & CI | 4/4 | Complete   | 2026-07-29 |
 | 3. Config & Segredos por Ambiente | 7/7 | Complete   | 2026-07-30 |
-| 4. Confiabilidade das Integrações | 34/34 | Aguarda review r5 | — |
+| 4. Confiabilidade das Integrações | 35/35 | Aguarda review r5 | — |
 | 5. Logging & Padronização de Erros | 0/TBD | Not started | - |
 | 6. Hardening de Segurança | 0/TBD | Not started | - |
 | 7. Refatoração Incremental de Arquitetura | 0/TBD | Not started | - |
