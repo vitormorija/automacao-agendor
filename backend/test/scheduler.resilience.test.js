@@ -9,6 +9,13 @@
 //   (4) uma chamada concorrente recebe `{ skipped: true }` sem executar;
 //   (5) runWeeklySummary resolve sem lançar quando a borda falha (o catch que fecha o corpo
 //       daquela função, logando '[Scheduler] Erro no resumo semanal:').
+//   (6) a chamada recusada pelo lock traz `execucaoIgnorada` — a chave PRÓPRIA da recusa —,
+//       além do contrato antigo (`skipped: true` e o motivo escrito). CR5-01: `skipped`
+//       designava DUAS coisas incompatíveis, o retorno deste guard e o CONTADOR
+//       `results.skipped` da rodada, e o único consumidor do disparo manual (`sendNow`, em
+//       frontend/src/components/Dashboard.jsx) ramificava por ela — uma rodada que CONCLUIU
+//       com um negócio pulado era lida como recusa e virava erro sem texto na tela. O par
+//       negativo deste caso é o cenário K de scheduler.categoriaIndecidivel.test.js.
 //
 // REL-03 (D-04): somente caracterização, nenhuma mudança de comportamento. Fecha a
 // lacuna de 10,65% de cobertura de scheduler.js — o arquivo que os planos 04-02 e 04-06
@@ -289,4 +296,74 @@ test('(5) runWeeklySummary resolve sem lançar quando a borda falha', async () =
   );
 
   usuariosDevemFalhar = false;
+});
+
+// ── (6) CR5-01: a recusa do lock precisa continuar FALANDO ───────
+//
+// O caso (4) acima pina o contrato ANTIGO da recusa e fica byte a byte DE PROPÓSITO: é o
+// contraste entre os dois casos que documenta a compatibilidade. Aqui o que se mede é a chave
+// PRÓPRIA da recusa, `execucaoIgnorada`, que existe porque `skipped` significava duas coisas
+// incompatíveis no MESMO payload — o booleano deste guard e o contador `results.skipped`, que
+// quatro causas incrementam (dedup do dia, categoria indecidível, funil e "sem destinatário").
+//
+// As três chaves são asseridas JUNTAS de propósito. Sem `execucaoIgnorada`, o consumidor não
+// consegue separar recusa de rodada concluída; sem `reason`, a recusa volta a renderizar um
+// toast vazio; e sem `skipped: true` um consumidor não medido do payload quebraria em silêncio,
+// que é o custo de "limpar" o contrato em vez de acrescentar a ele.
+//
+// A armação de concorrência duplica ~6 linhas do caso (4) DE PROPÓSITO: reaproveitá-la exigiria
+// extrair um helper e editar o caso (4), que é caracterização golden e precisa ficar intocado.
+test('(6) a chamada recusada pelo lock traz `execucaoIgnorada` E o motivo escrito, sem perder o contrato antigo', async () => {
+  // Estado neutro esperado por este caso: a borda responde, mas /users fica PENDENTE até
+  // liberarUsuarios(). É esse pendurado que mantém a primeira execução em voo.
+  usuariosDevemFalhar = false;
+  suspenderUsuarios();
+
+  // Sem `await`: runCheck() roda sincronamente até o primeiro await, e nesse trecho já executou
+  // `isRunning = true` (a instrução logo após o guard do topo de runCheck). É a janela do lock.
+  const emAndamento = runCheck();
+
+  const concorrente = await runCheck();
+
+  // (a) A CHAVE NOVA — é aqui que o achado fica vermelho. Ela só pode existir no caminho de
+  // recusa; o cenário K do outro oráculo prova o lado negativo.
+  assert.equal(
+    concorrente.execucaoIgnorada,
+    true,
+    'a recusa precisa de uma chave PRÓPRIA: o consumidor não tem informação para distinguir o booleano da recusa do contador de negócios pulados',
+  );
+
+  // (b) O motivo escrito continua no payload — é ele que o consumidor exibe. Asserido por FORMA
+  // (string não vazia) e não pelo literal, para não duplicar aqui o texto que o caso (4) pina.
+  assert.equal(
+    typeof concorrente.reason === 'string' && concorrente.reason.length > 0,
+    true,
+    'a recusa continua carregando motivo escrito: um erro sem texto é o defeito que este caso existe para impedir',
+  );
+
+  // (c) O contrato ANTIGO fica de pé. Remover `skipped: true` a título de limpeza quebraria
+  // consumidor não medido do payload — por isso ele é asserido ao lado da chave nova.
+  assert.equal(
+    concorrente.skipped,
+    true,
+    '`skipped: true` permanece por compatibilidade — a chave nova é ADITIVA, não substituta',
+  );
+
+  // (d) E a recusa não executou rodada nenhuma: nenhum campo do literal `results` veio junto.
+  assert.equal(
+    concorrente.stale,
+    undefined,
+    'a recusa não roda a verificação: nenhum campo do resultado da rodada pode vir no payload',
+  );
+
+  // Libera a borda e AGUARDA a primeira execução: sem isto o arquivo terminaria com uma promessa
+  // pendurada (e a rodada gravando no banco já fechado pelo `after`).
+  liberarUsuarios();
+  await emAndamento;
+
+  assert.equal(
+    getStatus().isRunning,
+    false,
+    'terminada a primeira execução, o lock volta a false',
+  );
 });

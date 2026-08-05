@@ -27,6 +27,19 @@
 //   H  RENOMEAÇÃO: o funil vira 'Beefor Comercial'       -> suprime no envio E na prévia
 //   I  FORMA DO PAYLOAD: os DOIS sem funil               -> os dois recebem, e a rodada AVISA
 //   J  SIMÉTRICO DE CAUSA: funil presente e não-Beefor   -> os dois recebem, e a rodada CALA
+//   K  rodada CONCLUÍDA com negócios pulados             -> não é uma recusa do lock
+//
+// Por que K existe (CR5-01). `runCheck` usava a chave `skipped` para duas coisas incompatíveis —
+// o `{ skipped: true, reason }` do guard de concorrência e o CONTADOR `results.skipped` —, e o
+// consumidor do disparo manual (`sendNow`, em frontend/src/components/Dashboard.jsx) ramificava
+// por ela: bastava UM negócio pulado para a rodada concluída ser lida como recusa e o operador
+// receber um erro sem texto no lugar do resumo. K é a metade NEGATIVA do par que fecha o achado
+// — o positivo é o caso (6) de scheduler.resilience.test.js. Sem ele, um conserto que apenas
+// trocasse o nome lido no consumidor deixaria o lock silencioso, ou alguém "padronizaria" a
+// chave nova no literal de `results` e toda rodada passaria a ser lida como recusa. A armação é
+// a do cenário E porque ela é a única da suíte que produz uma rodada CONCLUÍDA com
+// `results.skipped > 0` e NENHUM alarme — exatamente o estado que o consumidor não conseguia
+// distinguir de uma recusa.
 //
 // Por que H, I e J existem (in3-08). H fecha o MODO 2 — a comparação de funil era por
 // igualdade EXATA, então bastava um administrador renomear o funil no CRM para a supressão
@@ -1015,5 +1028,73 @@ test('J: SIMÉTRICO DE CAUSA — com funil presente e não-Beefor a rodada notif
     r.errors.length,
     0,
     'nem entra no array de erros que a UI renderiza — o alarme não é ruído diário',
+  );
+});
+
+// ── K — a rodada que CONCLUIU não pode ser lida como RECUSA ───────────────────
+//
+// A metade NEGATIVA do par de CR5-01; a positiva é o caso (6) de
+// scheduler.resilience.test.js, onde a chamada recusada pelo lock traz `execucaoIgnorada` e o
+// motivo escrito. Aqui a rodada CONCLUI e pula os dois negócios, e o que se assere é a AUSÊNCIA
+// das duas chaves da recusa.
+//
+// A armação é a do cenário E, com ids NOVOS: a dedup do próprio SUT (alreadyNotifiedToday)
+// acopla casos que compartilham id, então id reusado é caso contaminado. A escolha de E não é
+// acaso — é a única armação da suíte que produz uma rodada concluída com `results.skipped > 0`
+// e NENHUM alarme, que é exatamente o estado que o consumidor do disparo manual não conseguia
+// distinguir de uma recusa do lock.
+//
+// A asserção (d) nasce VERDE, e isso é esperado: enquanto `execucaoIgnorada` não existir em
+// lugar nenhum ela é `undefined` por ausência. O valor deste caso não está no vermelho — está em
+// impedir que o conserto marque toda rodada como ignorada, ou que a chave nova seja
+// "padronizada" dentro do literal de `results`. É o guarda-corpo do par.
+//
+// A ordem é deliberada: primeiro a pré-condição do gatilho, depois a prova de que a rodada
+// concluiu, e só então as chaves da recusa. Assim o vermelho distingue "a armação parou de
+// produzir supressão" de "a chave da recusa vazou para uma rodada concluída".
+test('K: a rodada que CONCLUIU com negócios pulados NÃO é uma recusa do lock', async () => {
+  const primeiro = 2401;
+  const segundo = 2402;
+  servirDealsDoFunilBeefor(primeiro, segundo);
+  // `orgsQueFalham` VAZIA: as categorias são consultadas com sucesso, exatamente como no E. A
+  // supressão aqui é do funil, e é ela que produz o `skipped > 0` sem alarme.
+
+  const r = await avancarRelogioAte(runCheck());
+
+  // (a) o GATILHO do defeito: a rodada tem negócios pulados.
+  assert.equal(
+    r.skipped,
+    2,
+    'pré-condição: `results.skipped` é o CONTADOR, e nesta rodada ele é maior que zero',
+  );
+
+  // (b) e mesmo assim ela CONCLUIU — uma recusa nunca chega a executar.
+  assert.equal(r.notified, 0, 'nenhuma notificação saiu nesta rodada');
+  assert.equal(
+    typeof r.ranAt,
+    'string',
+    'ranAt só é gravado quando a rodada completa: esta completou',
+  );
+
+  // (c) sem alarme agregado — rodada sã, e o toast de alarme do consumidor não dispara aqui.
+  assert.equal(
+    r.errors.length,
+    0,
+    'nenhum alarme agregado: o array que a UI renderiza continua vazio numa rodada sã',
+  );
+
+  // (d) A METADE NEGATIVA DO PAR: por mais negócios pulados que tenha, uma rodada concluída não
+  // pode carregar a chave da recusa.
+  assert.equal(
+    r.execucaoIgnorada,
+    undefined,
+    'uma rodada que CONCLUIU não pode ser lida como recusa do lock, por maior que seja o contador de pulados',
+  );
+
+  // (e) e o motivo da recusa também não vaza para uma rodada concluída.
+  assert.equal(
+    r.reason,
+    undefined,
+    '`reason` é o motivo da RECUSA: numa rodada concluída ele não existe',
   );
 });
