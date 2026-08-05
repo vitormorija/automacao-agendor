@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-stopped_at: "Completed 04-16-PLAN.md — WR2-04 fechado; o canal err.resultadosParciais e validado por tipo antes de ser consumido. Plano autonomo, sem checkpoint. Proximo: 04-17 (WR2-05), que termina no checkpoint BLOQUEANTE C11 — auto_advance deve continuar OFF. SEC-01 permanece ABERTO por decisao C8."
-last_updated: "2026-08-05T02:19:33.743Z"
-last_activity: 2026-08-05 -- 04-16 completo (WR2-04 fechado); proximo 04-17 (termina em C11)
+status: 04-17 COMPLETO (2026-08-05) — WR2-05 fechado, C11 APROVADO; falta so o 04-18
+stopped_at: "Completed 04-16-PLAN.md — WR2-04 fechado; o canal do resultado parcial e validado por tipo antes de ser consumido, e o produtor declara que a anexacao pode falhar em silencio. Plano autonomo, sem checkpoint. Proximo: 04-17 (WR2-05), que termina no checkpoint BLOQUEANTE C11 — auto_advance deve continuar OFF. SEC-01 permanece ABERTO por decisao C8."
+last_updated: "2026-08-05T03:20:08.305Z"
+last_activity: 2026-08-05 -- 04-17 completo (WR2-05 fechado, C11 aprovado); proximo 04-18, o ultimo da fase
 progress:
   total_phases: 8
   completed_phases: 3
   total_plans: 34
-  completed_plans: 32
+  completed_plans: 33
   percent: 38
 ---
 
@@ -26,8 +26,49 @@ See: .planning/PROJECT.md (updated 2026-07-22)
 ## Current Position
 
 Phase: 04 (confiabilidade-das-integra-es) — EXECUTING
-Plan: 16 de 18 completos (04-01..04-16). Faltam 04-17..04-18.
-Status: 04-16 COMPLETO (2026-08-05) — WR2-04 fechado; proximo e o 04-17 (WR2-05), que termina em C11
+Plan: 17 de 18 completos (04-01..04-17). Falta so o 04-18.
+Status: 04-17 COMPLETO (2026-08-05) — WR2-05 fechado, C11 APROVADO; falta so o 04-18
+  O 04-17 fechou WR2-05: sendMailWithRetry recria o transporte SO PARA SI —
+  `transporter = createTransporter()` dentro do laco de retry reatribui o PARAMETRO da
+  funcao, nao a variavel do chamador. Em sendStaleNotification o `let transporter`
+  nunca era reatribuido (variavel morta), entao, se o envio ao dono so teve sucesso
+  DEPOIS de recriar a conexao, o envio ao autor recomecava com a conexao que ja se
+  provou quebrada: pagava outro ciclo de 3s+6s e tinha chance maior de falhar. E o
+  segundo destinatario e o elo fragil — com a semantica de sucesso parcial (>= 1
+  confirmacao mantem 'sent'), quem NAO recebeu SOME, porque a dedup bloqueia o negocio
+  pelo dia e o unico vestigio e a coluna error de uma linha 'sent'.
+  RED MEDIDO pela saida literal (3 !== 2) e desta vez a previsao do plano BATEU — sem
+  correcao por medicao, diferente do 04-15 e do 04-16. A prova operacional veio no log
+  do proprio SUT: DUAS linhas "[Emailer] Tentativa 1 falhou ... Aguardando 3s", a
+  segunda sendo o autor pagando o ciclo evitavel.
+  Agora sendMailWithRetry devolve o transporte em uso nos DOIS retornos (sucesso e
+  falha — apos uma exaustao com recriacoes, o transporte mais novo ainda e a melhor
+  aposta) e o chamador o reaproveita com desestruturacao com REST, que preserva os
+  conjuntos de chaves de results: {to, success} no sucesso e {to, success, error} na
+  falha. Listar as chaves introduziria error: undefined e quebraria
+  emailer.timeout.test.js, oraculo de REL-02 que o plano proibe editar.
+  D-03 sobreviveu byte a byte: nenhuma linha do for, do isNetworkError, do console.warn,
+  da espera ou da recriacao aparece no diff; a exaustao continua RESOLVENDO sem lancar.
+  Suite 145 -> 148.
+  TRES DESVIOS DE MEDICAO declarados e ACEITOS pelo usuario no C11: dois greps do plano
+  foram contados sobre o ARQUIVO INTEIRO com numero calculado so para
+  sendMailWithRetry/sendStaleNotification ("transporter =" previsto 3, medido 6 antes e
+  8 depois, porque os resumos semanais tem 4 fabricas e a reatribuicao acontece nos DOIS
+  blocos; "success: false" previsto 1, medido 3 antes e depois, sem mudanca). O terceiro:
+  grep "auth" = 0 no teste era inatingivel (authorName do negocio sintetico e authorEmail,
+  o parametro publico do SUT) — PC-13 foi satisfeito POR CONSTRUCAO: o stub de
+  createTransport nao recebe sequer o objeto de opcoes, entao o objeto com a senha nunca
+  e ligado a um nome no teste.
+  DECISAO C11 (2): o todo rel-02b-deadline-global-smtp MANTEM prioridade alta /
+  pre-go-live. Este plano reduz o pior caso de tempo por rodada mas nao toca a causa
+  (connectionTimeout por endereco A/AAAA resolvido desde o nodemailer 8, sem deadline
+  acumulada). O arquivo do todo NAO foi editado.
+  ATENCAO para o 04-18 (o ULTIMO da fase): alem de WR2-06 e dos todos IN2-01..IN2-04,
+  ele carrega a DECISAO C9 — atualizar a redacao do Success Criteria 4 do ROADMAP sobre
+  REL-04. A entrada no 04-18 foi autorizada no C11, mas quem despacha e o coordenador.
+  A duplicacao de avancarRelogioAte em emailer.timeout.test.js pode enfim ser desfeita:
+  o motivo de mante-la (nao trocar instrumento e objeto medido na mesma rodada) EXPIROU
+  com este plano, e agora ha um segundo consumidor do helper compartilhado como rede.
   O 04-16 fechou WR2-04: o consumidor do canal parcial fazia
   `const parciais = err.resultadosParciais ?? []` e chamava `.some`. O `??` so protege
   contra ausencia (null/undefined) — um valor de OUTRO TIPO fazia o `.some` lancar de
@@ -165,9 +206,9 @@ Status: 04-16 COMPLETO (2026-08-05) — WR2-04 fechado; proximo e o 04-17 (WR2-0
   checkpoints bloqueantes: C9, C10, C11).
   A rodada 1 esta preservada em 04-REVIEW-r1.md (origem dos planos 04-08..04-11).
   SEC-01 permanece ABERTO como risco conscientemente aceito (decisao C8) — nao marcar resolvido.
-Last activity: 2026-08-05 -- 04-16 completo (WR2-04 fechado); proximo 04-17 (termina em C11)
+Last activity: 2026-08-05 -- 04-17 completo (WR2-05 fechado, C11 aprovado); proximo 04-18, o ultimo da fase
 
-Progress: [█████████░] 89% (16 de 18 planos da fase 04 completos; WR2-04 fechado)
+Progress: [█████████░] 94% (17 de 18 planos da fase 04 completos; WR2-05 fechado, C11 aprovado)
 
 ## Performance Metrics
 
@@ -219,6 +260,7 @@ Progress: [█████████░] 89% (16 de 18 planos da fase 04 compl
 | Phase 04 P14 | 11min | 2 tasks | 2 files |
 | Phase 04 P15 | 21min | 3 tasks (C10 aprovado) | 3 files |
 | Phase 04 P16 | 16min | 2 tasks | 3 files |
+| Phase 04 P17 | 22min | 3 tasks (C11 aprovado) | 2 files |
 
 ## Accumulated Context
 
@@ -346,6 +388,14 @@ Recent decisions affecting current work:
 - [Phase 04]: 04-16: LACUNA DECLARADA e nao fechada — o encadeamento opcional da guarda nova NAO protege contra throw null, porque results.errors.push(err.message) e a primeira instrucao do catch e ja teria estourado antes; esta escrito no comentario para nao ser vendido como protecao que nao e
 - [Phase 04]: 04-16: a previsao do RED foi corrigida pela medicao pela SEGUNDA vez (mesmo achado do 04-15) — r.deals.length medido e 0, nao 1, porque results.deals.push fica DEPOIS do try/catch do bloco de envio; sondado com copia descartavel do teste, removida e nunca commitada
 - [Phase 04]: 04-15: o diff de emailer.js e EXCLUSIVAMENTE de comentario (contagem de linhas de codigo = 0) — parou de citar como coberto o cenario da conexao SQLite fechada e passou a citar o cenario A, declarando o desfecho do caso nao coberto sem nomear a funcao de desligamento
+- [Phase 04]: 04-17: o transporte vivo volta junto do resultado de sendMailWithRetry e o chamador o reaproveita (D-WR2-05-a) — a recriacao dentro do laco de retry troca o PARAMETRO da funcao, nao a variavel do chamador, entao sem devolve-lo o destinatario seguinte recomeca com a conexao que ja se provou quebrada, paga outro ciclo de 3s+6s e tem chance maior de falhar
+- [Phase 04]: 04-17: o transporte volta TAMBEM no retorno de falha, de proposito — se a exaustao veio depois de uma ou duas recriacoes, o transporte mais novo ainda e a melhor aposta para o proximo destinatario; devolve-lo so no sucesso deixaria justamente o pior caso sem conserto
+- [Phase 04]: 04-17: o push separa o transporte do resultado com REST e nao listando as chaves (D-WR2-05-b) — listar introduziria error: undefined no caminho de sucesso e quebraria o assert Object.keys de emailer.timeout.test.js, oraculo de REL-02 que o plano proibe editar
+- [Phase 04]: 04-17: criar um transporte POR DESTINATARIO foi recusado — dobraria as conexoes no caminho feliz (o de todo dia) para resolver um problema do caminho de falha; o caso 3 do teste novo assere transportesCriados === 1 e existe para impedir essa simplificacao
+- [Phase 04]: 04-17: PC-13 satisfeito POR CONSTRUCAO em vez de por grep — o stub de createTransport nao recebe sequer o parametro de opcoes, entao o objeto que carrega a senha SMTP nunca e ligado a um nome no arquivo de teste
+- [Phase 04]: 04-17: TERCEIRA ocorrencia do mesmo achado estrutural da rodada — criterio de aceite por grep contado sobre escopo diferente do que o plano descreve em prosa (arquivo inteiro vs. as duas funcoes); os valores REAIS medidos ficam registrados no SUMMARY, nao os previstos
+- [Phase 04]: 04-17 [C11, decisao vinculante do usuario, 2026-08-05]: aprovado por escrito — D-03 intacta (3 tentativas, 3s/6s, exaustao sem lancar), transporte sem vazamento para results, RED reproduzido de fato e caminho feliz com uma conexao por rodada; os tres desvios de medicao ficam ACEITOS
+- [Phase 04]: 04-17 [C11 (2), usuario, 2026-08-05]: o todo rel-02b-deadline-global-smtp MANTEM prioridade alta / pre-go-live — esta mudanca reduz o pior caso de tempo por rodada mas nao toca a causa (connectionTimeout por endereco A/AAAA resolvido desde o nodemailer 8, sem deadline acumulada); o arquivo do todo NAO foi editado
 
 ### Pending Todos
 
@@ -399,5 +449,5 @@ Items acknowledged and carried forward from previous milestone close:
 ## Session Continuity
 
 Last session: 2026-08-05T02:19:33.743Z
-Stopped at: Completed 04-16-PLAN.md — WR2-04 fechado; o canal do resultado parcial e validado por tipo antes de ser consumido, e o produtor declara que a anexacao pode falhar em silencio. Plano autonomo, sem checkpoint. Proximo: 04-17 (WR2-05), que termina no checkpoint BLOQUEANTE C11 — auto_advance deve continuar OFF. SEC-01 permanece ABERTO por decisao C8.
+Stopped at: Completed 04-17-PLAN.md — WR2-05 fechado; o transporte recriado no retry serve o destinatario seguinte, sem que o retorno por destinatario mude de forma. Checkpoint C11 APROVADO pelo usuario (2026-08-05), com os tres desvios de medicao aceitos e o todo rel-02b mantido em prioridade alta. Proximo: 04-18, o ULTIMO da fase (WR2-06 + todos IN2-01..IN2-04 + DECISAO C9) — quem despacha e o coordenador. SEC-01 permanece ABERTO por decisao C8.
 Resume file: None
