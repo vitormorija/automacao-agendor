@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: "Completed 04-13-PLAN.md — WR2-03 fechado; avancarRelogioAte normaliza o desfecho e o envelope local do retry429 sumiu. Proximo: 04-14 (WR2-01). SEC-01 permanece ABERTO por decisao C8."
-last_updated: "2026-08-05T00:27:28.614Z"
-last_activity: 2026-08-05 -- 04-13 completo (WR2-03 fechado); proximo 04-14
+stopped_at: "Completed 04-14-PLAN.md — WR2-01 fechado; results.notified acompanha o status tambem no caminho de excecao. Proximo: 04-15 (WR2-02, termina no checkpoint C10). SEC-01 permanece ABERTO por decisao C8."
+last_updated: "2026-08-05T00:33:05.174Z"
+last_activity: 2026-08-05 -- 04-14 completo (WR2-01 fechado); proximo 04-15 (C10)
 progress:
   total_phases: 8
   completed_phases: 3
   total_plans: 34
-  completed_plans: 29
+  completed_plans: 30
   percent: 38
 ---
 
@@ -26,8 +26,28 @@ See: .planning/PROJECT.md (updated 2026-07-22)
 ## Current Position
 
 Phase: 04 (confiabilidade-das-integra-es) — EXECUTING
-Plan: 13 de 18 completos (04-01..04-13). Faltam 04-14..04-18.
-Status: 04-13 COMPLETO (2026-08-05) — WR2-03 fechado; proximo e o 04-14 (WR2-01)
+Plan: 14 de 18 completos (04-01..04-14). Faltam 04-15..04-18.
+Status: 04-14 COMPLETO (2026-08-05) — WR2-01 fechado; proximo e o 04-15 (WR2-02, termina em C10)
+  O 04-14 fechou WR2-01: o ramo de EXCECAO de scheduler.js gravava a linha do
+  notification_log como 'sent' quando err.resultadosParciais trazia sucesso, mas NAO
+  incrementava results.notified — sub-contagem, o espelho exato de WR-04 (que o 04-10
+  fechou so no caminho de RETORNO). O numero que o logger.info de conclusao e a UI
+  exibem dizia "0 notificacoes enviadas" num dia em que um e-mail saiu de verdade.
+  RED medido pela saida literal (0 !== 1 com a linha ja em 'sent' e enviosConfirmados
+  em 1), nao afirmado. O ternario do status virou if/else para que status e contador
+  fiquem FISICAMENTE no mesmo ramo — a assimetria nascera justamente de o ternario nao
+  deixar lugar natural para o incremento.
+  DECISAO D-WR2-01-b: NAO foi escrito dealResult.notified = false (o review sugeria).
+  O campo ja nasce false; reatribuir o mesmo valor e codigo morto que o proximo leitor
+  le como "aqui algo muda". A assimetria intencional (contador 1, dealResult false) esta
+  em comentario E pinada por asseracao no cenario A. Quem "harmonizar" deixa o caso
+  vermelho. Suite 143/143 (mesma contagem — o plano acrescenta asseracoes a um caso
+  existente, nao casos novos); zero asseracao alterada nos cenarios B e C e em
+  notificationStatus.test.js.
+  ATENCAO para o 04-15: ele mexe no MESMO catch. O incremento entregue aqui vive dentro
+  daquele bloco — a protecao da gravacao precisa preserva-lo, e o cenario A e o oraculo
+  que acusa se ele sumir.
+
   O 04-13 fechou WR2-03: avancarRelogioAte (test/helpers/fakeTimers.js) tratava so o ramo
   de SUCESSO da promessa observada, entao numa rejeicao a promessa derivada ficava ORFA e
   aflorava como unhandledRejection — que o node:test credita ao caso que estiver correndo,
@@ -79,9 +99,9 @@ Status: 04-13 COMPLETO (2026-08-05) — WR2-03 fechado; proximo e o 04-14 (WR2-0
   checkpoints bloqueantes: C9, C10, C11).
   A rodada 1 esta preservada em 04-REVIEW-r1.md (origem dos planos 04-08..04-11).
   SEC-01 permanece ABERTO como risco conscientemente aceito (decisao C8) — nao marcar resolvido.
-Last activity: 2026-08-05 -- 04-13 completo (WR2-03 fechado); proximo 04-14
+Last activity: 2026-08-05 -- 04-14 completo (WR2-01 fechado); proximo 04-15 (C10)
 
-Progress: [████████░░] 72% (13 de 18 planos da fase 04 completos; WR2-03 fechado)
+Progress: [████████░░] 78% (14 de 18 planos da fase 04 completos; WR2-01 fechado)
 
 ## Performance Metrics
 
@@ -130,6 +150,7 @@ Progress: [████████░░] 72% (13 de 18 planos da fase 04 compl
 | Phase 04 P11 | 22min | 2 tasks tasks | 2 files files |
 | Phase 04 P12 | 26min | 2 tasks (+C9 pendente) | 3 files |
 | Phase 04 P13 | 8min | 3 tasks tasks | 3 files files |
+| Phase 04 P14 | 11min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -235,6 +256,11 @@ Recent decisions affecting current work:
 - [Phase 04]: 04-13: DESVIO deliberado do snippet do 04-REVIEW — a falha explicita por nao-conclusao vem ANTES do await encerrada, e nao depois; a ordem do review travaria a suite quando a promessa nunca assenta, e um teste que trava nao da diagnostico nenhum. Uma promessa derivada pendente para sempre e inofensiva porque tem handler de rejeicao anexado (caso (3) do meta-teste e o guarda-corpo)
 - [Phase 04]: 04-13: o erro real do SUT e relancado sem embrulho (throw desfecho.erro) e a mensagem de nao-conclusao ficou byte-a-byte igual a anterior — e o assert.rejects do arquivo consumidor que continua sendo o oraculo
 - [Phase 04]: 04-13: restam 2 variantes do helper em circulacao (eram 3) — o envelope local avancarRelogioAteDesfecho de agendor.retry429.test.js sumiu com ZERO asseracoes alteradas; a copia de emailer.timeout.test.js FICA de proposito, porque e oraculo de REL-02 e o emailer.js muda no 04-17 (trocar o instrumento e o objeto medido na mesma rodada e o que a constraint de processo do CLAUDE.md proibe)
+- [Phase 04]: 04-14: o contador results.notified passou a ser incrementado TAMBEM no ramo de excecao que grava 'sent' (D-WR2-01-a) — status gravado e contador sao um unico ponto de verdade nos DOIS caminhos; a sub-contagem era o espelho exato da super-contagem que WR-04 fechou no caminho de retorno
+- [Phase 04]: 04-14: o ternario houveEnvioConfirmado ? 'sent' : 'error' deu lugar a um if/else porque a assimetria era ESTRUTURAL — com a decisao do status escrita dentro da chamada, o incremento nao tinha lugar fisico ao lado do status que ele reflete
+- [Phase 04]: 04-14: NAO foi escrito dealResult.notified = false (D-WR2-01-b, desvio deliberado do snippet do 04-REVIEW) — o campo ja nasce false e reatribuir o mesmo valor e codigo morto que sugere ao leitor que algo muda ali; a assimetria intencional (contador 1, dealResult false) fica em comentario e e PINADA por assert.equal(r.deals[0].notified, false) no cenario A
+- [Phase 04]: 04-14: a inconsistencia ficou sem oraculo por um detalhe do teste, nao por acaso — o cenario B ja asseria que "o objeto do deal e o contador precisam concordar", e o cenario A, onde eles discordam, nao asseria nenhum dos dois; fechar o achado foi acrescentar as duas asseracoes que faltavam
+- [Phase 04]: 04-14: o RED trouxe a prova operacional inteira numa linha de log do proprio SUT — "[Scheduler] Concluido: 1 negocios parados, 0 notificacoes enviadas" com a linha do notification_log daquele deal ja gravada como 'sent'
 - [Phase 04]: 04-13: o RED foi medido pela saida literal do runner (failureType: 'unhandledRejection' com error: 'ERRO REAL DO SUT') — a rejeicao orfa PREEMPTOU o proprio assert.rejects do caso, o que prova que o try/catch do autor do teste nao contem o defeito
 
 ### Pending Todos
@@ -288,6 +314,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-05T00:27:28.610Z
-Stopped at: Completed 04-13-PLAN.md — WR2-03 fechado; avancarRelogioAte normaliza o desfecho e o envelope local do retry429 sumiu. Proximo: 04-14 (WR2-01). SEC-01 permanece ABERTO por decisao C8.
+Last session: 2026-08-05T00:33:05.169Z
+Stopped at: Completed 04-14-PLAN.md — WR2-01 fechado; results.notified acompanha o status tambem no caminho de excecao. Proximo: 04-15 (WR2-02, termina no checkpoint C10). SEC-01 permanece ABERTO por decisao C8.
 Resume file: None
