@@ -22,6 +22,19 @@
 //   C  não-regressão: nada falha                        -> os DOIS recebem
 //   D  APAGÃO: as organizações dos DOIS são inatingíveis -> ninguém recebe, e a rodada AVISA
 //   E  SIMÉTRICO DE CAUSA: os DOIS no funil Beefor       -> ninguém recebe, e a rodada CALA
+//   F  PRÉVIA x ENVIO, por categoria indecidível         -> a prévia promete exatamente quem recebe
+//   G  SIMÉTRICO DE FILTRO: PRÉVIA x ENVIO, por FUNIL    -> idem, pelo outro filtro
+//
+// Por que F e G existem (WR4-06). Até eles, este arquivo media apenas o ENVIO — `runCheck`. A
+// PRÉVIA (`runCheckOnly`, a rota que o painel chama antes de disparar) não tinha NENHUM caso em
+// toda a suíte, e aplicava só o filtro de tarefas futuras enquanto o envio aplicava quatro guardas.
+// O oráculo de F e G não é o valor de um campo isolado: é a IGUALDADE entre o conjunto de negócios
+// que a prévia promete notificar e o conjunto que o envio de fato notificou, medidos na MESMA
+// armação. A igualdade é o oráculo certo porque os predicados vivem em DOIS lugares — a alternativa
+// (extrair um predicado compartilhado dos dois) seria refatoração estrutural da cadeia de guardas
+// de `runCheck`, no caminho do Core Value, e a constraint de processo do CLAUDE.md proíbe
+// misturá-la a uma correção. Quem fizer os dois lugares divergirem deixa F e G vermelhos, em vez de
+// deixar um comentário desatualizado.
 //
 // Por que D e E existem (CR4-01). Os cenários A e B medem supressão de 1 de 2, e por isso
 // "supressão parcial" e "apagão total" produziam o MESMO resultado observável: campo de erro
@@ -121,12 +134,22 @@ function servirDeals(idPrimeiro, idSegundo) {
 // roda ANTES em getStaleDeals, então uma etapa trocada por descuido excluiria o negócio ainda na
 // borda — ele nunca chegaria ao `for` de runCheck, `results.stale` seria 0 e o caso mediria uma
 // lista vazia em vez de uma supressão por funil.
-function servirDealsDoFunilBeefor(idPrimeiro, idSegundo) {
+//
+// O terceiro parâmetro (o cenário G) escolhe QUAIS dos dois vão para o Beefor; omitido, os dois
+// vão — a forma que o cenário E usa, byte a byte no efeito. G precisa de um negócio no Beefor AO
+// LADO de um elegível, porque o que ele mede é a marcação por negócio, e uma rodada inteiramente
+// suprimida não distingue "a prévia enxerga o funil" de "a prévia não promete nada".
+function servirDealsDoFunilBeefor(idPrimeiro, idSegundo, idsNoBeefor = null) {
   servirDeals(idPrimeiro, idSegundo);
-  dealsServidos = dealsServidos.map((deal) => ({
-    ...deal,
-    dealStage: { name: MOLDE.dealStage.name, funnel: { name: 'Beefor' } },
-  }));
+  const alvo = idsNoBeefor ?? new Set([idPrimeiro, idSegundo]);
+  dealsServidos = dealsServidos.map((deal) =>
+    alvo.has(deal.id)
+      ? {
+          ...deal,
+          dealStage: { name: MOLDE.dealStage.name, funnel: { name: 'Beefor' } },
+        }
+      : deal,
+  );
 }
 
 const USUARIOS = {
@@ -209,7 +232,7 @@ mock.method(nodemailer, 'createTransport', () => {
 });
 
 const db = require('../src/db');
-const { runCheck } = require('../src/scheduler');
+const { runCheck, runCheckOnly } = require('../src/scheduler');
 
 // O default do projeto é 'false' (db.js). Ligado aqui para que dono e autor sejam destinatários
 // distintos — são eles que formam o par de endereços de cada negócio.
@@ -247,6 +270,27 @@ function linhasDoDeal(dealId) {
 
 function envios(destinatario) {
   return enviosPorDestinatario[destinatario] || 0;
+}
+
+// ── O oráculo dos cenários F e G: prévia x envio ──────────────────────────────
+//
+// A comparação é feita sobre o EFEITO IRREVERSÍVEL registrado no banco — a linha com status
+// 'sent' no notification_log —, e NÃO sobre `r.notified`, que é um contador: ele diz QUANTOS
+// negócios foram notificados e nunca QUAIS. Dois conjuntos de mesmo tamanho e conteúdo trocado
+// passariam por um contador sem produzir vermelho nenhum, e é exatamente essa divergência que
+// estes dois cenários existem para pegar.
+function idsPrometidosPelaPrevia(previa) {
+  return previa
+    .filter((item) => item.seraNotificado)
+    .map((item) => item.id)
+    .sort((a, b) => a - b);
+}
+
+function idsNotificadosDeFato(resultado) {
+  return resultado.deals
+    .map((item) => item.id)
+    .filter((id) => linhasDoDeal(id).some((linha) => linha.status === 'sent'))
+    .sort((a, b) => a - b);
 }
 
 // ── A — a organização do PRIMEIRO negócio é inatingível ───────────────────────
@@ -588,5 +632,129 @@ test('E: SIMÉTRICO — 2 de 2 suprimidos por FUNIL não disparam o alarme de ca
     r.errors.length,
     0,
     'nem entra no array de erros que a UI renderiza — o alarme não é ruído diário',
+  );
+});
+
+// ── F — a PRÉVIA concorda com o ENVIO: categoria indecidível ──────────────────
+//
+// A permanência dos DOIS negócios na prévia é a metade "permanece no painel" da decisão do
+// usuário: a prévia MARCA quem não vai receber, ela não REMOVE. Remover mudaria o significado de
+// `total`, que é o número de negócios PARADOS escrito no card do painel — outra pergunta.
+//
+// E a igualdade dos conjuntos é o guarda-corpo da duplicação: os predicados de elegibilidade
+// existem em dois lugares (a cadeia de guardas de `runCheck` e a marcação de `runCheckOnly`), e
+// nenhum comentário impede que eles divirjam numa mudança futura. Este caso impede — pelo vermelho.
+test('F: a prévia concorda com o envio — o negócio de categoria indecidível vem marcado como não-notificável e PERMANECE na lista', async () => {
+  const primeiro = 2351;
+  const segundo = 2352;
+  servirDeals(primeiro, segundo);
+  orgsQueFalham = new Set([organizacaoDe(primeiro)]);
+
+  // A PRÉVIA vem primeiro, e a ordem é obrigatória: `runCheckOnly` é somente leitura e `runCheck`
+  // grava no notification_log. Invertida, a linha 'sent' do envio mudaria a resposta da dedup
+  // dentro da prévia, e o oráculo passaria a medir o rastro do próprio teste.
+  const previa = await avancarRelogioAte(runCheckOnly());
+
+  assert.equal(
+    consultasPorOrg[organizacaoDe(primeiro)],
+    3,
+    'pré-condição: a consulta de categoria da PRÉVIA esgotou as 3 tentativas do retry',
+  );
+  assert.equal(
+    previa.length,
+    2,
+    'a prévia MARCA e não REMOVE: o negócio indecidível continua na lista',
+  );
+
+  const previstoPrimeiro = previa.find((d) => d.id === primeiro);
+  const previstoSegundo = previa.find((d) => d.id === segundo);
+  assert.notEqual(previstoPrimeiro, undefined);
+  assert.notEqual(previstoSegundo, undefined);
+  assert.equal(
+    previstoPrimeiro.seraNotificado,
+    false,
+    'o negócio de categoria indecidível não pode ser prometido ao operador como destinatário',
+  );
+  assert.equal(
+    previstoSegundo.seraNotificado,
+    true,
+    'e o elegível continua prometido — a marcação não pode ser larga demais',
+  );
+
+  // Guarda de NÃO-VACUIDADE: sem ela, dois conjuntos vazios satisfariam a igualdade abaixo e o
+  // caso ficaria verde numa implementação que não prometesse ninguém.
+  const prometidos = idsPrometidosPelaPrevia(previa);
+  assert.deepEqual(
+    prometidos,
+    [segundo],
+    'a prévia promete exatamente o negócio elegível — e promete alguém',
+  );
+
+  const r = await avancarRelogioAte(runCheck());
+
+  assert.deepEqual(
+    idsNotificadosDeFato(r),
+    prometidos,
+    'o conjunto NOTIFICADO pelo envio precisa ser IGUAL ao conjunto PROMETIDO pela prévia',
+  );
+});
+
+// ── G — SIMÉTRICO por OUTRO FILTRO: prévia x envio, pelo funil ────────────────
+//
+// Este é o par que fecha o achado, e o SIMÉTRICO aqui é de FILTRO, não de posição. O cenário F
+// prova que a prévia passou a enxergar o filtro do achado (categoria indecidível, introduzido no
+// 04-20); o G prova que ela enxerga também um filtro que já existia ANTES dele — o funil sem
+// notificação ao responsável. Sem o G, um conserto que tratasse exclusivamente
+// `categoriaIndecidivel` ficaria verde e a prévia continuaria mentindo pelo funil, com o botão do
+// painel escrevendo um número maior do que o envio entrega.
+test('G: SIMÉTRICO por outro filtro — o negócio do funil Beefor também vem marcado como não-notificável, e a prévia continua concordando com o envio', async () => {
+  const primeiro = 2361;
+  const segundo = 2362;
+  // Só o PRIMEIRO vai para o Beefor; o segundo mantém o funil do molde e é a testemunha elegível.
+  servirDealsDoFunilBeefor(primeiro, segundo, new Set([primeiro]));
+  // `orgsQueFalham` VAZIA: nenhuma categoria é indecidível aqui, e é essa diferença de CAUSA que
+  // torna o caso simétrico ao F em vez de uma segunda cópia dele.
+
+  const previa = await avancarRelogioAte(runCheckOnly());
+
+  assert.equal(
+    previa.length,
+    2,
+    'a prévia MARCA e não REMOVE também quando o filtro é o funil',
+  );
+
+  const previstoPrimeiro = previa.find((d) => d.id === primeiro);
+  const previstoSegundo = previa.find((d) => d.id === segundo);
+  assert.notEqual(previstoPrimeiro, undefined);
+  assert.notEqual(previstoSegundo, undefined);
+  assert.equal(
+    previstoPrimeiro.funnel,
+    'Beefor',
+    'pré-condição: o negócio chegou à prévia com o funil que o exclui do envio',
+  );
+  assert.equal(
+    previstoPrimeiro.seraNotificado,
+    false,
+    'o negócio do funil que não notifica o responsável não pode ser prometido como destinatário',
+  );
+  assert.equal(
+    previstoSegundo.seraNotificado,
+    true,
+    'e o elegível continua prometido',
+  );
+
+  const prometidos = idsPrometidosPelaPrevia(previa);
+  assert.deepEqual(
+    prometidos,
+    [segundo],
+    'guarda de não-vacuidade: a prévia promete exatamente o negócio elegível',
+  );
+
+  const r = await avancarRelogioAte(runCheck());
+
+  assert.deepEqual(
+    idsNotificadosDeFato(r),
+    prometidos,
+    'a igualdade entre prometido e notificado vale para o filtro de funil tanto quanto para o de categoria',
   );
 });
