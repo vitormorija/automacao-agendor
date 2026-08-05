@@ -17,7 +17,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 1: Rede de Testes (Safety-Net)** - Testes de caracterização fixam o comportamento atual da lógica crítica de notificação antes de qualquer mudança (completed 2026-07-24)
 - [x] **Phase 2: Toolchain de Qualidade & CI** - Lint, formatação, scripts npm e pipeline de CI que bloqueia PRs com falha (completed 2026-07-29)
 - [x] **Phase 3: Config & Segredos por Ambiente** - Segredos fora do código, `.env.example`, separação dev/prod e validação no boot (completed 2026-07-30)
-- [x] **Phase 4: Confiabilidade das Integrações** - Timeouts em Agendor/SMTP, cron resiliente a falhas e cache com TTL (7 planos + gap closure 04-08..04-11 executados em 2026-08-04; **reaberta pela 2ª rodada de review** — 04-REVIEW com CR2-01 crítico: corrida do `orgCategoryCache` ainda aberta na direção escrita-após-limpeza) (completed 2026-08-05)
+- [ ] **Phase 4: Confiabilidade das Integrações** - Timeouts em Agendor/SMTP, cron resiliente a falhas e isolamento de estado por execução (18/18 planos executados em 2026-08-05, suíte 148/148; **reaberta pela 3ª rodada de review** — 04-REVIEW round 3 com CR3-01 BLOCKER: a exclusão por categoria falha ABERTA — um 429 em `/organizations` faz uma organização de categoria excluída ser notificada silenciosamente, e a rodada reporta sucesso)
 - [ ] **Phase 5: Logging & Padronização de Erros** - `console.*` residual migrado para `logger` estruturado e resposta de erro consistente
 - [ ] **Phase 6: Hardening de Segurança** - Riscos do CONCERNS.md fechados; mudanças comportamentais só com teste do novo fluxo (ou adiadas com justificativa)
 - [ ] **Phase 7: Refatoração Incremental de Arquitetura** - Extrair `getEnrichedStaleDeals` e serviço de agregação, sem alterar comportamento, protegido pelos testes
@@ -170,7 +170,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | 1. Rede de Testes (Safety-Net) | 5/5 | Complete   | 2026-07-24 |
 | 2. Toolchain de Qualidade & CI | 4/4 | Complete   | 2026-07-29 |
 | 3. Config & Segredos por Ambiente | 7/7 | Complete   | 2026-07-30 |
-| 4. Confiabilidade das Integrações | 18/18 | Complete   | 2026-08-05 |
+| 4. Confiabilidade das Integrações | 18/18 | Reaberta (review r3: CR3-01 blocker) | — |
 | 5. Logging & Padronização de Erros | 0/TBD | Not started | - |
 | 6. Hardening de Segurança | 0/TBD | Not started | - |
 | 7. Refatoração Incremental de Arquitetura | 0/TBD | Not started | - |
