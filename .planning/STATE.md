@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: 04-19 COMPLETO — CR3-01 fechado NA BORDA (1 de 3 planos do achado)
+status: 04-20 COMPLETO — CR3-01 fechado no envio DIARIO (2 de 3 planos do achado)
 stopped_at: Completed 04-19-PLAN.md
-last_updated: "2026-08-05T05:25:11.310Z"
-last_activity: 2026-08-05 -- 04-19 completo (CR3-01 1/3 na borda); suite 148 -> 153
+last_updated: "2026-08-05T05:33:16.473Z"
+last_activity: 2026-08-05 -- 04-20 completo (CR3-01 2/3 no runCheck); suite 153 -> 156
 progress:
   total_phases: 8
   completed_phases: 3
   total_plans: 43
-  completed_plans: 35
+  completed_plans: 36
   percent: 38
 ---
 
@@ -26,8 +26,40 @@ See: .planning/PROJECT.md (updated 2026-07-22)
 ## Current Position
 
 Phase: 04 (confiabilidade-das-integra-es) — gap closure r3 EM EXECUCAO
-Plan: 19 de 27 executados (04-01..04-19). Faltam 04-20..04-27 (gap closure r3).
-Status: 04-19 COMPLETO — CR3-01 fechado NA BORDA (1 de 3 planos do achado)
+Plan: 20 de 27 executados (04-01..04-20). Faltam 04-21..04-27 (gap closure r3).
+Status: 04-20 COMPLETO — CR3-01 fechado no envio DIARIO (2 de 3 planos do achado)
+
+  O 04-20 fechou a SEGUNDA metade de CR3-01. O 04-19 produziu a informacao na borda e
+  NINGUEM a lia: com a borda ja corrigida, runCheck continuava enviando e-mail para um
+  negocio cuja categoria de organizacao nao pode ser consultada. O RED registrou a prova
+  operacional em DUAS linhas do proprio SUT — o logger.warn do 04-19 dizendo que o negocio
+  "fica FORA do envio" e, quatro linhas depois, "Concluido: 2 negocios parados, 2
+  notificacoes enviadas" numa rodada de 2 negocios.
+  AGORA: uma guarda no laco de runCheck, DEPOIS da dedup e ANTES da guarda de funil, com a
+  mesma forma das vizinhas (skipped, skipReason em PT-BR, results.skipped++, push, continue).
+  Diff de 20 insercoes e ZERO remocoes — nenhuma linha existente foi tocada.
+  AS DUAS METADES DA DECISAO DO USUARIO ESTAO MEDIDAS: fora do envio (zero sendMail e zero
+  linhas no notification_log para o indecidivel) E dentro do painel (r.deals.length === 2,
+  com skipped: true e skipReason nao vazio). A rota REJEITADA (abortar a rodada) nao foi
+  implementada: r.error === undefined asserido nas duas ordens.
+  O CENARIO SIMETRICO EXIGIDO PELA RODADA EXISTE E ESTA NOMEADO: cenario B de
+  scheduler.categoriaIndecidivel.test.js — a mesma falha na ORDEM INVERSA (2o negocio em vez
+  do 1o). E ele que separa "a guarda funciona" de "a guarda funciona porque o negocio afetado
+  calhava de ser o primeiro da lista". O cenario C (rodada sa, 2 notificados, 4 envios)
+  impede a guarda de virar filtro largo demais.
+  TODOS os criterios de aceite numericos BATERAM: categoriaIndecidivel nao-comentario = 1,
+  results.notified++ = 2, catch (erroDeRegistro) = 1, Array.isArray(err?.resultadosParciais)
+  = 1, skipReason = 2, logNotification( = 1. Os 6 arquivos vizinhos verdes SEM edicao.
+  NUMERO QUE MUDOU e NAO e regressao: `continue;` nao-comentario em scheduler.js foi de 2
+  para 3. A proibicao de continue novo (D-CR3-01-e) valia para agendor.js no 04-19, onde
+  acrescentar um significaria REMOVER o negocio da lista. Aqui o continue pula o bloco de
+  ENVIO e o push da propria guarda mantem o negocio no resultado.
+  ZERO DESVIOS: o plano foi executado exatamente como escrito; nenhuma Rule 1-4 acionada.
+  ESCOPO QUE O 04-20 NAO FECHA: emailer.js intocado. sendOwnerWeeklySummary e o SEGUNDO (e
+  ultimo) produtor de e-mail dirigido ao responsavel e le a mesma lista de getStaleDeals —
+  sem o 04-21 o negocio indecidivel volta pela sexta-feira e CR3-01 NAO esta fechado.
+  runCheckOnly, routes/deals.js e routes/reports.js seguem sem filtrar por categoria, de
+  proposito (superficie de visualizacao). getUsers e getDealById seguem fora do retry: 04-22.
 
   O 04-19 fechou a primeira metade de CR3-01, o BLOCKER da rodada 3. O unico filtro de
   elegibilidade que dependia de uma segunda chamada HTTP falhava na direcao INSEGURA:
@@ -386,9 +418,9 @@ Origem: CODE REVIEW RODADA 3 (2026-08-05)
   checkpoints bloqueantes: C9, C10, C11).
   A rodada 1 esta preservada em 04-REVIEW-r1.md (origem dos planos 04-08..04-11).
   SEC-01 permanece ABERTO como risco conscientemente aceito (decisao C8) — nao marcar resolvido.
-Last activity: 2026-08-05 -- 04-19 completo (CR3-01 1/3 na borda); suite 148 -> 153
+Last activity: 2026-08-05 -- 04-20 completo (CR3-01 2/3 no runCheck); suite 153 -> 156
 
-Progress: [███████░░░] 70% (19 de 27 planos da fase 04 completos; CR3-01 fechado na borda)
+Progress: [███████░░░] 74% (20 de 27 planos da fase 04 completos; CR3-01 fechado na borda e no envio diario)
 
 ## Performance Metrics
 
@@ -443,6 +475,7 @@ Progress: [███████░░░] 70% (19 de 27 planos da fase 04 compl
 | Phase 04 P17 | 22min | 3 tasks (C11 aprovado) | 2 files |
 | Phase 04 P18 | 26min | 2 tasks tasks | 16 files files |
 | Phase 04 P19 | 21min | 3 tasks tasks | 4 files files |
+| Phase 04 P20 | 16min | 2 tasks tasks | 2 files files |
 
 ## Accumulated Context
 
@@ -579,6 +612,8 @@ Recent decisions affecting current work:
 - [Phase 04]: 04-17 [C11, decisao vinculante do usuario, 2026-08-05]: aprovado por escrito — D-03 intacta (3 tentativas, 3s/6s, exaustao sem lancar), transporte sem vazamento para results, RED reproduzido de fato e caminho feliz com uma conexao por rodada; os tres desvios de medicao ficam ACEITOS
 - [Phase 04]: 04-17 [C11 (2), usuario, 2026-08-05]: o todo rel-02b-deadline-global-smtp MANTEM prioridade alta / pre-go-live — esta mudanca reduz o pior caso de tempo por rodada mas nao toca a causa (connectionTimeout por endereco A/AAAA resolvido desde o nodemailer 8, sem deadline acumulada); o arquivo do todo NAO foi editado
 - [Phase ?]: [04-19 / CR3-01] Rota INDECIDIVEL implementada conforme decisao do usuario de 2026-08-05: /organizations/:id entrou no fetchWithRetry e a exaustao grava a sentinela CATEGORIA_INDECIDIVEL; o negocio fica FORA do envio (a partir do 04-20) mas PERMANECE no painel — nenhum continue novo em getStaleDeals, medido 5 antes e 5 depois
+- [Phase ?]: 04-20 (D-CR3-01-h..k): a guarda de categoria indecidivel mora no laco de runCheck, entre a dedup e a de funil; nenhuma linha no notification_log; a guarda nao loga; continue e nunca throw
+- [Phase ?]: 04-20: o cenario SIMETRICO da rodada 3 e a ORDEM INVERSA (falha no 2o negocio), o que separa 'a guarda funciona' de 'a guarda funciona porque o afetado era o primeiro'
 
 ### Pending Todos
 
@@ -631,6 +666,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-05T05:25:05.306Z
+Last session: 2026-08-05T05:33:08.891Z
 Stopped at: Completed 04-19-PLAN.md
 Resume file: None
