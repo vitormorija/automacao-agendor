@@ -195,18 +195,51 @@ async function runCheck() {
             // O que já foi confirmado antes da exceção chega aqui anexado ao erro.
             const parciais = err.resultadosParciais ?? [];
             if (parciais.some((r) => r.success)) houveEnvioConfirmado = true;
-            if (houveEnvioConfirmado) {
-              // O contador segue o status TAMBÉM aqui (WR2-01): houve envio real, e
-              // é este número que o logger.info de conclusão e a UI exibem como
-              // "notificações enviadas". Já dealResult.notified permanece false DE
-              // PROPÓSITO — ele responde a outra pergunta ("todos os destinatários
-              // confirmaram?"), e no sucesso parcial a resposta é não. Quem pina
-              // essa relação é o cenário A de notificationStatus.partialFailure.test.js.
-              updateNotificationStatus(logId, 'sent', err.message);
-              results.notified++;
-            } else {
-              updateNotificationStatus(logId, 'error', err.message);
+
+            // Por que a gravação tem try/catch PRÓPRIO (WR2-02): a conexão SQLite pode
+            // estar indisponível — é justamente uma das origens possíveis da exceção que
+            // trouxe o fluxo até aqui — e updateNotificationStatus usa a MESMA conexão.
+            // Sem esta guarda a falha da GRAVAÇÃO escapa para o catch externo de
+            // runCheck, aborta o `for` dos deals e deixa os negócios restantes da rodada
+            // sem processar: silêncio total num dia de notificar. Registrar e seguir é a
+            // escolha — a linha fica 'pending', não deduplica, e a rodada de amanhã
+            // retenta. É reenvio no pior caso contra silêncio permanente, e o milestone
+            // escolhe o reenvio (trade-off aprovado no checkpoint C10). Só a MENSAGEM do
+            // erro vai ao logger, nunca o objeto: um erro de borda carrega
+            // config.headers com o AGENDOR_TOKEN (CR-02 do 04-09). Quem pina este
+            // comportamento é notificationStatus.registroResiliente.test.js.
+            //
+            // O status gravado continua sendo decidido por houveEnvioConfirmado, com o
+            // mesmo significado do ramo de retorno: houve envio real -> 'sent', e a dedup
+            // protege quem já recebeu.
+            try {
+              if (houveEnvioConfirmado) {
+                updateNotificationStatus(logId, 'sent', err.message);
+              } else {
+                updateNotificationStatus(logId, 'error', err.message);
+              }
+            } catch (erroDeRegistro) {
+              logger.error(
+                '[Scheduler] Falha ao registrar o desfecho do envio:',
+                erroDeRegistro.message,
+              );
             }
+
+            // O contador segue o status TAMBÉM aqui (WR2-01): houve envio real, e é este
+            // número que o logger.info de conclusão e a UI exibem como "notificações
+            // enviadas". Já dealResult.notified permanece false DE PROPÓSITO — ele
+            // responde a outra pergunta ("todos os destinatários confirmaram?"), e no
+            // sucesso parcial a resposta é não. Quem pina essa relação é o cenário A de
+            // notificationStatus.partialFailure.test.js.
+            //
+            // Por que o incremento ficou FORA do try acima, num `if` próprio (WR2-02):
+            // ele acompanha a DECISÃO de status, não o sucesso da gravação. Junto da
+            // chamada, uma falha só de gravação faria a rodada reportar zero num dia em
+            // que o e-mail saiu de verdade — a sub-contagem que WR2-01 acabou de fechar.
+            // O preço é testar houveEnvioConfirmado em duas construções seguidas; quem as
+            // fizer divergir deixa vermelhos os cenários A e B de
+            // notificationStatus.partialFailure.test.js.
+            if (houveEnvioConfirmado) results.notified++;
           }
         }
       } else {
