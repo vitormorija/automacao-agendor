@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-stopped_at: "GAP CLOSURE R5 COMPLETA (execucao): o 04-38 fechou o RESIDUO DOCUMENTAL da rodada 5 — WR5-02..WR5-05 e IN5-01..IN5-04 viraram OITO todos pendentes (33 -> 41), com WR5-05 em prioridade ALTA (as asseracoes de envio de H/I/J foram afrouxadas de `=== 1` para `>= 1` e perderam a deteccao de e-mail DUPLICADO), e o ROADMAP passou a registrar a gap closure r5 com o mandato estrutural (INVENTARIO DE IRMAOS mantido + direcao reversa + retroatividade da justificativa). DIFF DE CODIGO ZERO; suite 196/196 e lint exit 0 rodados como PROVA. A FASE 04 NAO FOI FECHADA por este plano — quem fecha e o coordenador. Proximo: verificacao/fechamento da fase 04 (ou code review rodada 6)."
+status: FASE 04 COMPLETA (2026-08-05) — 38 planos, verificacao passed, seguranca auditada
+stopped_at: "FASE 04 COMPLETA (2026-08-05). 38 planos, suite 148 -> 196 verdes, CINCO rodadas de code review e cinco blockers reais fechados. Verificacao: status passed, 8/8 Success Criteria e 6/6 requisitos conferidos CONTRA O CODIGO. Seguranca: 232/233 ameacas fechadas, threats_open 1 (SEC-01, aberta por decisao consciente C8). 41 todos com dono levados para as fases seguintes. Proximo: Fase 5 — Logging & Padronizacao de Erros, onde os 8 achados de observabilidade da r5 se encaixam por tema."
 last_updated: "2026-08-05T23:40:00.000Z"
-last_activity: 2026-08-05 -- 04-38 executado (8 todos da r5 registrados, ROADMAP com o bloco da gap closure r5); fase 04 aguarda fechamento pelo coordenador
+last_activity: 2026-08-05 -- Fase 04 FECHADA: verificacao passed + auditoria de seguranca
 progress:
   total_phases: 8
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 54
   completed_plans: 54
-  percent: 38
+  percent: 50
 ---
 
 # Project State
@@ -25,236 +25,76 @@ See: .planning/PROJECT.md (updated 2026-07-22)
 
 ## Current Position
 
-Phase: 04 (confiabilidade-das-integra-es) — REABERTA PELA 5a VEZ pelo code review rodada 5
-Plan: 38 de 38 executados (04-01..04-38). A gap closure r5 esta EXECUTADA; o FECHAMENTO da fase
-      cabe ao coordenador (verificacao ou nova rodada de review).
-Status: GAP CLOSURE R5 EXECUTADA (2026-08-05)
+Phase: 04 (confiabilidade-das-integra-es) — COMPLETA
+Plan: 38 de 38 executados (04-01..04-38).
+Status: FASE 04 FECHADA (2026-08-05)
 
-  O 04-38 fechou o RESIDUO DOCUMENTAL da rodada 5 — o ultimo plano da gap closure r5, e o
-  segundo da fase com DIFF DE CODIGO ZERO por criterio de aceite (git status --porcelain
-  backend/ frontend/ vazio nas TRES tasks). Nao conserta nada: torna rastreavel o que o usuario
-  decidiu NAO corrigir agora. Mesmo precedente do 04-09 (IN-01..IN-04), 04-18 (IN2-01..IN2-04),
-  04-27 (IN3-01..IN3-08) e 04-34 (IN4-02..IN4-06) — e e esse precedente que permitiu ao 04-26
-  FECHAR o in2-02 com evidencia e ao 04-35 PROMOVER o in3-08 a plano. Achado sem arquivo nao
-  sobrevive a fase.
-  OITO ARQUIVOS NOVOS, pendentes 33 -> 41 (medido). Prioridades, com o motivo escrito em cada:
-  wr5-05 ALTA (unico da leva), wr5-02 / wr5-03 / wr5-04 / in5-01 / in5-02 media, in5-03 / in5-04
-  baixa. Tamanhos entre 53 e 76 linhas, dentro do molde da fase.
-  O QUE IMPORTA PARA QUEM SEGUIR E O WR5-05: os cenarios H, I e J de
-  scheduler.categoriaIndecidivel.test.js asserem `envios(...) >= 1` (10 asseracoes), enquanto A,
-  B e C, NO MESMO ARQUIVO, asserem `=== 1`. A igualdade exata detecta o envio A MENOS e o envio A
-  MAIS; `>= 1` detecta so o envio a menos. A DUPLICATA e a outra metade do Core Value — o
-  trade-off de C10, a semantica de sucesso parcial de WR-01, os dois ramos de
-  `houveEnvioConfirmado` (WR2-01) e a ameaca T-04-35-05 dependem de um oraculo capaz de acusar o
-  envio a mais, e nos tres cenarios que exercitam o comportamento MUDADO pelas rodadas 4 e 5 esse
-  oraculo esta cego. Sem justificativa tecnica: nos tres, o valor exato e 1. INSTRUCAO
-  OPERACIONAL registrada no arquivo: restaurar `=== 1` e, SE ALGUM FICAR VERMELHO, O VERMELHO E O
-  ACHADO. Precedente disponivel: os cenarios L e M do 04-37 ja usam a forma exata.
-  SETE PARES DECLARADOS, para que nenhum dos dois seja fechado pela metade: wr5-02+wr5-03 (ruido
-  no sinal — inundacao de log e alarme sem massa), wr5-04+cr-02b (log cru fora do logger
-  estruturado; candidatos naturais a Fase 5), wr5-05+in4-03 (forca do oraculo — assercao que nao
-  pode falhar x assercao que deixou de medir metade), in5-01+cr4-01c (superficies que a UI nao
-  distingue), in5-02+o caso IRMAS VERIFICADAS de agendor.paginacao.test.js (o conserto entra como
-  MODO NOVO da armacao, nao em arquivo proprio), in5-03+in4-03 (higiene do mesmo instrumento),
-  in5-04+wr4-04b (fan-out proporcional ao dado na borda da Agendor).
-  DUPLICIDADE VERIFICADA antes de criar cada arquivo: nenhum dos oito achados tinha dono entre os
-  33 pendentes. Os vizinhos tematicos foram REFERENCIADOS, nunca duplicados. NENHUM todo
-  existente foi editado: git status --porcelain .planning/todos/pending/ | grep -c '^ M' = 0 nas
-  tres tasks; as unicas mudancas sao arquivos NAO RASTREADOS. sec-01 permanece ABERTO (C8) e o
-  valor do AGENDOR_TOKEN nao aparece em nenhum artefato (gate de grep = 0 nos oito).
-  CONVENCAO WR2-06 APLICADA AOS PROPRIOS ARTEFATOS: grep -cE "\.js:[0-9]|linhas? [0-9]" = 0 nos
-  OITO. Cada item cita funcao, identificador, arquivo ou nome de cenario.
-  ROADMAP: bloco "Gap closure r5" com a fonte (round 5, 1 critical / 5 warning / 4 info), os 3
-  planos aditivos (waves 29-31), o escopo travado pelo usuario, a MUDANCA DE PERFIL da rodada (os
-  achados NAO mudam quem recebe — sao defeitos nos INSTRUMENTOS; o eixo "quem recebe" esta
-  estavel desde o 04-21) e o mandato estrutural: INVENTARIO DE IRMAOS MANTIDO (o revisor
-  verificou que funcionou e nao virou cerimonia) + as DUAS CLAUSULAS novas — (a) DIRECAO REVERSA
-  e (b) RETROATIVIDADE DA JUSTIFICATIVA —, com o ponto cego medido TRES VEZES e a sua origem (o
-  04-28 classificou a dedup como sa COM EVIDENCIA CORRETA PARA A PERGUNTA ERRADA). NENHUM Success
-  Criteria novo e os itens 1-8 NAO foram reescritos (licao de C9); tabela de rastreabilidade e
-  REQUIREMENTS.md intocados. Os blocos das rodadas 1-4 ficaram byte a byte: 1 UNICA linha
-  removida no diff do arquivo inteiro, a `**Plans**`.
-  DIVERGENCIA DE CONTAGEM MEDIDA E NAO FORCADA (a decima segunda da fase): a linha `**Plans**`
-  somava 34; o plano previa 35 planos executados (04-01..04-35); o disco tem 38
-  (ls .planning/phases/04-.../*-PLAN.md = 38, 04-01..04-38). A linha foi corrigida para 38 com a
-  decomposicao explicita — 7 originais + 4 (r1) + 7 (r2) + 9 (r3) + 7 (r4) + 1 (promocao do
-  in3-08 ao 04-35) + 3 (r5). O numero do plano NAO foi forcado.
-  SEGUNDA DIVERGENCIA, de premissa: o plano mandava listar os TRES planos da r5 como pendentes
-  (`- [ ]`), esperando `^- \[x\] 04-3[678]` = 0. MEDIDO: 04-36 e 04-37 JA estavam no ROADMAP
-  marcados `[x]`, acrescentados pelos proprios executores (commits b9e377d e e0e8a4b) ao FIM da
-  lista da r4, porque o bloco da r5 ainda nao existia. Marca-los `[ ]` registraria FATO FALSO.
-  Foram mantidos `[x]` e passaram a viver sob o bloco da r5; so o 04-38 ficou `[ ]`, para o
-  coordenador. Medido: `^- \[ \] 04-3[678]` = 1 (esperado 3), `^- \[x\] 04-3[678]` = 2 (esperado
-  0). O gate estrutural que importava — 1 unica remocao no diff — passou, porque a insercao do
-  bloco ANTES daquelas duas linhas e uma insercao pura para o git.
-  ARMADILHA DE MEDICAO, mesma classe das anteriores: grep -c "Gap closure r5" no ROADMAP devolve
-  2, nao 1. A segunda ocorrencia e PREEXISTENTE — esta na descricao de uma linha da Fase 4, que
-  ainda diz "Gap closure r5 pendente". NAO e divergencia; a ocorrencia que o criterio pede esta
-  onde deveria, no cabecalho do bloco novo.
-  DIVIDA DE FERRAMENTAL, agora com a QUARTA execucao consecutiva e ainda SEM DONO (04-26, 04-36,
-  04-37 e agora o 04-38): `npm run format` NAO existe na raiz do repo (so em backend/ e
-  frontend/), e o `biome format --write .` do backend reformata SEIS arquivos de teste
-  PREEXISTENTES alheios a qualquer plano (divida de lineWidth 80). Este plano NAO invocou o
-  formatador — nao ha codigo no diff —, entao nao precisou reverter nada, mas a divida continua
-  de pe. Prioridade baixa/media; o 04-38 nao a cobria e ela nao foi registrada como todo por
-  estar fora dos <files> deste plano.
-  Suite 196/196 verde e lint backend exit 0 (44 warnings, baseline) — rodados como PROVA de que
-  nenhuma mudanca de codigo se disfarcou de documentacao. ZERO DESVIOS de Rule 1-4, nenhum pacote
-  instalado.
-  O QUE FICA ABERTO DEPOIS DA GAP CLOSURE R5: o `cr4-01b` (o caminho do negocio SEM organizacao,
-  reescrito pelo 04-37 e ainda aberto), os OITO achados desta leva e os demais 33 pendentes — 41
-  no total. A fase 04 NAO foi marcada completa por este plano.
-  Commits: 23e90b5 (WR5-02..WR5-05), 590de1a (IN5-01..IN5-04), d7834f8 (ROADMAP).
+  38 planos, suite 148 -> 196 verdes, lint exit 0 (44 backend / 60 frontend, baseline do CLAUDE.md),
+  frontend build exit 0. CINCO rodadas de code review, cinco reaberturas, CINCO BLOCKERS REAIS
+  fechados: CR-01/CR-02 (r1), CR2-01 (r2), CR3-01 (r3), CR4-01 (r4), CR5-01 (r5).
+  As cinco rodadas estao preservadas em 04-REVIEW-r1.md .. -r5.md.
 
-  --- historico do 04-37 abaixo ---
+  VERIFICACAO (04-VERIFICATION.md, status: passed): 8/8 Success Criteria e 6/6 requisitos
+  (REL-01..REL-06) conferidos CONTRA O CODIGO, nao contra a prosa dos SUMMARYs — precaucao tomada
+  porque cinco rodadas de review provaram que afirmacao em documento diverge do codigo com frequencia.
+  SEGURANCA (04-SECURITY.md, threats_open: 1): 232/233 ameacas fechadas sobre os 38 blocos
+  <threat_model>. CR-02 (token gravado em disco pelo console.error) e WR-03 (guarda de id FORA do
+  callback de retry) verificados no codigo. `npm audit` medido ao vivo: 8 advisories, 2 high, 0
+  critical, NENHUM atribuivel a axios ou nodemailer. O valor do AGENDOR_TOKEN nao aparece em nenhum
+  artefato da fase (git grep = 0).
 
-  O 04-37 fechou WR5-01 — o vizinho que o conserto do CR4-01 abriu, exatamente como o conserto
-  do CR3-01 tinha aberto o CR4-01. O contador que o alarme de supressao total comparava com
-  `results.stale` incrementava DENTRO da guarda de categoria, que e a SEGUNDA do laco de
-  runCheck: a guarda de DEDUP DO DIA vem antes e faz `continue`, entao todo negocio ja
-  notificado hoje SUBTRAIA DO NUMERADOR SEM SUBTRAIR DO DENOMINADOR e a condicao de supressao
-  TOTAL ficava INALCANCAVEL. Nao exige dado faltando no CRM: basta clicar "Enviar" depois do
-  cron das 8h.
-  A REGRA CERTA JA ESTAVA ESCRITA NO MESMO ARQUIVO: o 04-35 poe `funilNaoAvaliado` no TOPO do
-  laco (D-IN3-08-f) justamente para nao reproduzir esse modo de falha, e escreveu o motivo no
-  comentario. Nunca a aplicou de volta ao contador irmao. Este plano aplicou:
-  `results.categoriaIndecidivelNaRodada` nasce no literal, incrementa no TOPO do laco (linha 164,
-  antes do primeiro `continue;`, na 212) e vira o numerador do alarme. O contador da guarda
-  `skippedCategoriaIndecidivel` FICA e foi DESACOPLADO: ele responde a outra pergunta — quantos a
-  GUARDA suprimiu — e o cenario L mede os DOIS valendo numeros DIFERENTES na mesma rodada (1 vs
-  2), que e o que torna o achado conferivel.
-  A MENSAGEM ENTROU NO ESCOPO POR CONSEQUENCIA DO PROPRIO CONSERTO, e isso e decisao
-  (D-04-37-b): com o numerador no topo, a condicao total passa a valer numa rodada COMPOSTA em
-  que alguem ja recebeu as 8h, e ali "nenhum negocio parado DO DIA foi notificado" seria
-  FACTUALMENTE FALSO. A redacao passou a afirmar sobre a RODADA, com a ressalva da dedup escrita
-  por extenso, e esta pinada por ASSERCAO no cenario L (presenca de "desta rodada", ausencia da
-  frase larga) — nao por comentario. So inteiros e texto fixo entram na mensagem.
-  O PAR QUE FECHA O ACHADO: cenario L (apagao total da borda + um negocio DEDUPLICADO -> o alarme
-  DISPARA; zero e-mails para os quatro destinatarios, por igualdade exata) e cenario M (o mesmo
-  deduplicado ao lado de um notificavel com borda SA -> a rodada CALA, r.errors.length 0). Sem o
-  M, um conserto que ligasse o alarme por QUANTIDADE passaria por L e o operador receberia erro
-  em todo dia com dedup — mudez trocada por ruido diario. O helper `marcarComoNotificadoHoje` e a
-  armacao de dedup que a suite INTEIRA nao tinha, e e por isso que o modo de falha atravessou
-  quatro rodadas de review sem nenhum vermelho.
-  RED MEDIDO, reproduzindo a sonda do revisor dentro da suite: L falhou em `r.errors.length`
-  (0 !== 1) depois de (a)-(f) passarem, com r.stale 2, r.notified 0, r.skipped 2,
-  r.skippedCategoriaIndecidivel 1 e r.error undefined; M falhou em
-  `categoriaIndecidivelNaRodada` (undefined !== 0). 11 pass, 2 fail — nenhuma falha na armacao
-  nem no comportamento, que era a condicao de PARADA do plano.
-  O TODO cr4-01b FOI REESCRITO, e nao era burocracia: ele documentava a causa ERRADA e sua
-  "Correcao proposta" consertava o DENOMINADOR quando o defeito estava no NUMERADOR — quem o
-  executasse como estava fecharia o item COM O DEFEITO DE PE. Agora nomeia o MECANISMO (qualquer
-  caminho que impeca a contagem), separa a causa FECHADA da que SOBRA (negocio SEM organizacao
-  nunca recebe a marca), marca a proposta antiga como REJEITADA com o motivo, e PRESERVA a
-  medicao que rejeitou o denominador derivado (organizacao com id valido e SEM NOME faria o
-  alarme falhar ABERTO por um caminho novo). NAO foi renomeado nem movido: continua ABERTO e o
-  nome e citado por artefatos historicos imutaveis.
-  Suite 194 -> 196 verdes; scheduler.js em 88,79% linhas / 79,31% branches (era 87,72 / 79,06);
-  cobertura exit 0; lint backend exit 0 (44 warnings) e frontend exit 0 (60 warnings).
-  ZERO DIVERGENCIAS NUMERICAS — segunda rodada consecutiva sem nenhuma. Todos os 30+ gates das
-  tres tasks bateram. DUAS ARMADILHAS DE MEDICAO foram encontradas e resolvidas no ARTEFATO, nao
-  no numero: os comentarios de M e do alarme CITAVAM literalmente as formas que condenam (o
-  operador frouxo e a frase larga) e os proprios gates acusaram a justificativa — reescritos para
-  descrever a forma sem reproduzi-la (disciplina de R3-26). Numero do plano nao forcado.
-  DIVERGENCIAS DE FERRAMENTAL, registradas: `npm run format` NAO existe na raiz (o Biome do
-  backend reformata 6 arquivos de teste preexistentes alheios ao escopo — o Biome foi invocado
-  POR ARQUIVO); e o wrapper ~/bin/npx aponta para um Node que nao existe mais, enquanto
-  ~/bin/node funciona. Nada foi alterado no ambiente.
-  ESCOPO QUE O 04-37 NAO FECHA: o caminho do negocio SEM organizacao (cr4-01b, aberto e
-  reescrito); WR5-02..WR5-05 e IN5-01..IN5-04 -> plano 04-38. As assercoes de H, I e J NAO foram
-  tocadas (WR5-05 tem dono). O LIMIAR do CR4-01 nao mudou e nao foi reaberto.
-  Commits: 62d8fb1 (RED), 8ef1914 (GREEN), f2bbb79 (todo cr4-01b).
+  RISCO ACEITO QUE PERMANECE ABERTO: SEC-01 — token da API Agendor exposto no historico do
+  repositorio PUBLICO (commit 13905d4). Decisao C8 do usuario, consciente e documentada. Reescrever
+  o historico NAO resolve e tornar o repo privado quebra a branch protection (ja testado). SO a
+  rotacao no painel da Agendor encerra a exposicao. NAO marcar como resolvido em lugar nenhum.
 
-  --- historico da rodada 5 abaixo ---
+  EVOLUCAO DO PROCESSO — o que esta fase ensinou, para as proximas:
+  O padrao que reabriu a fase quatro vezes foi sempre o mesmo: o conserto fecha o cenario do achado
+  e deixa aberto o VIZINHO que o comentario novo declara resolvido. Duas trocas de mandato
+  atacaram isso, e a segunda funcionou:
+  1. r3 — "CENARIO SIMETRICO" (teste da mesma falha na direcao oposta). Produziu simetricos
+     substantivos, mas o revisor da r4 julgou que RESOLVEU O PROBLEMA ERRADO: o que faltava nao era
+     input simetrico, era CODIGO VIZINHO (funcao irma, terceiro call-site, outro arquivo que
+     documenta o mesmo fato).
+  2. r4 — "INVENTARIO DE IRMAOS": para cada conserto, listar por escrito as construcoes gemeas e
+     marcar cada uma como corrigida / verificada-e-sa / fora-de-escopo-com-medicao, cada item com
+     gate. FUNCIONOU — produziu WR4-01 e WR4-02, que quatro rodadas de review nao tinham achado, e
+     cinco residuais com dono. O revisor da r5 confirmou que nao virou cerimonia.
+  3. r5 — duas CLAUSULAS acrescentadas ao inventario, por ponto cego medido tres vezes:
+     (a) DIRECAO REVERSA — listar o que pode NEUTRALIZAR o construto novo, nao so se os irmaos
+         estao sos. O inventario perguntava "este irmao esta sao?" e nunca "o que eu construi
+         DEPENDE dele?" — foi assim que o WR5-01 nasceu (o 04-28 classificou a dedup como sa COM
+         EVIDENCIA CORRETA PARA A PERGUNTA ERRADA, e e o `continue` dela que desarma o alarme que o
+         04-28 estava construindo).
+     (b) RETROATIVIDADE DA JUSTIFICATIVA — grepar o mesmo arquivo por construcoes que o comentario
+         novo CONDENA.
+  RECOMENDACAO PARA AS FASES SEGUINTES: manter o inventario de irmaos com as duas clausulas.
 
-  O 04-36 fechou CR5-01, o BLOCKER da rodada 5 — e o unico achado da fase que estava numa
-  SUPERFICIE DE UI, nao no backend. `runCheck` usava a chave `skipped` para DUAS coisas
-  incompativeis: o contrato `{ skipped: true, reason }` do lock de concorrencia e o CONTADOR
-  `results.skipped`, que QUATRO causas incrementam. Como `POST /api/notifications/run` devolve o
-  objeto INTEIRO (`res.json(result)`, sem projecao), o unico consumidor do disparo manual
-  (`sendNow`, em Dashboard.jsx) ramificava por ela: bastava UM negocio deduplicado — clicar
-  "Enviar notificacoes" depois do cron das 8h — para uma rodada BEM-SUCEDIDA cair no ramo do erro
-  e exibir `toast.error(result.reason)` com `reason` UNDEFINED. Toast vermelho SEM TEXTO.
-  A DESAMBIGUACAO FOI FEITA NO PRODUTOR, nao no consumidor, e isso e decisao: os dois significados
-  chegam a UI como o mesmo campo truthy, entao qualquer conserto do lado da tela seria adivinhacao
-  de tipo. O guard do topo de runCheck passou a devolver `execucaoIgnorada: true` AO LADO de
-  `skipped: true` e do motivo — a chave nova e ADITIVA, e o contrato antigo fica de pe por
-  compatibilidade com consumidores nao medidos do payload.
-  O PAR QUE FECHA O ACHADO, e sem o qual o conserto seria pela metade: caso (6) de
-  scheduler.resilience.test.js (a recusa traz a chave nova E o motivo escrito E o contrato antigo,
-  as tres juntas) e cenario K de scheduler.categoriaIndecidivel.test.js (a rodada que CONCLUIU com
-  `skipped === 2` NAO traz `execucaoIgnorada` nem `reason`). O K NASCEU VERDE de proposito e isso
-  esta declarado no plano: o valor dele nao esta no vermelho, esta em impedir que a chave nova
-  fosse "padronizada" no literal de `results` — ali toda rodada viraria recusa e nenhum outro caso
-  ficaria vermelho.
-  A METADE AUDIVEL DO CR4-01 VOLTOU AO CAMINHO MANUAL: `sendNow` passou a exibir o primeiro item
-  de `results.errors` num toast de id PROPRIO (`${toastId}-alarme`), que SOMA ao resumo em vez de
-  substitui-lo. Antes o alarme do 04-28/04-35 so aparecia no bloco "Erros na ultima execucao",
-  alimentado pelo polling de 2 minutos — quem disparava a rodada nao via na hora o que ela mesma
-  produziu.
-  Suite 192 -> 194 verdes; scheduler.js em 87,72% linhas / 79,06% branches; lint backend exit 0
-  (44 warnings) e frontend exit 0 (60 warnings); `npm run build` do frontend exit 0.
-  TODOS os criterios numericos bateram, sem excecao — os 24 gates das duas tasks. `skipped` em
-  `frontend/src` foi de 1 para 0; `execucaoIgnorada` de 0 para 1; `reason` continua 1.
-  UMA DIVERGENCIA DE FERRAMENTAL, registrada e nao forcada: `npm run format` NAO existe na raiz do
-  repo (so em backend/ e frontend/), e o `biome format --write .` do backend reformata SEIS
-  arquivos de teste PREEXISTENTES alheios a este plano (divida de lineWidth 80 anterior). Eles
-  foram DEVOLVIDOS ao estado original nas duas tasks, para que o diff fique estritamente no escopo
-  — mesma classe do desvio registrado no 04-26.
-  ESCOPO QUE O 04-36 NAO FECHA, com dono nomeado: WR5-01 e a reescrita do todo `cr4-01b` -> plano
-  04-37; WR5-02..WR5-05 e IN5-01..IN5-04 -> plano 04-38. Em particular o IN5-01 (`results.error`
-  significando "a rodada MORREU" e "a rodada concluiu com alarme") foi ACHADO pela clausula (b) da
-  r5 dentro deste plano e entregue ao 04-38 com medicao: 3 ocorrencias nao-comentario, e NENHUM
-  consumidor de UI le o campo escalar. WR5-05 (asseracoes de envio afrouxadas de `=== 1` para
-  `>= 1`) tambem e do 04-38 — os cenarios NOVOS deste plano usam `=== 1` deliberadamente.
-  Commits: 7285f08 (RED), b879535 (GREEN).
+  OUTRA LICAO, sobre criterios de aceite: a fase acumulou ONZE divergencias de contagem, todas
+  registradas e nenhuma forcada. As classes recorrentes: grep sobre o ARQUIVO INTEIRO quando a
+  contagem pretendida era dentro de UMA funcao; grep pegando MENCAO do literal dentro de comentario
+  preexistente; contexto de diff (resolver com `git diff -U0`); e `grep -c` contando LINHAS quando a
+  intencao era OCORRENCIAS (usar `grep -o | wc -l`). Os tres ultimos planos (04-36, 04-37, 04-38)
+  tiveram ZERO divergencias — o padrao foi aprendido.
 
-  --- historico da reabertura abaixo ---
+  DIVIDA DE FERRAMENTAL, aparecida em QUATRO execucoes e ainda sem dono: `npm run format` NAO existe
+  na raiz do repo (so em backend/ e frontend/), e o `biome format` do backend reformata SEIS
+  arquivos de teste preexistentes alheios a qualquer plano (divida de lineWidth 80). Todo executor
+  precisou reverter a mao. Registrado no SUMMARY do 04-38 e no STATE, sem arquivo proprio.
 
-  35/35 planos, suite 148 -> 192 verdes. Os CINCO blockers de REGRA DE NEGOCIO estao fechados
-  (CR-01, CR-02, CR2-01, CR3-01, CR4-01) e o todo in3-08 — o ultimo filtro de elegibilidade
-  fail-open — foi promovido ao plano 04-35 e resolvido. As rodadas 1-4 estao preservadas em
-  04-REVIEW-r1.md .. -r4.md.
+  ATRITO CONHECIDO DO gsd-sdk nesta fase: NENHUM handler `state.*` e seguro — `update-progress`,
+  `record-session`, `record-metric` e `advance-plan` corromperam o STATE.md curado; e o
+  `roadmap.update-plan-progress` chegou a marcar a FASE INTEIRA como Complete indevidamente
+  (revertido a mao no 04-34). Os planos 04-30 em diante editaram os dois arquivos A MAO, e deu certo.
 
-  MUDANCA DE PERFIL: os achados da r5 NAO mudam quem recebe. Sao defeitos nos INSTRUMENTOS —
-  quebram os sinais construidos para perceber falha. O eixo "quem recebe" esta estavel desde o
-  04-21.
-
-  CR5-01 (BLOCKER): `runCheck` usa a chave `skipped` para DUAS coisas incompativeis — o contrato
-  `{ skipped: true, reason }` do lock de concorrencia e o contador `results.skipped`. O POST /run
-  devolve o objeto inteiro e o Dashboard.jsx:90 faz `if (result.skipped) toast.error(result.reason)`.
-  Sonda: `results.skipped: 3` -> `true` -> toast.error com `reason` UNDEFINED. TOAST VERMELHO EM
-  BRANCO em toda rodada com >=1 negocio pulado, inclusive no caso banal de clicar "Enviar" depois
-  do cron das 8h (dedup). Realiza literalmente a ameaca T-04-35-05 e ANULA a metade audivel do
-  CR4-01 no caminho manual. A rodada 4 afirmou o OPOSTO sobre esse toast e o 04-28 herdou o
-  enquadramento errado.
-
-  WR5-01: o conserto do CR4-01 ABRIU UM VIZINHO, como o do CR3-01 tinha aberto o CR4-01. O contador
-  incrementa DENTRO da segunda guarda, entao QUALQUER `continue` anterior desarma o alarme — mais
-  comumente a DEDUP DO DIA, nao "negocio sem organizacao". Sonda: apagao total de /organizations,
-  3 negocios parados, ZERO e-mails, skippedCategoriaIndecidivel 2 vs stale 3 -> alarme SILENCIOSO.
-  AGRAVANTE: a "Correcao proposta" escrita dentro do todo `cr4-01b` conserta o DENOMINADOR; o
-  defeito esta no NUMERADOR. Executar aquele todo o fecharia COM O DEFEITO DE PE — o cr4-01b PRECISA
-  ser reescrito. O 04-35 escreveu o mecanismo geral certo no topo do laco e nunca o aplicou 60
-  linhas abaixo.
-
-  DECISAO DO USUARIO sobre o escopo da r5 (vinculante, 2026-08-05): corrigir SOMENTE CR5-01 e
-  WR5-01, e reescrever o todo cr4-01b. Os outros 4 warnings (WR5-02 aviso por negocio no caminho de
-  leitura; WR5-03 alarme de forma do funil disparando com N=1; WR5-04 contadores irmaos usando
-  console.log vs logger.warn; WR5-05 asseracoes de envio afrouxadas de `=== 1` para `>= 1`, perdendo
-  deteccao de e-mail DUPLICADO) e os 4 info (IN5-01..IN5-04) viram TODOS PENDENTES, nao planos.
-
-  VEREDITO DO REVISOR SOBRE O MANDATO "INVENTARIO DE IRMAOS": FUNCIONOU e NAO virou cerimonia —
-  todo `verificada-e-sa` amostrado carrega grep ou caso de teste, e varios EXECUTAM o irmao em vez
-  de le-lo. Melhora real sobre as rodadas 1-3 (foi ele que produziu WR4-01 e WR4-02).
-  PONTO CEGO ESTRUTURAL, medido tres vezes nesta rodada: o inventario pergunta "este irmao esta
-  sao?" e nunca "o que eu acabei de construir DEPENDE do comportamento dele?". O 04-28 classificou
-  a dedup como sa COM EVIDENCIA CORRETA PARA A PERGUNTA ERRADA — e e o `continue` dela que desarma
-  o alarme que o 04-28 estava construindo.
-  DUAS CLAUSULAS A ACRESCENTAR NA R5:
-  (a) DIRECAO REVERSA — listar o que pode NEUTRALIZAR o construto novo, nao so se os irmaos estao sos;
-  (b) RETROATIVIDADE DA JUSTIFICATIVA — grepar o mesmo arquivo por construcoes que o comentario novo
-      CONDENA (so isso pega o WR5-02 em menos de um minuto).
+  41 TODOS PENDENTES levados adiante, todos com dono e prioridade. Os de prioridade alta:
+  `sec-01` (rotacao do token — acao operacional, so o painel da Agendor resolve),
+  `rel-02b` (deadline global de SMTP, pre-go-live), `sec-02` (8 advisories restantes, 2 high),
+  `wr5-05` (asseracoes de envio afrouxadas de `=== 1` para `>= 1` nos cenarios H/I/J — perderam a
+  deteccao de e-mail DUPLICADO, que e a outra metade do Core Value; confirmado ainda aberto pela
+  propria verificacao da fase).
+  Os 8 achados da r5 (WR5-02..WR5-05, IN5-01..IN5-04) sao de OBSERVABILIDADE e se encaixam por tema
+  na Fase 5 — Logging & Padronizacao de Erros.
 
   --- historico anterior abaixo ---
 Origem: CODE REVIEW RODADA 4 (2026-08-05)
