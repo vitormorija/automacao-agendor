@@ -32,6 +32,14 @@ const api = axios.create({
 // DERIVE o número em vez de duplicar o literal, que continuaria verde se a constante mudasse.
 const MAX_PAGES = 200;
 
+// Teto de CONCORRÊNCIA da consulta de categoria por organização (WR4-04) — a única borda do
+// módulo cujo NÚMERO de requisições é proporcional ao volume de dados. Ele NÃO reduz o total de
+// requisições (cada organização única continua sendo consultada exatamente uma vez): reduz quantas
+// estão EM VOO ao mesmo tempo. O valor é o dobro do `batchSize` da paginação de negócios porque
+// uma consulta por id é muito mais barata que uma página de cem registros. Exportado para que o
+// teste (agendor.loteDeOrganizacoes.test.js) DERIVE o número em vez de duplicar o literal.
+const LOTE_DE_ORGS = 10;
+
 // Busca todos os usuários com seus emails
 async function getUsers() {
   const users = {};
@@ -232,6 +240,11 @@ function getDealType(orgCategory) {
 // segundo lugar para ela divergir — o número de tentativas ou o tempo de espera mudaria em um
 // consumidor e não no outro, e ninguém perceberia até a rodada sumir.
 //
+// Das cinco bordas acima, `/organizations/:id` é a ÚNICA cujo NÚMERO de chamadas é proporcional ao
+// volume de dados — uma por organização única dos negócios parados —, e por isso é a única em que
+// retentar em massa prolonga a própria janela de rate limit que causou a falha. É dela, e só dela,
+// o teto de concorrência declarado junto da fase de categorias em getStaleDeals (LOTE_DE_ORGS).
+//
 // O que passar por aqui NÃO ganha: validação. A guarda de tipo do id em getDealById fica ACIMA
 // da chamada, fora do callback, de propósito (WR-03 / D-WR3-01-b) — movê-la para dentro faria um
 // id hostil sair três vezes pela instância compartilhada, com o token no header, em vez de
@@ -287,7 +300,10 @@ async function getStaleDeals(staleDays = 15) {
     );
   }
 
-  // Busca todas as páginas restantes em paralelo (batches de 10)
+  // Busca todas as páginas restantes em paralelo, em lotes de `batchSize`. O número deixou de ser
+  // ESCRITO aqui (WR4-04 / IN4-01): a frase anterior citava o valor do OUTRO lote do módulo, e com
+  // dois lotes no mesmo arquivo um comentário que atribui a um o valor do outro torna os dois
+  // indistinguíveis para o próximo leitor. Quem quiser o número lê o identificador logo abaixo.
   const allRawDeals = [...(firstPage.data || [])];
   const remainingPages = Array.from(
     { length: totalPages - 1 },
@@ -337,14 +353,25 @@ async function getStaleDeals(staleDays = 15) {
   // já deduplicou as organizações antes de qualquer consulta — uma chamada por organização
   // única, nunca uma por deal.
   const cacheDaExecucao = new Map();
-  const categoriaPorOrg = new Map(
-    await Promise.all(
-      uniqueOrgIds.map(async (id) => [
-        id,
-        await getOrgCategory(id, cacheDaExecucao),
-      ]),
-    ),
-  );
+
+  // Teto de CONCORRÊNCIA desta fase (WR4-04 / LOTE_DE_ORGS). A concorrência é limitada AQUI e não
+  // nas outras bordas porque esta é a única do módulo cujo número de requisições cresce com o dado:
+  // uma chamada por organização única, e não um número fixo de páginas. Desde CR3-01 cada uma
+  // dessas chamadas passa por fetchWithRetry, então sob HTTP 429 cada requisição vira três — e o
+  // erro retentado é justamente o pedido da API por menos tráfego, de modo que um fan-out sem teto
+  // PROLONGA a própria janela de rate limit que o causou. Some-se que getStaleDeals é também o
+  // caminho de LEITURA do painel (routes/deals.js, routes/reports.js e runCheckOnly), então esse
+  // custo aparecia a cada atualização de tela, não só na rodada das 8 h. O oráculo do teto é
+  // agendor.loteDeOrganizacoes.test.js, que mede CONCORRÊNCIA EM VOO: uma "otimização" que volte ao
+  // Promise.all único sobre uniqueOrgIds fica vermelha lá.
+  const categoriaPorOrg = new Map();
+  for (let i = 0; i < uniqueOrgIds.length; i += LOTE_DE_ORGS) {
+    const lote = uniqueOrgIds.slice(i, i + LOTE_DE_ORGS);
+    const pares = await Promise.all(
+      lote.map(async (id) => [id, await getOrgCategory(id, cacheDaExecucao)]),
+    );
+    for (const [id, categoria] of pares) categoriaPorOrg.set(id, categoria);
+  }
 
   const allDeals = [];
   for (const deal of staleRaw) {
@@ -473,6 +500,7 @@ async function getDealsWithFutureTasks() {
 module.exports = {
   CATEGORIA_INDECIDIVEL,
   MAX_PAGES,
+  LOTE_DE_ORGS,
   getUsers,
   getStaleDeals,
   getDealById,
