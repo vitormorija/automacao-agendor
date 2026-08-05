@@ -55,7 +55,7 @@ process.env.DB_PATH = DB_PATH;
 // setup.js só define DB_PATH se ausente — como já definimos acima, o temp vence.
 require('./setup');
 
-const { test, before, after, beforeEach, mock } = require('node:test');
+const { test, after, beforeEach, mock } = require('node:test');
 const assert = require('node:assert/strict');
 const nodemailer = require('nodemailer');
 const { installFakeAxios } = require('./helpers/fakeAxios');
@@ -225,13 +225,6 @@ const { runCheck } = require('../src/scheduler');
 // destinatários distintos, como no arquivo de sucesso parcial.
 db.setConfig('notify_author', 'true');
 
-before(() => {
-  // 'setTimeout' entra junto com 'Date' porque `avancarRelogioAte` avança o relógio
-  // falso: qualquer espera que o caminho exercite (o retry de sendMailWithRetry, por
-  // exemplo) precisa ser vencida sem tempo real.
-  mock.timers.enable({ apis: ['Date', 'setTimeout'], now: FIXED_NOW });
-});
-
 after(() => {
   mock.restoreAll();
   db.closeDb();
@@ -239,7 +232,21 @@ after(() => {
   mock.timers.reset();
 });
 
+// Modos, contadores E RELÓGIO voltam ao estado inicial antes de cada caso.
+//
+// 'setTimeout' entra junto com 'Date' porque `avancarRelogioAte` avança o relógio
+// falso: qualquer espera que o caminho exercite (o retry de sendMailWithRetry, por
+// exemplo) precisa ser vencida sem tempo real.
+//
+// O rearme é POR CASO — e não uma única vez num `before` de topo, como este arquivo fazia
+// até o 04-26. Cada `tick(10000)` de `avancarRelogioAte` deixa o relógio adiantado para o
+// caso seguinte, e o cutoff de 15 dias de getStaleDeals anda junto com ele: o precedente
+// medido está em `agendor.retry429.test.js`, onde 30s de adiantamento trouxeram os deals de
+// fronteira 102 e 104 para DENTRO do golden. É o registro `in2-02` que descreveu isto.
+// `reset()` antes de `enable()` porque `enable()` lança se os timers já estiverem habilitados.
 beforeEach(() => {
+  mock.timers.reset();
+  mock.timers.enable({ apis: ['Date', 'setTimeout'], now: FIXED_NOW });
   // Estado neutro entre casos: cada teste declara explicitamente o que precisa.
   modoEnvio = 'ok';
   modoRegistro = 'ok';

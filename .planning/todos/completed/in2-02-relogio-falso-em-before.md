@@ -1,9 +1,11 @@
 ---
 id: in2-02-relogio-falso-em-before
 type: todo
-status: pending
+status: completed
 priority: média
 created: 2026-08-04
+resolved: 2026-08-05
+resolved_by: 04-26
 source: Fase 4, code review 04-REVIEW.md (rodada 2) §IN2-02 — reconhecido e deliberadamente fora do gap closure r2
 resolves_phase: null
 tags: [backend, testes, contaminacao-de-ordem, phase-4-carryover]
@@ -77,3 +79,27 @@ merece ficar registrada.
 ---
 Achado original: `.planning/phases/04-confiabilidade-das-integra-es/04-REVIEW.md`, seção Info,
 §IN2-02.
+
+## Resolvido — 04-26, Task 1 (2026-08-05)
+
+A correção sugerida acima foi aplicada **byte a byte**, e em **três** arquivos, não só no
+`notificationStatus.partialFailure.test.js` que este registro nomeava:
+
+- `backend/test/notificationStatus.partialFailure.test.js` (o arquivo original do achado)
+- `backend/test/notificationStatus.registroResiliente.test.js`
+- `backend/test/notificationStatus.canalParcial.test.js`
+
+Os dois últimos foram criados na rodada 2 do gap closure e **copiaram** o `before` de topo do
+primeiro em vez do `beforeEach` corrigido de `agendor.retry429.test.js` — que é exatamente o que
+a rodada 3 do code review registrou como **WR3-04**. Consertar só os dois arquivos nomeados pelo
+review, deixando aberto o terceiro de onde o defeito veio, repetiria pela quarta vez o padrão que
+reabriu a fase 04. Por isso o vizinho entrou junto.
+
+Nos três, o `before` de topo deixou de existir; a habilitação do relógio falso passou para o
+`beforeEach` já existente, precedida de `mock.timers.reset()`, e o comentário que explicava por
+que `'setTimeout'` entra junto de `'Date'` foi preservado e ampliado com o motivo do rearme por
+caso. O `after` com `mock.timers.reset()` ficou como estava. Nenhuma asserção mudou e os três
+arquivos continuam com 3 casos verdes cada — ou seja, nenhum caso carregava o adiantamento do
+relógio como pré-condição implícita, que era a informação que este registro pedia para confirmar.
+
+Medido no 04-26: nenhum outro arquivo da suíte habilita `'setTimeout'` num `before` de topo.
