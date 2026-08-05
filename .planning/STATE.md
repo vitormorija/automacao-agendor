@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: 04-20 COMPLETO — CR3-01 fechado no envio DIARIO (2 de 3 planos do achado)
+status: 04-21 COMPLETO — CR3-01 FECHADO nos tres caminhos (borda, envio diario, resumo semanal)
 stopped_at: Completed 04-19-PLAN.md
-last_updated: "2026-08-05T05:33:16.473Z"
-last_activity: 2026-08-05 -- 04-20 completo (CR3-01 2/3 no runCheck); suite 153 -> 156
+last_updated: "2026-08-05T05:41:10.905Z"
+last_activity: 2026-08-05 -- 04-21 completo (CR3-01 3/3 no resumo semanal individual); suite 156 -> 160
 progress:
   total_phases: 8
   completed_phases: 3
   total_plans: 43
-  completed_plans: 36
+  completed_plans: 37
   percent: 38
 ---
 
@@ -26,8 +26,47 @@ See: .planning/PROJECT.md (updated 2026-07-22)
 ## Current Position
 
 Phase: 04 (confiabilidade-das-integra-es) — gap closure r3 EM EXECUCAO
-Plan: 20 de 27 executados (04-01..04-20). Faltam 04-21..04-27 (gap closure r3).
-Status: 04-20 COMPLETO — CR3-01 fechado no envio DIARIO (2 de 3 planos do achado)
+Plan: 21 de 27 executados (04-01..04-21). Faltam 04-22..04-27 (gap closure r3).
+Status: 04-21 COMPLETO — CR3-01 FECHADO nos tres caminhos (borda, envio diario, resumo semanal)
+
+  O 04-21 fechou o CAMINHO VIZINHO de CR3-01, e com ele o achado inteiro. O 04-20 fechou o
+  envio DIARIO e o negocio indecidivel voltava pela SEXTA-FEIRA: sendOwnerWeeklySummary e o
+  SEGUNDO (e ultimo) produtor de e-mail dirigido ao responsavel e le a mesma lista de
+  getStaleDeals. O RED registrou a prova operacional em tres linhas do proprio SUT —
+  "[Emailer] Relatorio semanal enviado para Fulana Silva — 2 card(s)" numa lista de dois
+  negocios em que UM e indecidivel (o card que runCheck se recusa a enviar desde o 04-20 saia
+  pela sexta com o mesmo peso de um card legitimo), e "1 card(s) ignorado(s) por funil"
+  ao lado, mostrando que o precedente ja anunciava a sua propria supressao em voz alta.
+  AGORA: o filtro de sendOwnerWeeklySummary tem DOIS PASSOS separados. O primeiro
+  (shouldNotifyOwner) devolve doFunilNotificavel e alimenta skippedByFunnel — que continua
+  significando exatamente o que o nome diz, medido em 3 linhas nao-comentario antes E depois.
+  O segundo remove !d.categoriaIndecidivel, tem contagem propria
+  (ignoradosPorCategoriaNaoConsultada, com C maiusculo DE PROPOSITO para que o criterio
+  grep -c "categoriaIndecidivel" meca so o predicado) e emite logger.warn com tag [Emailer]
+  carregando APENAS um inteiro — nenhum objeto de erro, nenhuma credencial.
+  AS DUAS METADES DA DECISAO DO USUARIO ESTAO MEDIDAS: fora do e-mail INDIVIDUAL (cenarios 1,
+  2 e 4, com asseracao sobre o HTML enviado, nao so sobre a contagem) E dentro do CONSOLIDADO
+  DO ADMIN (cenario 3, que chama sendWeeklySummary e assere o titulo no HTML do admin). Se
+  alguem "harmonizar" as duas funcoes aplicando o filtro nas duas, e o cenario 3 que fica
+  vermelho. sendWeeklySummary, weeklySummaryHtml, buildOwnerBlocks e ownerWeeklyHtml ficaram
+  BYTE A BYTE (grep weeklySummaryHtml no diff = 0).
+  O CENARIO SIMETRICO EXIGIDO PELA RODADA EXISTE E ESTA NOMEADO: cenario (2) de
+  emailer.resumoIndecidivel.test.js — exclusao TOTAL. O (1) prova que o filtro tira o card
+  certo; o (2) prova que ele nao produz o defeito do lado oposto, um e-mail "Seus 0 cards
+  parados". Quem impede isso e a saida antecipada JA EXISTENTE, que nao foi tocada
+  (D-CR3-01-o). O cenario (4) impede o filtro novo de SUBSTITUIR o antigo: normal + Beefor +
+  indecidivel entram, so o normal sai.
+  TODOS os criterios de aceite numericos BATERAM: categoriaIndecidivel nao-comentario = 1,
+  skippedByFunnel = 3 antes e 3 depois, require('./logger') = 1, logger.warn = 1.
+  LOG-01 NAO FOI ANTECIPADO: console.* nao-comentario em emailer.js = 4 ANTES e 4 DEPOIS. As
+  linhas legadas continuam la; migra-las e a Fase 5.
+  Diff de 25 insercoes e 2 remocoes — e as 2 remocoes sao exatamente as duas linhas
+  reescritas. Suite 156 -> 160, cobertura de emailer.js em 89,42% linhas / 63,63% branches.
+  ZERO DESVIOS: nenhuma Rule 1-4 acionada.
+  ESCOPO QUE O 04-21 NAO FECHA: as rotas test-owner-summary e send-owner-summaries herdaram o
+  filtro DE GRACA (chamam a mesma funcao) e nao foram editadas. runCheckOnly, routes/deals.js
+  e routes/reports.js seguem sem filtrar por categoria, de proposito. getUsers e getDealById
+  seguem fora do retry da borda: escopo do 04-22 (WR3-01).
 
   O 04-20 fechou a SEGUNDA metade de CR3-01. O 04-19 produziu a informacao na borda e
   NINGUEM a lia: com a borda ja corrigida, runCheck continuava enviando e-mail para um
@@ -418,9 +457,9 @@ Origem: CODE REVIEW RODADA 3 (2026-08-05)
   checkpoints bloqueantes: C9, C10, C11).
   A rodada 1 esta preservada em 04-REVIEW-r1.md (origem dos planos 04-08..04-11).
   SEC-01 permanece ABERTO como risco conscientemente aceito (decisao C8) — nao marcar resolvido.
-Last activity: 2026-08-05 -- 04-20 completo (CR3-01 2/3 no runCheck); suite 153 -> 156
+Last activity: 2026-08-05 -- 04-21 completo (CR3-01 3/3 no resumo semanal individual); suite 156 -> 160
 
-Progress: [███████░░░] 74% (20 de 27 planos da fase 04 completos; CR3-01 fechado na borda e no envio diario)
+Progress: [████████░░] 78% (21 de 27 planos da fase 04 completos; CR3-01 FECHADO nos tres caminhos: borda, envio diario e resumo semanal)
 
 ## Performance Metrics
 
@@ -476,6 +515,7 @@ Progress: [███████░░░] 74% (20 de 27 planos da fase 04 compl
 | Phase 04 P18 | 26min | 2 tasks tasks | 16 files files |
 | Phase 04 P19 | 21min | 3 tasks tasks | 4 files files |
 | Phase 04 P20 | 16min | 2 tasks tasks | 2 files files |
+| Phase 04 P21 | 12 | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -614,6 +654,7 @@ Recent decisions affecting current work:
 - [Phase ?]: [04-19 / CR3-01] Rota INDECIDIVEL implementada conforme decisao do usuario de 2026-08-05: /organizations/:id entrou no fetchWithRetry e a exaustao grava a sentinela CATEGORIA_INDECIDIVEL; o negocio fica FORA do envio (a partir do 04-20) mas PERMANECE no painel — nenhum continue novo em getStaleDeals, medido 5 antes e 5 depois
 - [Phase ?]: 04-20 (D-CR3-01-h..k): a guarda de categoria indecidivel mora no laco de runCheck, entre a dedup e a de funil; nenhuma linha no notification_log; a guarda nao loga; continue e nunca throw
 - [Phase ?]: 04-20: o cenario SIMETRICO da rodada 3 e a ORDEM INVERSA (falha no 2o negocio), o que separa 'a guarda funciona' de 'a guarda funciona porque o afetado era o primeiro'
+- [Phase 04]: D-CR3-01-l/m/n/o aplicadas no 04-21: o e-mail individual do comercial exclui o negocio indecidivel; o consolidado do admin e o snapshot MANTEM (medido nas duas direcoes). Filtro em DOIS PASSOS separados, skippedByFunnel inalterado (3 antes, 3 depois), contagem propria avisada por logger.warn [Emailer]. LOG-01 nao antecipado: console.* em emailer.js = 4 antes e 4 depois.
 
 ### Pending Todos
 
@@ -666,6 +707,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-05T05:33:08.891Z
+Last session: 2026-08-05T05:40:56.985Z
 Stopped at: Completed 04-19-PLAN.md
 Resume file: None
