@@ -30,9 +30,9 @@ async function getUsers() {
   const users = {};
   let page = 1;
   while (true) {
-    const { data } = await api.get('/users', {
-      params: { page, per_page: 100 },
-    });
+    const { data } = await fetchWithRetry(() =>
+      api.get('/users', { params: { page, per_page: 100 } }),
+    );
     for (const user of data.data) {
       users[user.id] = {
         id: user.id,
@@ -110,7 +110,7 @@ async function getDealById(id) {
   if (!Number.isInteger(dealId) || dealId <= 0) {
     throw new Error(`[Agendor] id de negócio inválido: ${String(id)}`);
   }
-  const { data } = await api.get(`/deals/${dealId}`);
+  const { data } = await fetchWithRetry(() => api.get(`/deals/${dealId}`));
   return data.data || null;
 }
 
@@ -181,13 +181,34 @@ function getDealType(orgCategory) {
 // D-01 — não entra aqui de propósito, e retentá-lo levaria o pior caso de uma requisição de ~15s
 // para ~60s, comendo a janela do cron.
 //
-// Por que um helper e não uma segunda cópia do laço: a consulta de tarefas futuras, em
-// getDealsWithFutureTasks (neste mesmo arquivo, mais abaixo), precisa
-// exatamente da mesma regra, e desde o fail-safe de REL-06 qualquer falha dela ABORTA a rodada
-// inteira. Como o cron é diário, um 429 transitório lá custa 24 horas sem nenhuma notificação, em
-// silêncio. Duplicar a regra dentro do MESMO módulo e da MESMA borda criaria um segundo lugar
-// para ela divergir — o número de tentativas ou o tempo de espera mudaria em um consumidor e não
-// no outro, e ninguém perceberia até a rodada sumir.
+// ÚNICA porque TODAS as chamadas HTTP do módulo passam por aqui — não porque é o único laço de
+// retry escrito. A distinção não é retórica: enquanto este bloco dizia apenas "única", o helper
+// cobria DUAS das cinco chamadas, e ninguém foi procurar as que faltavam (WR3-01). Daí a lista,
+// que é o que torna a afirmação conferível — cada borda abaixo tem exatamente um ponto de
+// chamada neste arquivo:
+//
+//   1. `/deals`             — paginação de negócios, em fetchDealsPage           (WR-02)
+//   2. `/tasks`             — paginação de tarefas futuras, em getDealsWithFutureTasks (WR-02)
+//   3. `/organizations/:id` — categoria da organização, em getOrgCategory        (CR3-01)
+//   4. `/users`             — paginação de usuários, em getUsers                 (WR3-01)
+//   5. `/deals/:id`         — consulta de um negócio por id, em getDealById      (WR3-01)
+//
+// Quem acrescentar uma sexta borda ao módulo acrescenta uma linha aqui, ou deixa esta lista
+// mentindo do mesmo jeito que a palavra "única" mentiu.
+//
+// Por que um helper e não uma cópia do laço por borda: as cinco precisam exatamente da mesma
+// regra, e três delas — `/deals`, `/tasks` e `/users` — saem no MESMO `Promise.all` de runCheck
+// (scheduler.js), o que torna o 429 provável justamente ali. Desde o fail-safe de REL-06,
+// qualquer falha de `/tasks` ou de `/users` ABORTA a rodada inteira antes do laço de envio.
+// Como o cron é diário, um 429 transitório em qualquer uma delas custa 24 horas sem nenhuma
+// notificação, em silêncio. Duplicar a regra dentro do MESMO módulo e da MESMA borda criaria um
+// segundo lugar para ela divergir — o número de tentativas ou o tempo de espera mudaria em um
+// consumidor e não no outro, e ninguém perceberia até a rodada sumir.
+//
+// O que passar por aqui NÃO ganha: validação. A guarda de tipo do id em getDealById fica ACIMA
+// da chamada, fora do callback, de propósito (WR-03 / D-WR3-01-b) — movê-la para dentro faria um
+// id hostil sair três vezes pela instância compartilhada, com o token no header, em vez de
+// nenhuma. Oráculos: agendor.retry429.test.js casos (5) a (8) e dealId.validation.test.js.
 async function fetchWithRetry(fn, retries = 3) {
   for (let attempt = 0; attempt < retries; attempt++) {
     try {
