@@ -36,6 +36,17 @@ const { test, after, beforeEach, mock } = require('node:test');
 const assert = require('node:assert/strict');
 const nodemailer = require('nodemailer');
 
+// `avancarRelogioAte` vem do helper compartilhado, que passou a ser a ÚNICA implementação em
+// circulação (WR3-05). Este arquivo mantinha uma cópia local — e com ela o defeito que o 04-13
+// corrigiu no helper: um `then` de um único argumento deixa a promessa derivada órfã quando o SUT
+// rejeita, e a rejeição não tratada é creditada pelo `node:test` ao caso que estiver correndo
+// naquele momento, reprovando um VIZINHO com a mensagem de outro caso. O motivo de manter a cópia
+// — não trocar o instrumento e o objeto medido na mesma rodada — expirou quando o 04-17 terminou
+// de mexer no `emailer.js`. O contrato observável é o mesmo no ramo de SUCESSO, o único que este
+// arquivo exercita (`sendStaleNotification` RESOLVE na exaustão, D-03), e os três ramos do helper
+// estão cobertos por `fakeTimers.helper.test.js`.
+const { avancarRelogioAte } = require('./helpers/fakeTimers');
+
 // DB_PATH fica no `:memory:` do setup — aqui não há segunda conexão para semear.
 const { setConfig } = require('../src/db');
 setConfig('smtp_host', 'smtp.exemplo.invalid');
@@ -84,33 +95,6 @@ const NEGOCIO = {
 
 const DONO = 'dono@exemplo.invalid';
 const AUTOR = 'autor@exemplo.invalid';
-
-// Avança o relógio falso até a promessa concluir, sem esperar tempo real.
-//
-// Por que não `mock.timers.tickAsync`: essa API só existe a partir do Node 23, e o
-// alvo do projeto é Node 20 (engines do package.json e a matriz do CI) — lá ela é
-// `undefined` e o teste morreria com TypeError. O equivalente portátil é alternar
-// duas coisas: ceder o event loop com `setImmediate` (que NÃO está mockado, pois
-// habilitamos apenas `setTimeout`) para as microtasks entre as tentativas drenarem,
-// e só então avançar o relógio. Um `tick()` síncrono sozinho não basta: a
-// continuação de cada `await` de `sendMailWithRetry` é uma microtask que ainda não
-// rodou quando o tick retorna.
-async function avancarRelogioAte(promessa) {
-  let concluida = false;
-  const encerrada = promessa.then((valor) => {
-    concluida = true;
-    return valor;
-  });
-  for (let i = 0; i < 20 && !concluida; i++) {
-    await new Promise((r) => setImmediate(r));
-    if (!concluida) mock.timers.tick(10000);
-  }
-  // Falha explícita em vez de travar a suíte se o laço não for suficiente.
-  if (!concluida) {
-    throw new Error('a promessa não concluiu após avançar o relógio falso');
-  }
-  return encerrada;
-}
 
 beforeEach(() => {
   opcoesCapturadas = null;

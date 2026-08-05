@@ -17,15 +17,17 @@
 // `tick()` síncrono sozinho não basta: a continuação de cada `await` do código sob
 // teste é uma microtask que ainda não rodou quando o tick retorna.
 //
-// Nota sobre duplicação deliberada: `backend/test/emailer.timeout.test.js` (04-04)
-// mantém a SUA cópia local desta função de propósito, e por isso restam DUAS variantes
-// em circulação — não três. A terceira (o envelope `avancarRelogioAteDesfecho`, que vivia
-// em `agendor.retry429.test.js`) desapareceu no 04-13, porque ela existia exatamente para
-// compensar o ramo de rejeição que agora é tratado aqui dentro. A cópia de
-// `emailer.timeout.test.js` continua: aquele arquivo é o oráculo de REL-02 e o `emailer.js`
-// muda ainda nesta rodada de gap closure — trocar o instrumento e o objeto medido na mesma
-// rodada é o que a constraint de processo do CLAUDE.md proíbe. A deduplicação (fazer aquele
-// arquivo passar a importar daqui) segue registrada como trabalho futuro.
+// Nota sobre duplicação: NÃO existe mais nenhuma. Esta é a ÚNICA implementação de
+// `avancarRelogioAte` em circulação na suíte, e é ela que todo arquivo que avança o relógio
+// falso importa. Foram três, e as três convergiram para cá:
+//   - o envelope `avancarRelogioAteDesfecho` de `agendor.retry429.test.js` desapareceu no 04-13,
+//     porque existia exatamente para compensar o ramo de rejeição que passou a ser tratado aqui;
+//   - a cópia local de `backend/test/emailer.timeout.test.js` (04-04) desapareceu no 04-26
+//     (WR3-05). Ela foi mantida de propósito enquanto o `emailer.js` ainda mudava — trocar o
+//     instrumento e o objeto medido na mesma rodada é o que a constraint de processo do
+//     CLAUDE.md proíbe —, e esse motivo expirou quando o 04-17 terminou de mexer naquele módulo.
+// Quem for tentado a fazer uma quarta cópia: o defeito que a cópia carregava (um `then` de um
+// argumento só, sem ramo de rejeição) ficou latente por duas rodadas dentro do oráculo de REL-02.
 const { mock } = require('node:test');
 
 // Por que o `then` tem DOIS argumentos (WR2-03): com apenas o ramo de sucesso, a promessa
