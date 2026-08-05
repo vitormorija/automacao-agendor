@@ -35,6 +35,12 @@ async function runCheck() {
     stale: 0,
     notified: 0,
     skipped: 0,
+    // Nasce no literal, e não sob demanda, porque nenhum consumidor deve ter de distinguir
+    // `undefined` de zero para saber se a borda de organizações respondeu (CR4-01). É ESTE
+    // contador — e não `results.skipped`, que QUATRO causas diferentes incrementam (dedup do
+    // dia, categoria indecidível, funil e "sem destinatário") — que separa "dia calmo" de "a
+    // borda de organizações caiu". Ele conta SEMPRE, independente do limiar do alarme abaixo.
+    skippedCategoriaIndecidivel: 0,
     errors: [],
     deals: [],
   };
@@ -137,6 +143,7 @@ async function runCheck() {
         dealResult.skipReason =
           'categoria da organização não pôde ser consultada — negócio não notificado';
         results.skipped++;
+        results.skippedCategoriaIndecidivel++;
         results.deals.push(dealResult);
         continue;
       }
@@ -335,11 +342,48 @@ async function runCheck() {
           }
         }
       } else {
+        // Quarto e último ramo de skip — era o único sem motivo escrito nenhum (D-CR4-01-f).
+        // Um negócio suprimido sem justificativa é exatamente o que CR4-01 descreve numa escala
+        // menor: o resultado registra que alguém não foi notificado e não diz por quê. Não ganha
+        // contador nem alarme — não é falha de dependência externa, é configuração ou dado ausente.
         dealResult.skipped = true;
+        dealResult.skipReason = notificationsEnabled
+          ? 'nenhum destinatário com e-mail cadastrado'
+          : 'notificações desativadas na configuração';
         results.skipped++;
       }
 
       results.deals.push(dealResult);
+    }
+
+    // Alarme de supressão TOTAL por categoria indecidível (CR4-01). Este bloco é ADITIVO e mora
+    // DEPOIS do laço: ele não condiciona nenhum `continue`, nenhuma guarda e nenhuma decisão de
+    // notificar ou pular, e portanto NÃO decide quem recebe e-mail. Quem mexer aqui não deve
+    // acreditar no contrário — nenhuma escolha de limiar, alta ou baixa, pode mudar isso; o que
+    // este bloco toca é exclusivamente o sinal AGREGADO da rodada.
+    // Por que o limiar é "todos os negócios" e não uma proporção: o que ele preserva é o
+    // contrato agregado-observável de CR3-01, pinado nos cenários A e B do oráculo, que asserem
+    // campo de erro vazio com UM de dois suprimidos; um limiar proporcional abaixo de 100% faria
+    // a rodada se ANUNCIAR como falha num cenário que aquele contrato fixou como normal.
+    // Por que as DUAS superfícies: o campo de erro é o que a decisão do usuário nomeia, e o
+    // array de erros é o único que a UI de fato renderiza. Preencher só o campo nomeado deixaria
+    // o alarme tão invisível quanto o defeito que ele conserta.
+    // Preencher o campo de erro numa rodada que CONCLUIU é deliberado, e a mensagem diz isso por
+    // extenso. E o alarme discrimina a CAUSA, não a quantidade: uma supressão total por OUTRA
+    // causa continua silenciosa, e o guarda-corpo disso é o cenário E do oráculo. Só inteiros e
+    // texto fixo entram na mensagem — nenhum objeto de erro (CR-02 do 04-09).
+    if (
+      results.stale > 0 &&
+      results.skippedCategoriaIndecidivel === results.stale
+    ) {
+      const mensagem =
+        `Nenhum dos ${results.stale} negócio(s) parado(s) do dia foi notificado: a categoria ` +
+        'da organização não pôde ser consultada em nenhum deles. A borda de organizações da ' +
+        'Agendor pode estar indisponível. A rodada CONCLUIU — este é um alarme de supressão ' +
+        'total, não uma interrupção.';
+      results.error = mensagem;
+      results.errors.push(mensagem);
+      logger.error(`[Scheduler] ${mensagem}`);
     }
 
     results.duration = Date.now() - startTime;
