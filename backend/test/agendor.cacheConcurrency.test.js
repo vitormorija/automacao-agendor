@@ -14,6 +14,15 @@
 // Determinismo vem de DOIS pontos de suspensão controlados no stub (a organização 210 na
 // execução A e a organização 205 na execução B), nunca de temporização — um teste de
 // concorrência intermitente é pior que nenhum, porque dá falsa confiança.
+//
+// A rodada 2 do code review (CR2-01) achou a direção OPOSTA do mesmo entrelaçamento, que este
+// arquivo não media: não é a limpeza de B que apaga o que A escreveu, é a ESCRITA TARDIA de A
+// que contamina B. getOrgCategory engole qualquer falha e cacheia `null`, e `null` não está em
+// EXCLUDED_CATEGORIES — se a consulta de A falha DEPOIS do início de B, B lê esse `null` em
+// cache, nem consulta a API, e notifica uma organização 'Parceiro' sem ter falhado em nada.
+// A partir daqui o arquivo mede as DUAS direções: "a limpeza apaga a leitura futura" (casos
+// 'duas execuções SOBREPOSTAS...' e 'depois do entrelaçamento...', CR-01) e "a escrita tardia
+// contamina a execução vizinha" (caso 'escrita tardia...', CR2-01).
 require('./setup');
 
 const { test, before, after, mock } = require('node:test');
@@ -46,7 +55,82 @@ let liberar210 = null;
 let liberar205DaExecucaoB = null;
 let chamadas205 = 0;
 
+// ── Cenário espelho (CR2-01): a escrita tardia de A contamina B ──────────────────────
+// Controles com nomes PRÓPRIOS, sem reuso dos dos dois casos acima: os dois cenários medem
+// entrelaçamentos diferentes, e compartilhar contador deixaria a leitura de um refém da
+// ordem do outro. `cenarioAtivo` nasce no valor que os casos existentes medem, e só o caso
+// novo o troca (restaurando ao final).
+let cenarioAtivo = 'limpeza-apaga-leitura';
+let chamadasDealsNoEspelho = 0;
+let liberarDealsDaExecucaoB = null;
+let falhar205DaExecucaoA = null;
+let consultas205NoEspelho = 0;
+
+// Stub do cenário espelho. Mora numa função à parte, mas é CHAMADO de dentro do routeHandler
+// — nunca por reinstalação do stub: installFakeAxios roda uma única vez, antes do
+// require('../src/agendor'), porque a instância `api` de agendor.js nasce no load do módulo.
+// Reinstalar depois não teria efeito nenhum, então toda ramificação de cenário vive dentro
+// do handler.
+function respostaDoEspelho(url) {
+  if (url === '/deals') {
+    chamadasDealsNoEspelho += 1;
+    // Ponto de suspensão 1 do espelho — a SEGUNDA execução (B) fica estacionada aqui,
+    // ANTES da fase de organizações. É a única forma de garantir que B só chegue a
+    // getOrgCategory(205) DEPOIS de A ter gravado o `null` do erro; sem isso a ordem
+    // dependeria de microtask e o caso seria intermitente.
+    if (chamadasDealsNoEspelho === 2) {
+      return new Promise((resolve) => {
+        liberarDealsDaExecucaoB = () =>
+          resolve({
+            data: {
+              data: dealsPage,
+              meta: { totalCount: dealsPage.length },
+              links: {},
+            },
+          });
+      });
+    }
+    return {
+      data: {
+        data: dealsPage,
+        meta: { totalCount: dealsPage.length },
+        links: {},
+      },
+    };
+  }
+
+  if (url.startsWith('/organizations/')) {
+    const id = Number(url.split('/').pop());
+
+    if (id === 205) {
+      consultas205NoEspelho += 1;
+      // Ponto de suspensão 2 do espelho — a PRIMEIRA consulta de 205 é a da execução A, e é
+      // ela que vai FALHAR, em voo, depois do início de B. Um Error simples basta:
+      // getOrgCategory engole qualquer falha e cacheia `null`. Da segunda consulta em
+      // diante a API responde normalmente, e é isso que torna o contador uma prova do
+      // MECANISMO: em GREEN a execução B precisa reconsultar para saber que 205 é
+      // 'Parceiro'.
+      if (consultas205NoEspelho === 1) {
+        return new Promise((_resolve, reject) => {
+          falhar205DaExecucaoA = () =>
+            reject(
+              new Error('Falha transitoria simulada em /organizations/205'),
+            );
+        });
+      }
+    }
+
+    return respostaDaOrganizacao(id);
+  }
+
+  return { data: { data: [] } };
+}
+
 installFakeAxios((url) => {
+  // Ramificação por cenário DENTRO do routeHandler, pelo motivo explicado acima: o stub é
+  // instalado uma única vez e não pode ser trocado depois do require de agendor.js.
+  if (cenarioAtivo === 'falha-tardia') return respostaDoEspelho(url);
+
   if (url === '/deals') {
     return {
       data: {
@@ -176,4 +260,79 @@ test('depois do entrelaçamento, uma execução sequencial continua devolvendo o
   // seguintes — inclusive a limpeza por execução de REL-04 continua valendo.
   const ids = (await getStaleDeals(15)).map((d) => d.id);
   assert.deepStrictEqual(ids, [101, 103]);
+});
+
+test('escrita tardia: a falha de UMA execução não pode decidir quem a execução vizinha notifica (CR2-01)', async () => {
+  // (1) Liga o cenário espelho. Só este caso o usa, e ele o restaura no final.
+  cenarioAtivo = 'falha-tardia';
+
+  // (2) A execução A começa e não é aguardada.
+  const execucaoA = getStaleDeals(15);
+
+  // (3) Um turno de event loop: A resolve /deals, filtra e dispara o Promise.all das 6
+  // organizações. As demais respondem; a de 205 fica PENDENTE e A trava ali, em voo.
+  await cederEventLoop();
+
+  // (4) Pré-condições: sem elas o caso não diz nada — um cenário que na verdade rodou
+  // sequencial passaria em silêncio.
+  assert.notEqual(
+    falhar205DaExecucaoA,
+    null,
+    'pré-condição: a execução A está suspensa na consulta de /organizations/205',
+  );
+  assert.equal(
+    consultas205NoEspelho,
+    1,
+    'pré-condição: só a execução A consultou 205 até aqui',
+  );
+
+  // (5) A execução B começa e fica suspensa em /deals, antes da fase de organizações.
+  const execucaoB = getStaleDeals(15);
+  await esperarAte(
+    () => liberarDealsDaExecucaoB !== null,
+    'a execução B não chegou a pedir /deals',
+  );
+
+  // (6) Este é o ponto exato do defeito: no estado RED a limpeza de B já rodou (é a
+  // primeira instrução de getStaleDeals) e A ainda vai escrever no dicionário de módulo.
+  assert.equal(
+    consultas205NoEspelho,
+    1,
+    'pré-condição: a execução B ainda não chegou à fase de organizações',
+  );
+
+  // (7) A consulta de A falha. No estado RED, getOrgCategory grava `null` no dicionário de
+  // módulo DEPOIS da limpeza de B.
+  falhar205DaExecucaoA();
+
+  // (8) A execução que FALHOU trata a categoria como desconhecida — vale nos dois estados,
+  // e é o que dá sentido à asserção seguinte.
+  const idsA = (await execucaoA).map((d) => d.id);
+  assert.equal(
+    idsA.includes(105),
+    true,
+    'caminho de erro documentado (cenário (3) de agendor.cacheInvalidation.test.js): a execução QUE FALHOU trata a categoria como desconhecida',
+  );
+
+  // (9) Agora B avança para a fase de organizações.
+  liberarDealsDaExecucaoB();
+
+  // (10) B não falhou em nada: o golden tem de valer para ela.
+  const idsB = (await execucaoB).map((d) => d.id);
+  assert.equal(
+    idsB.includes(105),
+    false,
+    'a execução B não falhou em nada: herdar o null de A faz uma organização "Parceiro" ser notificada',
+  );
+  assert.deepStrictEqual(idsB, [101, 103]);
+
+  // (11) Prova do MECANISMO, não só do desfecho.
+  assert.equal(
+    consultas205NoEspelho,
+    2,
+    'a execução B precisa RECONSULTAR a categoria: com cache de módulo ela lê o null de A e nem chega a perguntar',
+  );
+
+  // (12) Restaura o cenário inicial para não afetar quem rodar depois.
+  cenarioAtivo = 'limpeza-apaga-leitura';
 });
