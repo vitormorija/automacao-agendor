@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: "GAP CLOSURE R4 PLANEJADA E VERIFICADA (2026-08-05): 7 planos aditivos 04-28..04-34 sobre o 04-REVIEW.md round 4. Plan-checker: VERIFICATION PASSED NA PRIMEIRA PASSADA (2 warnings de redacao, ja corrigidos no commit 82d2550). Cobertura REL-01..06 = 6/6. Proximo: /gsd:execute-phase 4. || FASE 04 REABERTA PELA 4a VEZ pelo code review rodada 4: 27/27 planos executados e suite em 172/172, mas o r4 achou 1 BLOCKER (CR4-01), 7 warnings e 6 info. || anterior: Completed 04-27-PLAN.md"
-last_updated: "2026-08-05T06:48:49.022Z"
-last_activity: 2026-08-05 -- gap closure r4 planejada e verificada (04-28..04-34); pronta para execute-phase 4
+stopped_at: "Completed 04-28-PLAN.md — CR4-01 (o BLOCKER da r4) FECHADO: a supressao total por categoria indecidivel virou erro da rodada (contador dedicado + alarme nas DUAS superficies). Suite 172 -> 174, lint exit 0. Faltam 04-29..04-34 da gap closure r4. || GAP CLOSURE R4 PLANEJADA E VERIFICADA (2026-08-05): 7 planos aditivos 04-28..04-34 sobre o 04-REVIEW.md round 4. Plan-checker: VERIFICATION PASSED NA PRIMEIRA PASSADA. Cobertura REL-01..06 = 6/6. || FASE 04 REABERTA PELA 4a VEZ pelo code review rodada 4: 1 BLOCKER (CR4-01), 7 warnings e 6 info. || anterior: Completed 04-27-PLAN.md"
+last_updated: "2026-08-05T13:36:00.000Z"
+last_activity: 2026-08-05 -- 04-28 completo (CR4-01 fechado: contador dedicado + alarme de supressao total); suite 174/174, lint exit 0
 progress:
   total_phases: 8
   completed_phases: 4
-  total_plans: 43
-  completed_plans: 43
+  total_plans: 50
+  completed_plans: 44
   percent: 50
 ---
 
@@ -25,9 +25,50 @@ See: .planning/PROJECT.md (updated 2026-07-22)
 
 ## Current Position
 
-Phase: 04 (confiabilidade-das-integra-es) — gap closure r4 PLANEJADA, pronta para executar
-Plan: 27 de 34 executados (04-01..04-27). Faltam 04-28..04-34 (gap closure r4).
-Status: 7 PLANOS DA R4 CRIADOS E VERIFICADOS (2026-08-05)
+Phase: 04 (confiabilidade-das-integra-es) — gap closure r4 EM EXECUCAO
+Plan: 28 de 34 executados (04-01..04-28). Faltam 04-29..04-34 (gap closure r4).
+Status: CR4-01 (O BLOCKER DA R4) FECHADO PELO 04-28 (2026-08-05)
+
+  O 04-28 fechou CR4-01. O conserto do CR3-01 tinha fechado o fail-open para UMA organizacao e
+  aberto uma supressao em massa OPERACIONALMENTE INVISIVEL: com a borda /organizations/:id fora,
+  results.error undefined, results.errors [], zero e-mails, zero linhas em notification_log e o
+  log dizendo "Concluido: N negocios parados, 0 notificacoes enviadas" — o mesmo resultado
+  observavel de um dia calmo. results.skipped era o MESMO contador de dedup, funil e "sem
+  destinatario".
+  AGORA: results.skippedCategoriaIndecidivel nasce no LITERAL de results (o campo existe SEMPRE
+  no payload, nenhum consumidor precisa distinguir undefined de zero) e incrementa SEMPRE. O
+  ALARME so na supressao TOTAL (results.stale > 0 && contador === results.stale), preenchendo as
+  DUAS superficies — results.error (a que a decisao do usuario nomeia) e results.errors (a UNICA
+  que o Dashboard renderiza, medido) — mais logger.error com tag [Scheduler], so com inteiros e
+  texto fixo (CR-02 do 04-09). O quarto e ultimo ramo de skip sem motivo ganhou skipReason,
+  distinguindo "notificacoes desativadas" de "nenhum destinatario com e-mail cadastrado".
+  O ENQUADRAMENTO CORRETO DE D-CR4-01-a FICOU ESCRITO NO CODIGO: o bloco do alarme e ADITIVO,
+  mora DEPOIS do laco e NAO decide quem recebe e-mail — nenhum limiar pode fazer isso. A
+  invariante preservada e o CONTRATO AGREGADO-OBSERVAVEL do CR3-01, pinado nos cenarios A e B
+  (campo de erro vazio com 1 de 2 suprimidos). A formulacao antiga e FALSA ("um limiar menor
+  mudaria o comportamento por-negocio") NAO foi escrita.
+  O PAR D + E E O QUE FECHA O ACHADO: D (2 de 2 por categoria) prova que o apagao passa a ser
+  audivel; E (2 de 2 por FUNIL Beefor, com o MESMO results.skipped, o MESMO notified: 0 e a MESMA
+  linha de conclusao) prova que o alarme discrimina a CAUSA e nao a quantidade. Sem o E, qualquer
+  implementacao que ligasse o alarme em results.notified === 0 ou em skipped === stale passaria.
+  PRIMEIRA RODADA DA FASE EM QUE NENHUM NUMERO PRESCRITO DIVERGIU DO MEDIDO: as 4 rodadas
+  anteriores tiveram divergencia por MENCAO dentro de comentario; aqui os comentarios novos foram
+  escritos sem reproduzir os identificadores medidos (skipReason total = nao-comentario = 3).
+  UMA DIVERGENCIA DE PREVISAO, registrada e nao forcada: o plano previa o cenario E VERDE no RED,
+  mas E assere o contador === 0 e o campo era undefined — E nao tinha como ficar verde. A ordem
+  das assercoes de E foi escrita com as do funil ANTES da do contador (o plano so fixa ordem para
+  D), entao o RED provou por MEDICAO que a armacao do funil produzia a supressao esperada — a
+  condicao de PARAR ("a armacao do funil nao esta produzindo a supressao") nao foi atingida.
+  IN4-04 e runCheckOnly AUSENTES do diff por criterio (grep = 0 nos dois). agendor.js intocado.
+  2 RESIDUAIS COM DONO ja previstos para o 04-34, agora com medicao no SUMMARY: `cr4-01b` (a
+  rodada MISTA — um negocio SEM organizacao escapa da contagem e desarma o alarme; denominador
+  derivado REJEITADO porque deal.organization na lista enriquecida e o NOME e nao o id, o que
+  faria o alarme falhar ABERTO por caminho novo) e `cr4-01c` (skipReason invisivel na UI, 0
+  ocorrencias em frontend/src).
+  Commits: a8c4e67 (RED), c801cf7 (GREEN), c5c426c (SUMMARY).
+
+  --- planejamento da r4 abaixo ---
+Status anterior: 7 PLANOS DA R4 CRIADOS E VERIFICADOS (2026-08-05)
 
   Planos 04-28..04-34, waves 21-27, cadeia sequencial. Plan-checker: VERIFICATION PASSED NA
   PRIMEIRA PASSADA — primeira vez nesta fase. Cobertura REL-01..06 = 6/6.
@@ -105,13 +146,16 @@ Origem: CODE REVIEW RODADA 4 (2026-08-05)
   verificada-e-sa / fora-de-escopo-com-medicao. Foi assim que WR4-01 e WR4-02 apareceram.
 
   Achados da r4 que vieram do inventario de irmaos:
+
   - WR4-01: `getStaleDeals` e a TERCEIRA paginacao sem teto, e a justificativa escrita para
     exclui-la (agendor.js, "nao existe ali condicao de parada vinda da resposta") e FALSA:
     `Array.from({length: totalPages - 1})` deriva o comprimento de `meta.totalCount`. Sonda: 201
     requisicoes, passando do MAX_PAGES, sem excecao — o mesmo isRunning preso que WR3-06 existe
     para impedir. Mesmo perfil de risco do achado que motivou o 04-25.
+
   - WR4-02: o commit 46cf90a (WR3-05) atualizou 2 dos 4 comentarios que declaram a copia do helper
     viva; agendor.retry429.test.js e helpers/fakeTimers.js hoje se CONTRADIZEM.
+
   - WR4-03: as 4 referencias por numero de linha em emailer.timeout.test.js estao TODAS erradas.
   - WR4-04 a WR4-07: 3N requisicoes no caminho de leitura do painel; getUsers sem a guarda de
     `data.data` que as irmas usam; runCheckOnly promete notificar o que runCheck nao notifica;
@@ -973,6 +1017,7 @@ Progress: [██████████] 100%
 | Phase 04 P25 | 16min | 2 tasks | 2 files |
 | Phase 04 P26 | 21min | 3 tasks | 9 files |
 | Phase 04 P27 | 25min | 3 tasks | 10 files |
+| Phase 04 P28 | 35min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -1123,6 +1168,9 @@ Recent decisions affecting current work:
 - [Phase 04]: 04-27 — IN3-01..IN3-08 registrados como TODOS PENDENTES (escopo travado pelo usuario; precedente IN2-01..IN2-04 do 04-18). Prioridades D-IN3-b; in3-08 ALTA e declarado candidato a promocao a requisito da fase seguinte: e o SEGUNDO filtro de elegibilidade fail-open, e o primeiro foi CR3-01
 - [Phase 04]: 04-27 (D-IN3-d) — ROADMAP ganhou Success Criteria 7 NOVO, escrito como COMPORTAMENTO garantido e sem nomear identificador (nem CATEGORIA_INDECIDIVEL, nem fetchWithRetry); o item 4 (redacao aprovada em C9) NAO foi reescrito — 1 insercao e 0 remocoes no arquivo inteiro
 - [Phase 04]: 04-27 (D-IN3-e) — REL-06 recebeu NOTA de CR3-01 entre parenteses (padrao de REL-04/REL-05), sem REL-07 e sem mexer na tabela de rastreabilidade: a falha da consulta de categoria e explicita e ESCOPADA AO NEGOCIO afetado, em vez de custar a rodada inteira como em /tasks
+- [Phase 04]: 04-28 (D-CR4-01-a) — limiar do alarme e a supressao TOTAL (results.stale > 0 && skippedCategoriaIndecidivel === results.stale). O bloco e ADITIVO, mora DEPOIS do laco e NAO decide quem recebe e-mail; a invariante preservada e o contrato agregado-observavel do CR3-01, pinado nos cenarios A e B. NAO citar como precedente para mudanca de comportamento por-negocio
+- [Phase 04]: 04-28 (D-CR4-01-b/c) — o contador nasce no LITERAL de results e incrementa SEMPRE, sem limiar; o alarme preenche as DUAS superficies: results.error (nomeada pela decisao do usuario) e results.errors (a UNICA que o Dashboard renderiza, medido — nenhum componente le results.error)
+- [Phase 04]: 04-28 — ordem das assercoes do cenario E invertida em relacao a listagem do plano (funil ANTES do contador) para tornar o RED diagnostico: provou por MEDICAO que a armacao do funil Beefor produzia a supressao esperada, entao a condicao de PARAR do plano nao foi atingida
 
 ### Pending Todos
 
@@ -1175,6 +1223,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-05T06:48:49.016Z
-Stopped at: Completed 04-27-PLAN.md
+Last session: 2026-08-05T13:35:47.633Z
+Stopped at: Completed 04-28-PLAN.md
 Resume file: None

@@ -273,6 +273,30 @@ Nenhum. Nenhuma Rule 1-4 acionada, nenhum pacote instalado, `package.json` e loc
 - **Arquivos:** `backend/test/scheduler.categoriaIndecidivel.test.js`
 - **Commit:** `a8c4e67`
 
+**2. [Rule 1 - Bug] `gsd-sdk query state.*` sobrescreveu campos curados de `STATE.md`**
+
+- **Encontrado durante:** state updates, depois dos dois commits de código
+- **Problema:** `state.update-progress` e `state.record-session` recalculam o frontmatter a partir
+  do disco e **clobberam estado curado**: `stopped_at` perdeu a narrativa encadeada da r4,
+  `last_activity` voltou para o 04-27, `status` virou `verifying` e depois foi sobrescrito com o
+  texto da linha `Status:` do corpo, e `completed_phases` caiu de 4 para 3 (`percent` 50 → 38).
+  `state.advance-plan` falhou com *"Cannot parse Current Plan or Total Plans in STATE.md"* — a
+  seção "Current Position" deste projeto é prosa curada, não o formato que o handler espera.
+- **Correção:** `git checkout -- .planning/STATE.md` para restaurar, e edição manual do
+  frontmatter e da "Current Position" preservando a narrativa da r4 (o bloco do planejamento
+  ficou sob `--- planejamento da r4 abaixo ---`). Os handlers que funcionaram corretamente foram
+  mantidos: `state.record-metric` (linha `| Phase 04 P28 | 35min | 2 tasks | 2 files |`),
+  `roadmap.update-plan-progress` (04-28 marcado `[x]`, linha da fase de `27/27 Reaberta` para
+  `28/34 In Progress`) e `requirements.mark-complete` (REL-03, REL-05 e REL-06 já estavam
+  completos — `updated: false`, nenhuma escrita).
+- **Verificado:** `total_plans` 43 → **50** e `completed_plans` 43 → **44** (as duas mudanças
+  legítimas que o recálculo apontou) foram MANTIDAS; `completed_phases: 4` e `percent: 50`
+  (convenção de fases deste projeto, não de planos) foram restaurados.
+- **Arquivos:** `.planning/STATE.md`
+- **Nota para as próximas execuções desta fase:** rodar `state.update-progress` e
+  `state.record-session` **antes** de qualquer edição manual do `STATE.md`, e conferir o diff —
+  eles não preservam a prosa curada que esta fase mantém em "Current Position" e em `stopped_at`.
+
 ## Escopo que este plano NÃO fecha
 
 - **A rodada MISTA** (`cr4-01b`): o limiar "todos" não cobre o caso em que um negócio sem
