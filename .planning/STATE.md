@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: "FASE 04 REABERTA pelo code review rodada 3 (2026-08-05): 18/18 planos executados e suite em 148/148, mas o 04-REVIEW.md r3 achou 1 BLOCKER (CR3-01), 7 warnings e 8 info. A fase NAO esta completa. Proximo: /gsd:plan-phase 4 --gaps sobre o 04-REVIEW.md. || anterior: Completed 04-18-PLAN.md — o ULTIMO da Fase 4. WR2-06 fechado (escopo obrigatorio 53 -> 2 referencias por numero de linha; backend/src 12 -> 0; diff dos .js com 0 linhas nao-comentario). IN2-01..IN2-04 registrados como todo pendente. DECISAO C9 aplicada ao ROADMAP e a REQUIREMENTS. FASE 04 COMPLETA (18/18), pronta para verificacao. SEC-01 permanece ABERTO por decisao C8. || anterior: Completed 04-17-PLAN.md — WR2-05 fechado; o transporte recriado no retry serve o destinatario seguinte, sem que o retorno por destinatario mude de forma. Checkpoint C11 APROVADO pelo usuario (2026-08-05), com os tres desvios de medicao aceitos e o todo rel-02b mantido em prioridade alta. Proximo: 04-18, o ULTIMO da fase (WR2-06 + todos IN2-01..IN2-04 + DECISAO C9) — quem despacha e o coordenador. SEC-01 permanece ABERTO por decisao C8."
+stopped_at: "GAP CLOSURE R3 PLANEJADA E VERIFICADA (2026-08-05): 9 planos aditivos 04-19..04-27 sobre o 04-REVIEW.md round 3, todos autonomous:true (nenhum checkpoint). Plan-checker: VERIFICATION PASSED apos 2 revisoes. Cobertura REL-01..06 = 6/6. Proximo: /gsd:execute-phase 4. || FASE 04 REABERTA pelo code review rodada 3 (2026-08-05): 18/18 planos executados e suite em 148/148, mas o 04-REVIEW.md r3 achou 1 BLOCKER (CR3-01), 7 warnings e 8 info. || anterior: Completed 04-18-PLAN.md — o ULTIMO da Fase 4. WR2-06 fechado (escopo obrigatorio 53 -> 2 referencias por numero de linha; backend/src 12 -> 0; diff dos .js com 0 linhas nao-comentario). IN2-01..IN2-04 registrados como todo pendente. DECISAO C9 aplicada ao ROADMAP e a REQUIREMENTS. FASE 04 COMPLETA (18/18), pronta para verificacao. SEC-01 permanece ABERTO por decisao C8. || anterior: Completed 04-17-PLAN.md — WR2-05 fechado; o transporte recriado no retry serve o destinatario seguinte, sem que o retorno por destinatario mude de forma. Checkpoint C11 APROVADO pelo usuario (2026-08-05), com os tres desvios de medicao aceitos e o todo rel-02b mantido em prioridade alta. Proximo: 04-18, o ULTIMO da fase (WR2-06 + todos IN2-01..IN2-04 + DECISAO C9) — quem despacha e o coordenador. SEC-01 permanece ABERTO por decisao C8."
 last_updated: "2026-08-05T03:33:14.682Z"
-last_activity: 2026-08-05 -- code review r3 reabriu a fase 04 (blocker CR3-01); aguardando plan-phase 4 --gaps
+last_activity: 2026-08-05 -- gap closure r3 planejada e verificada (04-19..04-27); pronta para execute-phase 4
 progress:
   total_phases: 8
   completed_phases: 3
@@ -25,9 +25,42 @@ See: .planning/PROJECT.md (updated 2026-07-22)
 
 ## Current Position
 
-Phase: 04 (confiabilidade-das-integra-es) — REABERTA pelo code review rodada 3
-Plan: 18 de 18 executados (04-01..04-18). A fase NAO esta completa.
-Status: CODE REVIEW RODADA 3 REABRIU A FASE (2026-08-05)
+Phase: 04 (confiabilidade-das-integra-es) — gap closure r3 PLANEJADA, pronta para executar
+Plan: 18 de 27 executados (04-01..04-18). Faltam 04-19..04-27 (gap closure r3).
+Status: 9 PLANOS DA R3 CRIADOS E VERIFICADOS (2026-08-05)
+
+  Planos 04-19..04-27, waves 12-20, cadeia estritamente sequencial, TODOS autonomous:true —
+  nenhum checkpoint bloqueante nesta rodada, porque os trade-offs ja foram decididos em
+  C8, C9, C10, C11 e nas decisoes de 2026-08-05.
+  04-19 CR3-01 (1/3: retry em /organizations + sentinela CATEGORIA_INDECIDIVEL)
+  04-20 CR3-01 (2/3: runCheck nao envia para indecidivel, sem abortar a rodada)
+  04-21 CR3-01 (3/3: resumo semanal individual — caminho que NENHUMA das 3 rodadas de review nomeou)
+  04-22 WR3-01 | 04-23 WR3-02 | 04-24 WR3-03 | 04-25 WR3-06
+  04-26 WR3-04+WR3-05+WR3-07 | 04-27 IN3-01..IN3-08 como todos + Success Criteria 7
+  Plan-checker: VERIFICATION PASSED apos 2 revisoes. Cobertura REL-01..06 = 6/6.
+
+  REQUISITO ESTRUTURAL DESTA RODADA: todo plano de correcao inclui teste do cenario SIMETRICO,
+  nomeado por escrito, ou justificativa medida da ausencia. Foi criado para quebrar o padrao
+  que reabriu esta fase tres vezes (o achado fecha, o vizinho fica aberto).
+
+  ACHADO DE MEDICAO DO PLANEJADOR (04-26, D-WR3-07-c): as 7 variaveis restantes de
+  agendor.cacheConcurrency.test.js (liberar210, liberar205DaExecucaoB, chamadas205,
+  chamadasDealsNoEspelho, liberarDealsDaExecucaoB, falhar205DaExecucaoA, consultas205NoEspelho)
+  NAO sao estado de cenario — sao estado de ARMACAO: armam pontos de suspensao UMA vez e sao
+  consumidos ao longo da ordem declarada dos casos. Um beforeEach que as reseta faz os casos
+  (2) e (3) NAO TERMINAREM ("Promise resolution is still pending but the event loop has already
+  resolved"). Medido, nao argumentado. Por isso o escopo do 04-26 em cacheConcurrency e
+  deliberadamente estreito (so cenarioAtivo), com gate anti-expansao, e o resto virou o todo
+  wr3-07b-estado-de-armacao-em-cacheconcurrency (conserto correto: escopar a armacao por caso,
+  o que e redesenho do arquivo).
+
+  CORRECAO DE FATO: a linha 169 de agendor.cacheInvalidation.test.js (orgQueFalha = null;) NAO e
+  restauracao de fim de cenario — e o passo do MEIO do cenario (3), onde a API volta a responder
+  antes da segunda execucao. Um relatorio de verificacao anterior errou nisso; a acao do 04-26
+  agora PROIBE remove-la e o gate de valor 3 detecta se alguem o fizer.
+
+  --- contexto da reabertura ---
+Origem: CODE REVIEW RODADA 3 (2026-08-05)
 
   O 04-REVIEW.md (round: 3, 16 arquivos, standard) achou 1 BLOCKER, 7 warnings e 8 info
   sobre o codigo do gap closure r2. As rodadas 1 e 2 estao preservadas em 04-REVIEW-r1.md
@@ -63,6 +96,14 @@ Status: CODE REVIEW RODADA 3 REABRIU A FASE (2026-08-05)
 
   DECISAO DO USUARIO sobre o escopo (2026-08-05): planejar a gap closure r3 COMPLETA
   (blocker + warnings), nao apenas o blocker.
+
+  DECISAO DO USUARIO sobre o RESUMO SEMANAL INDIVIDUAL (vinculante, 2026-08-05) — plano 04-21:
+  o planejador achou um caminho que NENHUMA das tres rodadas de review nomeou:
+  sendOwnerWeeklySummary e o SEGUNDO (e ultimo) produtor de e-mail dirigido ao responsavel e le
+  a mesma lista de getStaleDeals — fechar so o runCheck deixaria o negocio 'Parceiro' voltar pela
+  sexta-feira. POLITICA APROVADA: o negocio INDECIDIVEL sai do e-mail INDIVIDUAL do responsavel,
+  mas PERMANECE no consolidado do admin e no snapshot. Mesmo tratamento que o filtro do funil
+  Beefor ja recebe no mesmo bloco de codigo. O plano 04-21 fica como esta.
 
   RESSALVA DO REVISOR: WR3-02 NAO esta coberto pela decisao C10 — o custo dele e a rodada
   INTEIRA, nao uma linha reenviavel.
