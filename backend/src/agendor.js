@@ -172,11 +172,35 @@ const EXCLUDED_OWNERS = ['Maria Lobato'];
 // notificações para o responsável do card. A Beefor é uma empresa do grupo Cadmus
 // com produto próprio — o vendedor da Cadmus pode ser dono da organização sem ser
 // responsável por acompanhar oportunidades no funil Beefor.
+//
+// A comparação é por SUBSTRING sobre o nome normalizado (in3-08, MODO 2 — decisão do usuário de
+// 2026-08-05), e não por igualdade exata como era antes. O modo de falha que isso fecha não
+// dependia de erro nenhum: bastava um administrador renomear o funil dentro do Agendor — 'Beefor'
+// virar 'Beefor Comercial' ou 'Beefor 2026' — para a comparação deixar de casar e a notificação
+// que esta regra manda suprimir voltar a sair, em silêncio, para quem não é responsável por
+// acompanhá-la.
+//
+// CONSEQUÊNCIA VISTA E ESCOLHIDA: um nome que apenas CONTENHA o termo, como 'beeforx', também
+// passa a ser suprimido. O usuário viu essa consequência apresentada e escolheu assim mesmo — o
+// CRM é interno e os nomes de funil são criados por administradores da própria Cadmus, então o
+// conjunto suprimido a mais é conhecido e pequeno. Quem trocar isto por limite de palavra ou por
+// uma lista de exceções está DESFAZENDO uma decisão, não corrigindo um lapso, e deixa vermelho o
+// caso do oráculo unitário que pina exatamente esse valor (agendor.funnel.test.js).
+//
+// A irmã deste módulo que exclui etapas encerradas já comparava por correspondência PARCIAL, e
+// pelo mesmo motivo escrito no comentário dela — um filtro de elegibilidade sobre texto livre do
+// CRM precisa cobrir variações e composições. O funil era a exceção, não a regra.
+//
+// E o fail-open de funil AUSENTE é preservado POR CONSTRUÇÃO, não por acidente: a normalização
+// devolve string vazia, e string vazia não contém nenhum termo da lista, então a função devolve
+// `true` e o negócio segue notificável. Isso é deliberado (in3-08, MODO 1) e tem oráculo próprio
+// no mesmo arquivo de teste; o que a decisão acrescentou ali foi SINAL — ver `funilAusente`, logo
+// abaixo em getStaleDeals —, nunca uma mudança de destinatário.
 const NO_OWNER_NOTIFY_FUNNELS = ['beefor'];
 
 function shouldNotifyOwner(deal) {
   const funnel = (deal?.funnel || '').trim().toLowerCase();
-  return !NO_OWNER_NOTIFY_FUNNELS.includes(funnel);
+  return !NO_OWNER_NOTIFY_FUNNELS.some((termo) => funnel.includes(termo));
 }
 
 // Prefixos/palavras que indicam que o deal foi encerrado/congelado.
@@ -423,11 +447,33 @@ async function getStaleDeals(staleDays = 15) {
       dealType: getDealType(orgCategory),
       stage: deal.dealStage?.name || null,
       funnel: deal.dealStage?.funnel?.name || null,
+      // Booleano derivado no ÚNICO lugar que conhece o payload cru (in3-08, MODO 1), na mesma
+      // forma de `categoriaIndecidivel`: nenhum consumidor precisa reimplementar o critério de
+      // "ausente" a partir do campo já reduzido acima. Ele NÃO decide quem recebe — a supressão
+      // por funil continua vindo só de shouldNotifyOwner, e funil ausente continua notificando.
+      funilAusente: !deal.dealStage?.funnel?.name,
       createdAt: deal.createdAt,
       updatedAt: deal.updatedAt,
       daysSinceUpdate,
       webUrl: deal._webUrl,
     });
+  }
+
+  // Aviso AGREGADO de funil não avaliado (in3-08, MODO 1). Uma linha por CHAMADA, e não uma por
+  // negócio como faz o aviso de categoria acima, e a diferença é decisão: getStaleDeals é também
+  // o caminho de LEITURA do painel — oito invocações fora deste módulo, com auto-refresh na tela
+  // de negócios parados. Numa mudança de forma do payload, um aviso por negócio produziria N
+  // linhas a cada atualização de tela, e um log inundado é um log que ninguém lê: a mitigação
+  // viraria o defeito. Só INTEIROS e texto fixo entram na mensagem — nenhum id, nenhum nome de
+  // negócio ou organização, nenhum objeto de erro (mesma regra do CR-02 do 04-09, cujo motivo é
+  // que um erro do axios carrega `config.headers` com o AGENDOR_TOKEN).
+  // O aviso não muda quem recebe: os negócios contados aqui seguem TODOS elegíveis. Quem conta a
+  // mesma coisa do lado da rodada de envio é o contador `funilNaoAvaliado` de runCheck.
+  const semFunilAvaliavel = allDeals.filter((d) => d.funilAusente).length;
+  if (semFunilAvaliavel > 0) {
+    logger.warn(
+      `[Agendor] ${semFunilAvaliavel} de ${allDeals.length} negócio(s) parado(s) vieram sem funil: a regra de supressão por funil não pôde ser avaliada neles. Todos seguem ELEGÍVEIS para notificação, por decisão deliberada. A forma do payload da Agendor pode ter mudado.`,
+    );
   }
 
   return allDeals;
