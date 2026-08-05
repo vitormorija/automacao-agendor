@@ -193,7 +193,26 @@ async function runCheck() {
           // ocorreu antes do insert, não há nada a atualizar.
           if (logId !== null) {
             // O que já foi confirmado antes da exceção chega aqui anexado ao erro.
-            const parciais = err.resultadosParciais ?? [];
+            //
+            // Por que a leitura é VALIDADA POR TIPO (WR2-04): este canal é uma
+            // propriedade improvisada num objeto de erro que pode ter nascido em
+            // qualquer biblioteca da pilha SMTP. O `??` que havia aqui só protege
+            // contra ausência (null/undefined) — um valor de OUTRO TIPO faria o
+            // `.some` da linha seguinte lançar DENTRO deste catch, e essa exceção
+            // subiria para o catch externo de runCheck, abortaria o `for` dos deals
+            // e deixaria os negócios restantes da rodada sem processar. Ausência e
+            // corrupção passam a ser lidas do mesmo jeito: "nada confirmado", com
+            // desfecho fail-safe — linha 'error', que não deduplica e portanto é
+            // retentável amanhã (o trade-off aprovado no checkpoint C10).
+            //
+            // O encadeamento opcional sobre o erro é defensivo e NÃO protege contra
+            // `throw null`: results.errors.push(err.message), primeira instrução
+            // deste catch, já teria estourado antes. Lacuna conhecida e declarada,
+            // fora desta rodada. Quem pina este comportamento é
+            // notificationStatus.canalParcial.test.js.
+            const parciais = Array.isArray(err?.resultadosParciais)
+              ? err.resultadosParciais
+              : [];
             if (parciais.some((r) => r.success)) houveEnvioConfirmado = true;
 
             // Por que a gravação tem try/catch PRÓPRIO (WR2-02): a conexão SQLite pode

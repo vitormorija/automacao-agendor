@@ -245,6 +245,18 @@ async function sendStaleNotification({ deal, ownerEmail, authorEmail, logId }) {
   // (registrar e seguir) e o cenário Q1-2 de notificationStatus.test.js — em que a
   // exceção vem da fábrica inicial, ANTES de qualquer envio, e cujo desfecho
   // correto continua sendo 'error' — dependem disso.
+  //
+  // O que a anexação abaixo NÃO garante (WR2-04): ela pode falhar EM SILÊNCIO. Se o
+  // erro for congelado (Object.freeze, ou um erro singleton de biblioteca), módulos
+  // CommonJS rodam em sloppy mode e a atribuição simplesmente não acontece — sem
+  // TypeError e sem log; e um `throw` de primitivo nem chega a entrar na guarda de
+  // tipo. Nos dois casos o parcial não viaja, e num erro congelado um valor
+  // pré-existente com esse nome, de qualquer tipo, sobrevive intacto até o
+  // consumidor. Por isso o agendador valida o TIPO do que recebe e lê tanto a
+  // ausência quanto a corrupção do parcial como "nada confirmado", com desfecho
+  // fail-safe: a linha vai para 'error', não deduplica, e a rodada de amanhã
+  // retenta. É reenvio no pior caso contra silêncio permanente, e o milestone
+  // escolhe o reenvio. Quem pina isso é notificationStatus.canalParcial.test.js.
   try {
     // Email para o dono do card
     if (ownerEmail) {
