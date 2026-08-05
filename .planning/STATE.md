@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: "GAP CLOSURE R5 EM ANDAMENTO: o 04-37 fechou WR5-01 (o alarme de supressao total era desarmado por QUALQUER `continue` anterior — a dedup do dia inclusive; o numerador passou para o topo do laco) e REESCREVEU o todo cr4-01b, que documentava a causa errada. Suite 194 -> 196 verdes, cobertura exit 0, lint backend/frontend exit 0. A FASE 04 CONTINUA REABERTA: falta o 04-38 (WR5-02..WR5-05 e IN5-01..IN5-04). Proximo: /gsd:execute-phase 4 (plano 04-38)."
-last_updated: "2026-08-05T22:40:00.000Z"
-last_activity: 2026-08-05 -- 04-37 executado (WR5-01 fechado, cr4-01b reescrito); fase 04 segue reaberta, falta o 04-38
+stopped_at: "GAP CLOSURE R5 COMPLETA (execucao): o 04-38 fechou o RESIDUO DOCUMENTAL da rodada 5 — WR5-02..WR5-05 e IN5-01..IN5-04 viraram OITO todos pendentes (33 -> 41), com WR5-05 em prioridade ALTA (as asseracoes de envio de H/I/J foram afrouxadas de `=== 1` para `>= 1` e perderam a deteccao de e-mail DUPLICADO), e o ROADMAP passou a registrar a gap closure r5 com o mandato estrutural (INVENTARIO DE IRMAOS mantido + direcao reversa + retroatividade da justificativa). DIFF DE CODIGO ZERO; suite 196/196 e lint exit 0 rodados como PROVA. A FASE 04 NAO FOI FECHADA por este plano — quem fecha e o coordenador. Proximo: verificacao/fechamento da fase 04 (ou code review rodada 6)."
+last_updated: "2026-08-05T23:40:00.000Z"
+last_activity: 2026-08-05 -- 04-38 executado (8 todos da r5 registrados, ROADMAP com o bloco da gap closure r5); fase 04 aguarda fechamento pelo coordenador
 progress:
   total_phases: 8
   completed_phases: 3
   total_plans: 54
-  completed_plans: 53
+  completed_plans: 54
   percent: 38
 ---
 
@@ -26,8 +26,87 @@ See: .planning/PROJECT.md (updated 2026-07-22)
 ## Current Position
 
 Phase: 04 (confiabilidade-das-integra-es) — REABERTA PELA 5a VEZ pelo code review rodada 5
-Plan: 37 de 38 executados (04-01..04-37). A fase NAO esta completa; falta o 04-38.
-Status: GAP CLOSURE R5 EM ANDAMENTO (2026-08-05)
+Plan: 38 de 38 executados (04-01..04-38). A gap closure r5 esta EXECUTADA; o FECHAMENTO da fase
+      cabe ao coordenador (verificacao ou nova rodada de review).
+Status: GAP CLOSURE R5 EXECUTADA (2026-08-05)
+
+  O 04-38 fechou o RESIDUO DOCUMENTAL da rodada 5 — o ultimo plano da gap closure r5, e o
+  segundo da fase com DIFF DE CODIGO ZERO por criterio de aceite (git status --porcelain
+  backend/ frontend/ vazio nas TRES tasks). Nao conserta nada: torna rastreavel o que o usuario
+  decidiu NAO corrigir agora. Mesmo precedente do 04-09 (IN-01..IN-04), 04-18 (IN2-01..IN2-04),
+  04-27 (IN3-01..IN3-08) e 04-34 (IN4-02..IN4-06) — e e esse precedente que permitiu ao 04-26
+  FECHAR o in2-02 com evidencia e ao 04-35 PROMOVER o in3-08 a plano. Achado sem arquivo nao
+  sobrevive a fase.
+  OITO ARQUIVOS NOVOS, pendentes 33 -> 41 (medido). Prioridades, com o motivo escrito em cada:
+  wr5-05 ALTA (unico da leva), wr5-02 / wr5-03 / wr5-04 / in5-01 / in5-02 media, in5-03 / in5-04
+  baixa. Tamanhos entre 53 e 76 linhas, dentro do molde da fase.
+  O QUE IMPORTA PARA QUEM SEGUIR E O WR5-05: os cenarios H, I e J de
+  scheduler.categoriaIndecidivel.test.js asserem `envios(...) >= 1` (10 asseracoes), enquanto A,
+  B e C, NO MESMO ARQUIVO, asserem `=== 1`. A igualdade exata detecta o envio A MENOS e o envio A
+  MAIS; `>= 1` detecta so o envio a menos. A DUPLICATA e a outra metade do Core Value — o
+  trade-off de C10, a semantica de sucesso parcial de WR-01, os dois ramos de
+  `houveEnvioConfirmado` (WR2-01) e a ameaca T-04-35-05 dependem de um oraculo capaz de acusar o
+  envio a mais, e nos tres cenarios que exercitam o comportamento MUDADO pelas rodadas 4 e 5 esse
+  oraculo esta cego. Sem justificativa tecnica: nos tres, o valor exato e 1. INSTRUCAO
+  OPERACIONAL registrada no arquivo: restaurar `=== 1` e, SE ALGUM FICAR VERMELHO, O VERMELHO E O
+  ACHADO. Precedente disponivel: os cenarios L e M do 04-37 ja usam a forma exata.
+  SETE PARES DECLARADOS, para que nenhum dos dois seja fechado pela metade: wr5-02+wr5-03 (ruido
+  no sinal — inundacao de log e alarme sem massa), wr5-04+cr-02b (log cru fora do logger
+  estruturado; candidatos naturais a Fase 5), wr5-05+in4-03 (forca do oraculo — assercao que nao
+  pode falhar x assercao que deixou de medir metade), in5-01+cr4-01c (superficies que a UI nao
+  distingue), in5-02+o caso IRMAS VERIFICADAS de agendor.paginacao.test.js (o conserto entra como
+  MODO NOVO da armacao, nao em arquivo proprio), in5-03+in4-03 (higiene do mesmo instrumento),
+  in5-04+wr4-04b (fan-out proporcional ao dado na borda da Agendor).
+  DUPLICIDADE VERIFICADA antes de criar cada arquivo: nenhum dos oito achados tinha dono entre os
+  33 pendentes. Os vizinhos tematicos foram REFERENCIADOS, nunca duplicados. NENHUM todo
+  existente foi editado: git status --porcelain .planning/todos/pending/ | grep -c '^ M' = 0 nas
+  tres tasks; as unicas mudancas sao arquivos NAO RASTREADOS. sec-01 permanece ABERTO (C8) e o
+  valor do AGENDOR_TOKEN nao aparece em nenhum artefato (gate de grep = 0 nos oito).
+  CONVENCAO WR2-06 APLICADA AOS PROPRIOS ARTEFATOS: grep -cE "\.js:[0-9]|linhas? [0-9]" = 0 nos
+  OITO. Cada item cita funcao, identificador, arquivo ou nome de cenario.
+  ROADMAP: bloco "Gap closure r5" com a fonte (round 5, 1 critical / 5 warning / 4 info), os 3
+  planos aditivos (waves 29-31), o escopo travado pelo usuario, a MUDANCA DE PERFIL da rodada (os
+  achados NAO mudam quem recebe — sao defeitos nos INSTRUMENTOS; o eixo "quem recebe" esta
+  estavel desde o 04-21) e o mandato estrutural: INVENTARIO DE IRMAOS MANTIDO (o revisor
+  verificou que funcionou e nao virou cerimonia) + as DUAS CLAUSULAS novas — (a) DIRECAO REVERSA
+  e (b) RETROATIVIDADE DA JUSTIFICATIVA —, com o ponto cego medido TRES VEZES e a sua origem (o
+  04-28 classificou a dedup como sa COM EVIDENCIA CORRETA PARA A PERGUNTA ERRADA). NENHUM Success
+  Criteria novo e os itens 1-8 NAO foram reescritos (licao de C9); tabela de rastreabilidade e
+  REQUIREMENTS.md intocados. Os blocos das rodadas 1-4 ficaram byte a byte: 1 UNICA linha
+  removida no diff do arquivo inteiro, a `**Plans**`.
+  DIVERGENCIA DE CONTAGEM MEDIDA E NAO FORCADA (a decima segunda da fase): a linha `**Plans**`
+  somava 34; o plano previa 35 planos executados (04-01..04-35); o disco tem 38
+  (ls .planning/phases/04-.../*-PLAN.md = 38, 04-01..04-38). A linha foi corrigida para 38 com a
+  decomposicao explicita — 7 originais + 4 (r1) + 7 (r2) + 9 (r3) + 7 (r4) + 1 (promocao do
+  in3-08 ao 04-35) + 3 (r5). O numero do plano NAO foi forcado.
+  SEGUNDA DIVERGENCIA, de premissa: o plano mandava listar os TRES planos da r5 como pendentes
+  (`- [ ]`), esperando `^- \[x\] 04-3[678]` = 0. MEDIDO: 04-36 e 04-37 JA estavam no ROADMAP
+  marcados `[x]`, acrescentados pelos proprios executores (commits b9e377d e e0e8a4b) ao FIM da
+  lista da r4, porque o bloco da r5 ainda nao existia. Marca-los `[ ]` registraria FATO FALSO.
+  Foram mantidos `[x]` e passaram a viver sob o bloco da r5; so o 04-38 ficou `[ ]`, para o
+  coordenador. Medido: `^- \[ \] 04-3[678]` = 1 (esperado 3), `^- \[x\] 04-3[678]` = 2 (esperado
+  0). O gate estrutural que importava — 1 unica remocao no diff — passou, porque a insercao do
+  bloco ANTES daquelas duas linhas e uma insercao pura para o git.
+  ARMADILHA DE MEDICAO, mesma classe das anteriores: grep -c "Gap closure r5" no ROADMAP devolve
+  2, nao 1. A segunda ocorrencia e PREEXISTENTE — esta na descricao de uma linha da Fase 4, que
+  ainda diz "Gap closure r5 pendente". NAO e divergencia; a ocorrencia que o criterio pede esta
+  onde deveria, no cabecalho do bloco novo.
+  DIVIDA DE FERRAMENTAL, agora com a QUARTA execucao consecutiva e ainda SEM DONO (04-26, 04-36,
+  04-37 e agora o 04-38): `npm run format` NAO existe na raiz do repo (so em backend/ e
+  frontend/), e o `biome format --write .` do backend reformata SEIS arquivos de teste
+  PREEXISTENTES alheios a qualquer plano (divida de lineWidth 80). Este plano NAO invocou o
+  formatador — nao ha codigo no diff —, entao nao precisou reverter nada, mas a divida continua
+  de pe. Prioridade baixa/media; o 04-38 nao a cobria e ela nao foi registrada como todo por
+  estar fora dos <files> deste plano.
+  Suite 196/196 verde e lint backend exit 0 (44 warnings, baseline) — rodados como PROVA de que
+  nenhuma mudanca de codigo se disfarcou de documentacao. ZERO DESVIOS de Rule 1-4, nenhum pacote
+  instalado.
+  O QUE FICA ABERTO DEPOIS DA GAP CLOSURE R5: o `cr4-01b` (o caminho do negocio SEM organizacao,
+  reescrito pelo 04-37 e ainda aberto), os OITO achados desta leva e os demais 33 pendentes — 41
+  no total. A fase 04 NAO foi marcada completa por este plano.
+  Commits: 23e90b5 (WR5-02..WR5-05), 590de1a (IN5-01..IN5-04), d7834f8 (ROADMAP).
+
+  --- historico do 04-37 abaixo ---
 
   O 04-37 fechou WR5-01 — o vizinho que o conserto do CR4-01 abriu, exatamente como o conserto
   do CR3-01 tinha aberto o CR4-01. O contador que o alarme de supressao total comparava com
