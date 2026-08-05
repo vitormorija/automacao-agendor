@@ -166,3 +166,8 @@ retry do sistema), `in3-04` + `in3-06` (o gate de CI e o residual que ele apanha
 ## Threat Flags
 
 Nenhuma. O plano não toca código de produção nem introduz superfície nova.
+
+## Self-Check: PASSED
+
+Os 8 arquivos de todo e o SUMMARY existem em disco; os 4 commits (`45a6312`, `10f146a`, `edd7cfb`,
+`a506739`) existem no histórico. Nenhum item ausente.

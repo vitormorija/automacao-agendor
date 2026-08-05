@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: 04-26 COMPLETO — WR3-04, WR3-05 e WR3-07 FECHADOS (higiene do instrumento de teste)
-stopped_at: Completed 04-26-PLAN.md
-last_updated: "2026-08-05T06:36:24.154Z"
-last_activity: "2026-08-05 -- 04-26 completo (WR3-04 + WR3-05 + WR3-07: higiene do instrumento de teste, diff de producao ZERO); suite 172 -> 172"
+status: 04-27 COMPLETO — os 8 achados Info da rodada 3 registrados e a fase descrita no ROADMAP
+stopped_at: Completed 04-27-PLAN.md
+last_updated: "2026-08-05T06:48:49.022Z"
+last_activity: 2026-08-05 -- 04-27 completo (IN3-01..IN3-08 como todos + Success Criteria 7 no ROADMAP + nota de CR3-01 em REL-06); diff de backend ZERO, suite 172/172
 progress:
   total_phases: 8
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 43
-  completed_plans: 42
-  percent: 38
+  completed_plans: 43
+  percent: 50
 ---
 
 # Project State
@@ -25,9 +25,70 @@ See: .planning/PROJECT.md (updated 2026-07-22)
 
 ## Current Position
 
-Phase: 04 (confiabilidade-das-integra-es) — gap closure r3 EM EXECUCAO
-Plan: 26 de 27 executados (04-01..04-26). Falta 04-27 (gap closure r3).
-Status: 04-26 COMPLETO — WR3-04, WR3-05 e WR3-07 FECHADOS (higiene do instrumento de teste)
+Phase: 04 (confiabilidade-das-integra-es) — gap closure r3 EXECUTADA, fase aguarda verificacao
+Plan: 27 de 27 executados (04-01..04-27). Nenhum plano pendente na fase 04.
+Status: 04-27 COMPLETO — os 8 achados Info da rodada 3 registrados e a fase descrita no ROADMAP
+
+  O 04-27 fechou o RESIDUO DOCUMENTAL da rodada 3 — o ultimo plano da gap closure r3, e o
+  unico da rodada com DIFF DE BACKEND ZERO por criterio de aceite (git status --porcelain
+  backend/ vazio nas TRES tasks). Nao e um plano de conserto: e o que impede a rodada de
+  terminar deixando achado sem dono.
+  OS 8 INFO VIRARAM TODOS PENDENTES, NAO PLANOS — escopo travado pelo usuario, mesmo
+  precedente de IN2-01..IN2-04 (04-18) e de IN-01..IN-04 (04-09). E esse precedente que
+  permitiu ao 04-26 FECHAR o in2-02 com evidencia: achado sem arquivo nao sobrevive a fase.
+  ls .planning/todos/pending/in3-0*.md = 8, cada arquivo entre 64 e 88 linhas, no molde do
+  in2-02 (frontmatter + Onde / O que acontece / Por que isso importa / Correcao proposta).
+  PRIORIDADES conforme D-IN3-b, com o motivo escrito em cada arquivo: in3-01 media,
+  in3-02 baixa, in3-03 baixa, in3-04 media, in3-05 baixa, in3-06 baixa, in3-07 media,
+  in3-08 ALTA.
+  in3-08 E O QUE IMPORTA PARA A PROXIMA FASE, e esta declarado CANDIDATO A PROMOCAO A
+  REQUISITO: shouldNotifyOwner transforma funil ausente em string vazia, que nao esta em
+  NO_OWNER_NOTIFY_FUNNELS, entao NOTIFICA. Esta pinado como quirk conhecido em
+  agendor.funnel.test.js — por isso o review classificou como Info e nao Warning. O que falta
+  nao e cobertura: e a AVALIACAO DE RISCO. Este e o SEGUNDO filtro de elegibilidade que falha
+  aberto, e o primeiro foi o BLOQUEANTE desta rodada (CR3-01). Nenhum plano da fase olhou os
+  filtros como CATEGORIA. A pergunta de direcao (fail-open ou fail-safe para os filtros de
+  elegibilidade como um todo) e o item central do arquivo, com a rota "indecidivel" aprovada
+  pelo usuario em 2026-08-05 registrada como precedente disponivel — ela nao escolhe entre
+  notificar e nao notificar: e fail-safe VISIVEL.
+  A CONVENCAO DE WR2-06 FOI APLICADA AOS PROPRIOS ARTEFATOS (D-IN3-a): grep -cE
+  "\.js:[0-9]|linhas? [0-9]" = 0 nos OITO, inclusive no in3-06, que fala SOBRE esse padrao sem
+  reproduzi-lo. Cada todo cita funcao, identificador, arquivo ou nome de caso de teste.
+  TRES PARES DECLARADOS para nao serem fechados pela metade: in3-01 + in2-04 (o dado existir no
+  banco e aparecer para quem opera), in3-02 + in2-01 (as DUAS politicas de retry do sistema —
+  in3-02 REFERENCIA aquele arquivo em vez de duplica-lo, D-IN3-c), in3-04 + in3-06 (o gate de
+  CI e o residual que ele apanharia).
+  ROADMAP: item 7 NOVO nos Success Criteria da Fase 4, e o item 4 (redacao aprovada em C9) NAO
+  foi reescrito — D-IN3-d. Medido: 1 insercao e ZERO remocoes no arquivo inteiro; o grep por
+  orgCategoryCache em linhas removidas do diff = 0. O item 7 e escrito como COMPORTAMENTO
+  GARANTIDO e nao nomeia nenhum identificador (nem CATEGORIA_INDECIDIVEL, nem fetchWithRetry,
+  nem categoriaIndecidivel): fora de TODO e-mail dirigido ao responsavel, visivel no painel /
+  consolidado do admin / snapshot, rodada NAO abortada, e so depois de o retry da borda se
+  esgotar. E a licao de C9 aplicada preventivamente — um criterio que nomeia mecanismo faz o
+  verificador procurar por um identificador que o refactor seguinte apaga.
+  REQUIREMENTS: REL-06 recebeu NOTA entre parenteses (padrao de REL-04/REL-05), nao um REL-07 —
+  D-IN3-e. A mesma regra ("completo ou falha explicita") passa a valer para a consulta de
+  categoria a partir de CR3-01, com a diferenca que importa registrada: aqui a falha e
+  explicita e ESCOPADA AO NEGOCIO afetado, em vez de custar a rodada inteira como em /tasks.
+  Tabela de rastreabilidade INTOCADA (grep "| Phase" no diff = 0).
+  ARMADILHA DE MEDICAO, a mesma classe das tres divergencias da rodada: grep -c "indecidível"
+  no ROADMAP devolve 3, nao 1. NAO e divergencia — as outras 2 ocorrencias sao as descricoes
+  dos planos 04-20 e 04-21 na lista da r3, PREEXISTENTES. A ocorrencia que o criterio pede esta
+  onde deveria, dentro do bloco de Success Criteria. Numero do plano nao forcado.
+  NENHUM TODO COM PRIORIDADE DECIDIDA PELO USUARIO FOI TOCADO: in-01 (media, C10), rel-02b
+  (alta / pre-go-live, C11), sec-01 (aberto, C8) e o recem-criado wr3-07b continuam byte a
+  byte — nenhum deles aparece no diff. SEC-01 permanece ABERTO e nao foi declarado resolvido em
+  lugar nenhum; o valor do AGENDOR_TOKEN nao aparece em nenhum artefato deste plano.
+  Suite 172/172 verde e lint exit 0 (44 warnings, baseline) — executados como PROVA de que
+  nenhuma mudanca de codigo se disfarcou de documentacao. ZERO DESVIOS: nenhuma Rule 1-4
+  acionada, nenhum pacote instalado.
+  ESCOPO QUE O 04-27 NAO FECHA: os 8 achados continuam ABERTOS. Este plano os torna
+  rastreaveis, nao os conserta. Dois pedem DECISAO antes de qualquer codigo — in3-08 (direcao
+  dos filtros de elegibilidade, candidato a requisito da fase seguinte) e in3-07 (reusar o
+  transporte SMTP entre negocios da mesma rodada, com o socketTimeout de 30s / D-02 como teto
+  de vida; a metade barata, renomear o caso (3) para falar em NEGOCIO, pode sair a qualquer
+  momento).
+  Commits: 45a6312 (Task 1), 10f146a (Task 2), edd7cfb (Task 3), a506739 (SUMMARY).
 
   O 04-26 fechou os TRES achados da rodada 3 sobre o INSTRUMENTO, nao sobre o produto. Os
   tres produzem o mesmo dano: um vermelho atribuido ao ATOR ERRADO, apontando para um
@@ -753,9 +814,9 @@ Origem: CODE REVIEW RODADA 3 (2026-08-05)
   checkpoints bloqueantes: C9, C10, C11).
   A rodada 1 esta preservada em 04-REVIEW-r1.md (origem dos planos 04-08..04-11).
   SEC-01 permanece ABERTO como risco conscientemente aceito (decisao C8) — nao marcar resolvido.
-Last activity: 2026-08-05 -- 04-26 completo (WR3-04 + WR3-05 + WR3-07: higiene do instrumento de teste, diff de producao ZERO); suite 172 -> 172
+Last activity: 2026-08-05 -- 04-27 completo (IN3-01..IN3-08 como todos + Success Criteria 7 no ROADMAP + nota de CR3-01 em REL-06); diff de backend ZERO, suite 172/172
 
-Progress: [██████████] 98%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
@@ -817,6 +878,7 @@ Progress: [██████████] 98%
 | Phase 04 P24 | 14min | 2 tasks | 3 files |
 | Phase 04 P25 | 16min | 2 tasks | 2 files |
 | Phase 04 P26 | 21min | 3 tasks | 9 files |
+| Phase 04 P27 | 25min | 3 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -964,6 +1026,9 @@ Recent decisions affecting current work:
 - [Phase 04]: [04-26]: D-WR3-07-c respeitada e NAO 'completada' — o beforeEach de agendor.cacheConcurrency.test.js tem EXATAMENTE uma atribuicao (cenarioAtivo); as outras 7 sao estado de ARMACAO e zera-las faz os casos (2) e (3) DEIXAREM DE TERMINAR ('Promise resolution is still pending'). Registrado como todo wr3-07b
 - [Phase 04]: [04-26]: backend/test/helpers/fakeTimers.js e a UNICA implementacao de avancarRelogioAte da suite — a copia local do oraculo de REL-02 foi removida (WR3-05) e a nota de topo do helper deixou de declarar a duplicacao como deliberada
 - [Phase 04]: [04-26]: restauracao de estado global no fim do corpo de um test() e restauracao no CAMINHO FELIZ — nao roda se uma assercao falha antes. O lugar correto e um beforeEach que REAFIRMA o valor neutro (WR3-07)
+- [Phase 04]: 04-27 — IN3-01..IN3-08 registrados como TODOS PENDENTES (escopo travado pelo usuario; precedente IN2-01..IN2-04 do 04-18). Prioridades D-IN3-b; in3-08 ALTA e declarado candidato a promocao a requisito da fase seguinte: e o SEGUNDO filtro de elegibilidade fail-open, e o primeiro foi CR3-01
+- [Phase 04]: 04-27 (D-IN3-d) — ROADMAP ganhou Success Criteria 7 NOVO, escrito como COMPORTAMENTO garantido e sem nomear identificador (nem CATEGORIA_INDECIDIVEL, nem fetchWithRetry); o item 4 (redacao aprovada em C9) NAO foi reescrito — 1 insercao e 0 remocoes no arquivo inteiro
+- [Phase 04]: 04-27 (D-IN3-e) — REL-06 recebeu NOTA de CR3-01 entre parenteses (padrao de REL-04/REL-05), sem REL-07 e sem mexer na tabela de rastreabilidade: a falha da consulta de categoria e explicita e ESCOPADA AO NEGOCIO afetado, em vez de custar a rodada inteira como em /tasks
 
 ### Pending Todos
 
@@ -1016,6 +1081,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-05T06:34:57.235Z
-Stopped at: Completed 04-24-PLAN.md
+Last session: 2026-08-05T06:48:49.016Z
+Stopped at: Completed 04-27-PLAN.md
 Resume file: None
