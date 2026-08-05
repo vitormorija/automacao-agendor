@@ -95,7 +95,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   6. Falha na consulta de tarefas futuras aborta a rodada sem notificar — registrada, lock liberado, rodada seguinte executa (REL-06, Decisão Q2)
   7. Quando a categoria da organização não pode ser determinada — a consulta falha mesmo depois do retry da borda —, o negócio é tratado como **indecidível**: fica **fora de todo e-mail dirigido ao responsável** (notificação diária e relatório individual semanal) e **permanece visível** no painel, no relatório consolidado do admin e no snapshot semanal; a rodada **não** é abortada por causa dele e segue processando os demais negócios (REL-06 estendido a CR3-01, decisão do usuário de 2026-08-05) — *escrito como comportamento garantido, e não como mecanismo, pelo mesmo motivo registrado no item 4 (decisão C9): um critério que nomeia identificador não sobrevive à mudança que o remove*
 **Contrato de entrega**: `.planning/phases/04-confiabilidade-das-integra-es/04-DELIVERY-CONTRACT.md` (aprovado 2026-08-04; 7 planos, decisões Q1-Q5)
-**Plans**: 7 planos originais + 4 de gap closure (r1) + 7 de gap closure (r2) + 9 de gap closure (r3) = 27 (execução estritamente sequencial; `parallelization: false`)
+**Plans**: 7 planos originais + 4 de gap closure (r1) + 7 de gap closure (r2) + 9 de gap closure (r3) + 7 de gap closure (r4) = 34 (execução estritamente sequencial; `parallelization: false`)
 - [x] 04-01-PLAN.md — Caracterização da resiliência do scheduler: falha registrada, lock liberado, concorrência recusada (REL-03) · termina em C2
 - [x] 04-02-PLAN.md — Fail-safe na consulta de tarefas futuras: completo ou falha explícita, rodada abortada sem notificar (REL-06, Q2)
 - [x] 04-03-PLAN.md — Timeout HTTP de 15s na instância Agendor + `getDealById` + bump `axios@^1.19.0` (REL-01, D-01, Q3) · termina em C4
@@ -129,6 +129,15 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] 04-25-PLAN.md — Teto de páginas com falha explícita nas duas paginações sem limite (WR3-06)
 - [x] 04-26-PLAN.md — Relógio por caso, helper único e estado neutro em `beforeEach` (WR3-04, WR3-05, WR3-07)
 - [x] 04-27-PLAN.md — IN3-01..IN3-08 como todos pendentes e o critério do fail-safe de categoria no ROADMAP
+
+**Gap closure r4** (fonte: `04-REVIEW.md`, `round: 4`, status `issues_found` — 1 critical, 7 warning, 6 info; a rodada 4 verificou ceticamente as conclusões da r3 e REABRIU a fase pela quarta vez). 7 planos **aditivos**, waves 21-27, `gap_closure: true`. Ordem por risco: o blocker primeiro, depois os warnings de produção agrupados por módulo, a higiene dos instrumentos de teste por último, e o resíduo documental no fim. **Requisito estrutural desta rodada — o INVENTÁRIO DE IRMÃOS, que SUBSTITUI o mandato do cenário simétrico da r3:** o revisor avaliou o mandato anterior e concluiu que ele funcionou mas resolveu o problema errado — o padrão que reprovou r1→r2→r3 nunca foi "faltou o input simétrico", foi **"faltou o CÓDIGO VIZINHO"** (a função irmã, o terceiro ponto de chamada, o outro arquivo que documenta o mesmo fato), e simétrico de *entrada* não detecta vizinho de *código*. Agora todo plano de correção contém, por escrito, um inventário das construções GÊMEAS do conserto, com cada item marcado como **corrigida**, **verificada-e-sã** (provada por medição ou teste, nunca presumida) ou **fora-de-escopo-com-medição e com dono**. Foi exatamente esse método que produziu WR4-01 (a terceira paginação sem teto, cuja justificativa escrita para excluí-la é factualmente falsa) e WR4-02 (dois comentários que hoje se contradizem):
+- [ ] 04-28-PLAN.md — A supressão TOTAL por categoria indecidível vira erro da rodada: contador próprio, campo de erro, array de erros e log em nível de erro (CR4-01, blocker)
+- [ ] 04-29-PLAN.md — Teto de páginas na terceira paginação e guarda de envelope em `getUsers` (WR4-01, WR4-05)
+- [ ] 04-30-PLAN.md — Teto de concorrência na consulta de categoria por organização, o único fan-out proporcional ao volume de dados (WR4-04)
+- [ ] 04-31-PLAN.md — A prévia do envio marca quem será notificado, e o botão do painel conta por ela (WR4-06)
+- [ ] 04-32-PLAN.md — Responsável sem nome deixa de derrubar o resumo semanal de todos os comerciais (WR4-07)
+- [ ] 04-33-PLAN.md — Comentários da suíte alinhados ao instrumento único e âncoras nomeadas no oráculo de REL-02 (WR4-02, WR4-03)
+- [ ] 04-34-PLAN.md — IN4-02..IN4-06 e os cinco residuais do inventário de irmãos como todos pendentes, e o critério de observabilidade no ROADMAP
 
 ### Phase 5: Logging & Padronização de Erros
 **Goal**: Logging é estruturado e consistente em todo o backend, e o tratamento/resposta de erro nas rotas segue um padrão único.
