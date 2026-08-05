@@ -17,7 +17,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 1: Rede de Testes (Safety-Net)** - Testes de caracterização fixam o comportamento atual da lógica crítica de notificação antes de qualquer mudança (completed 2026-07-24)
 - [x] **Phase 2: Toolchain de Qualidade & CI** - Lint, formatação, scripts npm e pipeline de CI que bloqueia PRs com falha (completed 2026-07-29)
 - [x] **Phase 3: Config & Segredos por Ambiente** - Segredos fora do código, `.env.example`, separação dev/prod e validação no boot (completed 2026-07-30)
-- [ ] **Phase 4: Confiabilidade das Integrações** - Timeouts em Agendor/SMTP, cron resiliente a falhas e isolamento de estado por execução (27/27 planos executados em 2026-08-05, suíte 172/172; a fase foi reaberta **quatro** vezes por code review. A r3 fechou CR3-01 nos três caminhos. A r4 trouxe **CR4-01 BLOCKER**: o conserto do CR3-01 fechou o fail-open para uma organização e abriu uma supressão em massa **operacionalmente invisível** — com a API de organizações indisponível, a rodada suprime todos os envios e ainda reporta sucesso, com `results.error` `undefined` e `results.errors` vazio. Gap closure r4 pendente: 1 blocker + 7 warnings)
+- [ ] **Phase 4: Confiabilidade das Integrações** - Timeouts em Agendor/SMTP, cron resiliente a falhas e isolamento de estado por execução (34/34 planos executados em 2026-08-05, suíte 186/186; a fase foi reaberta **quatro** vezes por code review. A gap closure r4 — 7 planos, 04-28 a 04-34 — fechou o CR4-01 (a supressão em massa por categoria indecidível virou erro da rodada, com contador dedicado e alarme aditivo) e os 7 warnings da r4. Aguarda o code review rodada 5 antes de fechar; 33 todos pendentes, incluindo `in3-08`, o último filtro de elegibilidade fail-open ainda aberto)
 - [ ] **Phase 5: Logging & Padronização de Erros** - `console.*` residual migrado para `logger` estruturado e resposta de erro consistente
 - [ ] **Phase 6: Hardening de Segurança** - Riscos do CONCERNS.md fechados; mudanças comportamentais só com teste do novo fluxo (ou adiadas com justificativa)
 - [ ] **Phase 7: Refatoração Incremental de Arquitetura** - Extrair `getEnrichedStaleDeals` e serviço de agregação, sem alterar comportamento, protegido pelos testes
@@ -192,7 +192,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | 1. Rede de Testes (Safety-Net) | 5/5 | Complete   | 2026-07-24 |
 | 2. Toolchain de Qualidade & CI | 4/4 | Complete   | 2026-07-29 |
 | 3. Config & Segredos por Ambiente | 7/7 | Complete   | 2026-07-30 |
-| 4. Confiabilidade das Integrações | 34/34 | In Progress|  |
+| 4. Confiabilidade das Integrações | 34/34 | Aguarda review r5 | — |
 | 5. Logging & Padronização de Erros | 0/TBD | Not started | - |
 | 6. Hardening de Segurança | 0/TBD | Not started | - |
 | 7. Refatoração Incremental de Arquitetura | 0/TBD | Not started | - |
