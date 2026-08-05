@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: "Completed 04-28-PLAN.md — CR4-01 (o BLOCKER da r4) FECHADO: a supressao total por categoria indecidivel virou erro da rodada (contador dedicado + alarme nas DUAS superficies). Suite 172 -> 174, lint exit 0. Faltam 04-29..04-34 da gap closure r4. || GAP CLOSURE R4 PLANEJADA E VERIFICADA (2026-08-05): 7 planos aditivos 04-28..04-34 sobre o 04-REVIEW.md round 4. Plan-checker: VERIFICATION PASSED NA PRIMEIRA PASSADA. Cobertura REL-01..06 = 6/6. || FASE 04 REABERTA PELA 4a VEZ pelo code review rodada 4: 1 BLOCKER (CR4-01), 7 warnings e 6 info. || anterior: Completed 04-27-PLAN.md"
-last_updated: "2026-08-05T13:36:00.000Z"
-last_activity: 2026-08-05 -- 04-28 completo (CR4-01 fechado: contador dedicado + alarme de supressao total); suite 174/174, lint exit 0
+stopped_at: "Completed 04-29-PLAN.md — WR4-01 e WR4-05 FECHADOS: as TRES paginacoes de agendor.js tem o mesmo teto e o mesmo tratamento de envelope, com as irmas VERIFICADAS por teste e nao presumidas. Suite 174 -> 178, agendor.js em 100% linhas / 91,6% branches, lint exit 0. Faltam 04-30..04-34 da gap closure r4. || anterior: Completed 04-28-PLAN.md — CR4-01 (o BLOCKER da r4) FECHADO. || GAP CLOSURE R4 PLANEJADA E VERIFICADA (2026-08-05): 7 planos aditivos 04-28..04-34 sobre o 04-REVIEW.md round 4. Plan-checker: VERIFICATION PASSED NA PRIMEIRA PASSADA. Cobertura REL-01..06 = 6/6. || FASE 04 REABERTA PELA 4a VEZ pelo code review rodada 4: 1 BLOCKER (CR4-01), 7 warnings e 6 info."
+last_updated: "2026-08-05T13:50:00.000Z"
+last_activity: 2026-08-05 -- 04-29 completo (WR4-01 teto na terceira paginacao + WR4-05 guarda de envelope em getUsers); suite 178/178, lint exit 0
 progress:
   total_phases: 8
   completed_phases: 4
   total_plans: 50
-  completed_plans: 44
+  completed_plans: 45
   percent: 50
 ---
 
@@ -26,8 +26,60 @@ See: .planning/PROJECT.md (updated 2026-07-22)
 ## Current Position
 
 Phase: 04 (confiabilidade-das-integra-es) — gap closure r4 EM EXECUCAO
-Plan: 28 de 34 executados (04-01..04-28). Faltam 04-29..04-34 (gap closure r4).
-Status: CR4-01 (O BLOCKER DA R4) FECHADO PELO 04-28 (2026-08-05)
+Plan: 29 de 34 executados (04-01..04-29). Faltam 04-30..04-34 (gap closure r4).
+Status: WR4-01 E WR4-05 FECHADOS PELO 04-29 (2026-08-05)
+
+  O 04-29 fechou os dois vizinhos de codigo que a r3 deixou abertos no MESMO modulo, e os dois
+  terminavam no mesmo lugar: o finally de runCheck que devolve isRunning a false.
+  WR4-01 — getStaleDeals era a TERCEIRA paginacao sem teto, e a justificativa ESCRITA no
+  agendor.js para dispensa-la era factualmente FALSA ("limitada por construcao, e nao existe ali
+  condicao de parada vinda da resposta a ser frustrada"). O array de paginas e finito, mas o seu
+  COMPRIMENTO sai de Math.ceil(meta.totalCount / perPage) — um valor da BORDA.
+  O RED MEDIU O DESFECHO DE FUNDO, e ele e pior do que o travamento: com totalCount inflado,
+  getStaleDeals percorreu as 201 paginas anunciadas e RESOLVEU COM SUCESSO em 39,08 s (40 lotes
+  de 5 com a pausa de 1 s). Uma rodada que resolve nao deixa vestigio de erro nenhum; num
+  totalCount de 10^9 os mesmos 39 s viram semanas de laco com isRunning preso. O estouro de tempo
+  so aparece porque o runner tem teto — producao nao tem.
+  AGORA: `totalPages > MAX_PAGES` com throw IMEDIATAMENTE apos derivar totalPages e ANTES do
+  Array.from — a posicao E a decisao, porque a alocacao do array sozinha ja e modo de falha
+  contra o max_memory_restart de 300M. Nunca Math.min (grep = 0), que trocaria nao-terminacao por
+  resultado PARCIAL silencioso. MESMA constante MAX_PAGES das outras duas bordas (nao-comentario
+  8 -> 10), mas MENSAGEM PROPRIA: /users e /tasks culpam o parametro page, /deals culpa
+  meta.totalCount — mecanismo diferente, e uma mensagem copiada mandaria o investigador para o
+  lugar errado. O teste ganhou padraoDoTetoDeDeals() separado, com o numero ainda DERIVADO.
+  WR4-05 — getUsers era a UNICA das quatro desreferencias de data.data do modulo sem fallback.
+  RED literal, e a previsao do plano bateu ate na mensagem: TypeError 'data.data is not iterable'
+  em getUsers, que NAO e capturado em lugar nenhum da funcao e sobe pelo Promise.all de runCheck,
+  abortando a rodada ANTES do laco de envio. Agora `data.data || []`, a MESMA forma da irma — a
+  uniformidade entre as tres E o conserto. getUsers RESOLVE e nao rejeita (D-WR4-05-b): sem data
+  tambem nao ha links.next, entao o laco encerra na mesma volta e rejeitar transformaria "zero
+  usuarios cadastrados" em rodada abortada. `of data.data)` nao-comentario = 0: as quatro
+  desreferencias estao guardadas.
+  O CASO (8) E O MOLDE DO MANDATO DA RODADA: um unico caso serve envelope sem `data` em /tasks E
+  /deals e assere que as DUAS irmas resolvem — VERIFICADAS por medicao, nao presumidas pela
+  leitura. Mesmo papel do cenario F do 04-23.
+  TRES DIVERGENCIAS DE MEDICAO, todas registradas e nenhuma forcada: (1) a FORMA do RED — o caso
+  (5) cancela o ARQUIVO inteiro por timeout e (6),(7),(8) nunca sao reportados; medidos
+  separadamente por --test-name-pattern, exatamente o precedente do 04-25 no mesmo arquivo;
+  (2) `Array.from({ length:` devolve 0 e nao 1 porque o Biome quebrou a chamada em duas linhas —
+  `Array.from(` nao-comentario = 1, e a conclusao do inventario sobrevive; (3) o plano media que
+  ROADMAP e REQUIREMENTS nao nomeiam getStaleDeals, e nomeiam (4 e 3 vezes) — mas NENHUMA das 7
+  ocorrencias fala de paginacao, volume ou teto (sao TEST-02, REL-04/C9, titulos de plano e
+  PERF-01), entao a classificacao verificadas-e-sas sobrevive POR MEDICAO. meta.totalCount e
+  MAX_PAGES = 0 nos dois, como previsto. QUINTA rodada da fase com divergencia de contagem; as 4
+  anteriores foram MENCAO em comentario, estas duas sao de outra classe (forma do padrao de grep
+  e sub-termo errado numa medicao composta).
+  IN4-05 e IN4-02 AUSENTES do diff por criterio (TASKS_PER_PAGE, getDealsWithFutureTasks e
+  "tres vezes" = 0). Contrato de 04-22/04-25 preservado: await api.get( = 0, fetchWithRetry( = 6,
+  while (page <= MAX_PAGES) = 2. Os NOVE arquivos vizinhos verdes SEM edicao (git diff --name-only
+  -- backend/test/ vazio na Task 2). Suite 174 -> 178, agendor.js 100% linhas / 91,6% branches
+  (era 90,69% / 88,42%), lint exit 0 (44 warnings, baseline). ZERO DESVIOS de escopo.
+  ATENCAO: agendor.paginacao.test.js deixou de ser o oraculo so da TERMINACAO e passou a ser
+  tambem o do TRATAMENTO DO ENVELOPE. Uma quarta borda entra ali com o par completo: teto +
+  simetrico legitimo + envelope sem `data`.
+  Commits: fcc9611 (RED), 6f6d3a3 (GREEN), 375ed55 (SUMMARY).
+
+Status anterior: CR4-01 (O BLOCKER DA R4) FECHADO PELO 04-28 (2026-08-05)
 
   O 04-28 fechou CR4-01. O conserto do CR3-01 tinha fechado o fail-open para UMA organizacao e
   aberto uma supressao em massa OPERACIONALMENTE INVISIVEL: com a borda /organizations/:id fora,
@@ -1018,6 +1070,7 @@ Progress: [██████████] 100%
 | Phase 04 P26 | 21min | 3 tasks | 9 files |
 | Phase 04 P27 | 25min | 3 tasks | 10 files |
 | Phase 04 P28 | 35min | 2 tasks | 2 files |
+| Phase 04 P29 | 40min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
