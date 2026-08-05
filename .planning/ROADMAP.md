@@ -112,7 +112,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Gap closure r2** (fonte: `04-REVIEW.md`, `round: 2`, status `issues_found` — 1 critical, 6 warning, 4 info; a rodada 2 verificou ceticamente as conclusões da r1 e REABRIU a fase). 7 planos **aditivos**, waves 5-11, `gap_closure: true`. Ordem por risco: CR2-01 primeiro (bloqueante do Core Value), depois o helper de teste que é oráculo dos demais:
 - [x] 04-12-PLAN.md — Cache de categorias escopado à execução: fim do estado de módulo compartilhado entre execuções (CR2-01) · termina em C9
 - [x] 04-13-PLAN.md — `avancarRelogioAte` normaliza o desfecho e para de produzir `unhandledRejection` atribuído ao caso errado (WR2-03)
-- [ ] 04-14-PLAN.md — `results.notified` acompanha o status também no caminho de exceção (WR2-01)
+- [x] 04-14-PLAN.md — `results.notified` acompanha o status também no caminho de exceção (WR2-01)
 - [ ] 04-15-PLAN.md — A falha ao REGISTRAR o desfecho do envio para de abortar a rodada: gravação protegida e fail-safe `'pending'` declarado (WR2-02) · termina em C10
 - [ ] 04-16-PLAN.md — O canal `err.resultadosParciais` é validado por tipo antes de ser consumido: parcial corrompido vira "nada confirmado" em vez de derrubar a rodada (WR2-04)
 - [ ] 04-17-PLAN.md — O transporte recriado no retry serve o destinatário seguinte (WR2-05) · termina em C11
@@ -170,7 +170,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | 1. Rede de Testes (Safety-Net) | 5/5 | Complete   | 2026-07-24 |
 | 2. Toolchain de Qualidade & CI | 4/4 | Complete   | 2026-07-29 |
 | 3. Config & Segredos por Ambiente | 7/7 | Complete   | 2026-07-30 |
-| 4. Confiabilidade das Integrações | 13/18 | In Progress (gap closure r2: 04-14..04-18) | - |
+| 4. Confiabilidade das Integrações | 14/18 | In Progress (gap closure r2: 04-15..04-18) | - |
 | 5. Logging & Padronização de Erros | 0/TBD | Not started | - |
 | 6. Hardening de Segurança | 0/TBD | Not started | - |
 | 7. Refatoração Incremental de Arquitetura | 0/TBD | Not started | - |
