@@ -239,26 +239,48 @@ async function runCheck() {
           if (logId !== null) {
             // O que já foi confirmado antes da exceção chega aqui anexado ao erro.
             //
-            // Por que a leitura é VALIDADA POR TIPO (WR2-04): este canal é uma
-            // propriedade improvisada num objeto de erro que pode ter nascido em
-            // qualquer biblioteca da pilha SMTP. O `??` que havia aqui só protege
-            // contra ausência (null/undefined) — um valor de OUTRO TIPO faria o
-            // `.some` da linha seguinte lançar DENTRO deste catch, e essa exceção
-            // subiria para o catch externo de runCheck, abortaria o `for` dos deals
-            // e deixaria os negócios restantes da rodada sem processar. Ausência e
-            // corrupção passam a ser lidas do mesmo jeito: "nada confirmado", com
-            // desfecho fail-safe — linha 'error', que não deduplica e portanto é
-            // retentável amanhã (o trade-off aprovado no checkpoint C10).
+            // Por que a leitura é VALIDADA EM DUAS CAMADAS (WR2-04 + WR3-03): este
+            // canal é uma propriedade improvisada num objeto de erro que pode ter
+            // nascido em qualquer biblioteca da pilha SMTP, e nada garante nem o
+            // tipo do CONTÊINER nem o tipo dos ELEMENTOS. A primeira camada recusa
+            // o valor que não é array; a segunda recusa o elemento que não é objeto
+            // e o elemento cujo `success` não é booleano verdadeiro. As duas são
+            // complementares, não alternativas: validar só o contêiner deixava um
+            // array de elementos não-objeto passar, e a desreferência lançava DENTRO
+            // deste catch — exceção que sobe para o catch externo de runCheck,
+            // aborta o `for` dos deals e deixa os negócios restantes da rodada sem
+            // processar. Ausência, contêiner corrompido e elemento corrompido são
+            // lidos do mesmo jeito: "nada confirmado", com desfecho fail-safe —
+            // linha 'error', que não deduplica e portanto é retentável amanhã (o
+            // trade-off aprovado no checkpoint C10).
+            //
+            // E a frase em sentido OPOSTO, que é a outra metade do contrato: um
+            // elemento corrompido AO LADO de um sucesso genuíno NÃO pode custar a
+            // confirmação. Descartar o array inteiro ao primeiro elemento inválido
+            // rebaixaria para 'error' uma linha cujo e-mail saiu de verdade; 'error'
+            // não deduplica; e a rodada de amanhã reenviaria para quem já recebeu —
+            // exatamente o desfecho que WR-01 (04-10) existe para impedir. Por isso
+            // a validação é por elemento e a decisão continua sendo "existe ao menos
+            // um confirmado?".
+            //
+            // A comparação com o booleano é ESTRITA de propósito: o produtor grava
+            // `success` como booleano, então nenhum resultado legítimo se perde, e um
+            // elemento com valor truthy de outro tipo é lido como não confirmado —
+            // o mesmo fail-safe já escolhido para o contêiner corrompido.
             //
             // O encadeamento opcional sobre o erro é defensivo e NÃO protege contra
             // `throw null`: results.errors.push(err.message), primeira instrução
             // deste catch, já teria estourado antes. Lacuna conhecida e declarada,
             // fora desta rodada. Quem pina este comportamento é
-            // notificationStatus.canalParcial.test.js.
+            // notificationStatus.canalParcial.test.js — cenário E (contêiner de tipo
+            // errado), F (elemento não-objeto) e G (elemento corrompido ao lado de um
+            // sucesso genuíno).
             const parciais = Array.isArray(err?.resultadosParciais)
               ? err.resultadosParciais
               : [];
-            if (parciais.some((r) => r.success)) houveEnvioConfirmado = true;
+            if (parciais.some((r) => r && r.success === true)) {
+              houveEnvioConfirmado = true;
+            }
 
             // Por que a gravação tem try/catch PRÓPRIO (WR2-02): a conexão SQLite pode
             // estar indisponível — é justamente uma das origens possíveis da exceção que
@@ -283,9 +305,15 @@ async function runCheck() {
                 updateNotificationStatus(logId, 'error', err.message);
               }
             } catch (erroDeRegistro) {
+              // Encadeamento opcional na leitura da mensagem: defesa em profundidade
+              // dentro do bloco que existe justamente para ser inquebrável. Não há
+              // caso dedicado, e isso é declarado (D-WR3-03-b) — pinar esta linha
+              // exigiria mockar a gravação no arquivo do canal parcial, que
+              // deliberadamente não a mocka; é esse isolamento que mantém os dois
+              // consertos revertíveis de forma independente.
               logger.error(
                 '[Scheduler] Falha ao registrar o desfecho do envio:',
-                erroDeRegistro.message,
+                erroDeRegistro?.message,
               );
             }
 
