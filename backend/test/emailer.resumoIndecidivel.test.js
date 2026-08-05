@@ -18,6 +18,18 @@
 // Referências por âncora nomeada, nunca por número de linha (WR2-06): o alvo é
 // `sendOwnerWeeklySummary` em `src/emailer.js`; o contraponto é `sendWeeklySummary`.
 //
+// WR4-07 — até aqui este arquivo media a POLÍTICA de quem entra no relatório individual
+// (cenários 1 a 4). Os cenários 5 a 7 acrescentam outra coisa: a ROBUSTEZ do template
+// quando o responsável não tem nome. O que os motiva não é o e-mail de um comercial, é o
+// CUSTO AGREGADO — `ownerWeeklyHtml` é montada DENTRO do laço de destinatários e ANTES do
+// `try/catch` que envolve o envio, então a exceção sai de `sendOwnerWeeklySummary`, sobe
+// até o `catch` de `runWeeklySummary` (scheduler) e encerra o resumo semanal INTEIRO:
+// todos os comerciais, inclusive os que já teriam recebido, ficam sem relatório, e o
+// único vestígio é uma linha genérica de log.
+// A assimetria que denuncia o descuido está medida: a rota `POST /test-owner-summary`
+// já guarda o mesmo campo (`ownerName || d.ownerName || 'Comercial Teste'`); o caminho de
+// produção não guardava nada.
+//
 // PC-13: NUNCA imprimir nem comparar o objeto de opções inteiro — ele carrega `auth.pass`.
 // O stub abaixo lê exclusivamente `mailOptions.to` e `mailOptions.html`.
 require('./setup');
@@ -53,12 +65,23 @@ const { sendOwnerWeeklySummary, sendWeeklySummary } = require('../src/emailer');
 // objetos no formato que `getStaleDeals` devolve depois do 04-19 (mesmos campos de
 // sempre, mais `categoriaIndecidivel`). Isso mantém o arquivo barato e o oráculo preciso.
 // Os títulos são reconhecíveis por `includes` no HTML gerado.
-function negocio({ id, title, ownerId, funnel, categoriaIndecidivel }) {
+// O parâmetro `ownerName` é OPCIONAL e distingue "não informado" de `null`: só a ausência
+// (`undefined`) cai no padrão. Passar `null` explicitamente reproduz o que `getStaleDeals`
+// produz quando o payload da borda traz `owner` sem `name` — que é a entrada dos cenários
+// 5 a 7. Os cenários 1 a 4 não passam o campo e continuam com o nome de sempre.
+function negocio({
+  id,
+  title,
+  ownerId,
+  funnel,
+  categoriaIndecidivel,
+  ownerName,
+}) {
   return {
     id,
     title,
     ownerId,
-    ownerName: 'Fulana Silva',
+    ownerName: ownerName === undefined ? 'Fulana Silva' : ownerName,
     organization: 'Organização Sintética',
     orgCategory: categoriaIndecidivel ? null : 'Cliente',
     categoriaIndecidivel: Boolean(categoriaIndecidivel),
@@ -72,7 +95,19 @@ function negocio({ id, title, ownerId, funnel, categoriaIndecidivel }) {
 
 const COMERCIAL = 'comercial@exemplo.invalid';
 const ADMIN = 'admin@exemplo.invalid';
-const USERS = { 11: { email: COMERCIAL, name: 'Fulana Silva' } };
+const COMERCIAL_CADASTRADO = 'beltrano@exemplo.invalid';
+const COMERCIAL_SEM_CADASTRO = 'anonimo@exemplo.invalid';
+
+// Acrescentar entradas a `USERS` não afeta os cenários 1 a 4: todos eles usam
+// exclusivamente o id 11, e o agrupamento de `sendOwnerWeeklySummary` só consulta o
+// dicionário pelo `ownerId` de cada negócio da lista — entradas não referenciadas por
+// nenhum negócio nunca são lidas. O id 13 existe SEM `name` de propósito: é o fundo do
+// encadeamento de fallbacks, exercido pelo cenário 7.
+const USERS = {
+  11: { email: COMERCIAL, name: 'Fulana Silva' },
+  12: { email: COMERCIAL_CADASTRADO, name: 'Beltrano Souza' },
+  13: { email: COMERCIAL_SEM_CADASTRO },
+};
 
 beforeEach(() => {
   enviosCapturados.length = 0;
@@ -190,4 +225,119 @@ test('(4) os dois filtros compõem: funil Beefor e categoria indecidível somam,
   assert.equal(html.includes('NEGOCIO-NORMAL'), true);
   assert.equal(html.includes('NEGOCIO-BEEFOR'), false);
   assert.equal(html.includes('NEGOCIO-INDECIDIVEL'), false);
+});
+
+// ── WR4-07: responsável sem nome ─────────────────────────────────
+// A asserção que importa nos três cenários abaixo é sobre o CORPO ENVIADO, não sobre a
+// contagem de envios: um conserto que apenas evitasse a exceção e imprimisse
+// "Olá, undefined!" passaria por qualquer asserção de quantidade. O e-mail que sai com um
+// buraco no lugar do nome é o mesmo defeito, só que silencioso.
+function assertHtmlSemNuloNoNome(html, rotulo) {
+  assert.equal(
+    html.includes('undefined'),
+    false,
+    `${rotulo}: o corpo enviado não pode conter a string "undefined"`,
+  );
+  assert.equal(
+    html.includes('null'),
+    false,
+    `${rotulo}: o corpo enviado não pode conter a string "null"`,
+  );
+}
+
+test('(5) responsável sem nome no negócio, mas com nome no cadastro: o rótulo resolve pelo cadastro', async () => {
+  const deals = [
+    negocio({
+      id: 5041,
+      title: 'NEGOCIO-SEM-NOME-DE-DONO',
+      ownerId: 12,
+      ownerName: null,
+    }),
+  ];
+
+  const results = await sendOwnerWeeklySummary({ deals, users: USERS });
+
+  assert.equal(enviosCapturados.length, 1);
+  assert.equal(enviosCapturados[0].to, COMERCIAL_CADASTRADO);
+  assert.equal(results.length, 1);
+  assert.equal(results[0].success, true);
+
+  // O dicionário de `getUsers` TEM o nome cadastrado; o negócio pode não ter. Preferir a
+  // melhor fonte é o conserto de verdade — só evitar a exceção deixaria o comercial
+  // recebendo uma saudação genérica quando o nome dele está disponível a um `?.name`.
+  const html = enviosCapturados[0].html;
+  assert.equal(html.includes('Olá, <strong>Beltrano</strong>'), true);
+  assertHtmlSemNuloNoNome(html, 'cenário 5');
+});
+
+test('(6) AGREGADO — um responsável sem nome não pode custar o relatório de TODOS os outros', async () => {
+  // Este é o cenário que mede o dano REAL do achado, e ele não é "um e-mail perdido".
+  // `ownerWeeklyHtml` é montada dentro do laço de destinatários e ANTES do `try/catch` do
+  // envio: no estado defeituoso a exceção do primeiro grupo escapa de
+  // `sendOwnerWeeklySummary`, sobe até o `catch` de `runWeeklySummary` e encerra o resumo
+  // semanal inteiro — o responsável 11, que não tem defeito nenhum, fica sem relatório por
+  // causa do 12.
+  // A ORDEM é parte do instrumento, não estilo: `Object.entries(byOwner)` segue a ordem de
+  // inserção, que é a ordem da lista de negócios notificáveis. Com o sem-nome em SEGUNDO
+  // lugar, o primeiro grupo já teria sido enviado antes da exceção e o caso ficaria verde
+  // mesmo com o defeito presente. Por isso o sem-nome vem PRIMEIRO.
+  const deals = [
+    negocio({
+      id: 5051,
+      title: 'NEGOCIO-DO-SEM-NOME',
+      ownerId: 12,
+      ownerName: null,
+    }),
+    negocio({ id: 5052, title: 'NEGOCIO-DO-VIZINHO', ownerId: 11 }),
+  ];
+
+  const results = await sendOwnerWeeklySummary({ deals, users: USERS });
+
+  assert.equal(enviosCapturados.length, 2);
+  const destinatarios = enviosCapturados.map((e) => e.to).sort();
+  assert.deepStrictEqual(
+    destinatarios,
+    [COMERCIAL_CADASTRADO, COMERCIAL].sort(),
+    'os DOIS comerciais precisam receber: o defeito de um não pode custar o relatório do outro',
+  );
+
+  assert.equal(results.length, 2);
+  assert.equal(
+    results.every((r) => r.success),
+    true,
+  );
+
+  assertHtmlSemNuloNoNome(
+    enviosCapturados[0].html,
+    'cenário 6 — primeiro envio',
+  );
+  assertHtmlSemNuloNoNome(
+    enviosCapturados[1].html,
+    'cenário 6 — segundo envio',
+  );
+});
+
+test('(7) nem no negócio, nem no cadastro: o envio acontece com um rótulo neutro', async () => {
+  // O fundo do encadeamento de fallbacks. Sem este cenário a cadeia poderia parar no
+  // penúltimo elo — resolvendo pelo cadastro e voltando a desreferenciar nulo quando o
+  // cadastro também não tem nome — e ninguém perceberia até a próxima sexta-feira.
+  const deals = [
+    negocio({
+      id: 5061,
+      title: 'NEGOCIO-SEM-NOME-EM-LUGAR-NENHUM',
+      ownerId: 13,
+      ownerName: null,
+    }),
+  ];
+
+  const results = await sendOwnerWeeklySummary({ deals, users: USERS });
+
+  assert.equal(enviosCapturados.length, 1);
+  assert.equal(enviosCapturados[0].to, COMERCIAL_SEM_CADASTRO);
+  assert.equal(results.length, 1);
+  assert.equal(results[0].success, true);
+
+  const html = enviosCapturados[0].html;
+  assert.equal(html.includes('Olá, <strong>Comercial</strong>'), true);
+  assertHtmlSemNuloNoNome(html, 'cenário 7');
 });
