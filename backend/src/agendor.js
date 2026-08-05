@@ -50,19 +50,39 @@ async function getUsers() {
 // O cache vem por parâmetro de propósito (CR2-01): não existe mais dicionário de módulo, e
 // portanto não existe mais como o resultado de uma rodada atravessar para outra. Quem cria o
 // cache é getStaleDeals — ver o comentário na fase de consulta de categorias, lá embaixo.
-// O valor guardado continua sendo `string | null`, e a falha continua sendo ENGOLIDA: o
-// `null` do catch é a categoria "desconhecida" daquela execução, e só dela.
+// O valor guardado continua sendo `string | null` — ver a sentinela CATEGORIA_INDECIDIVEL,
+// declarada mais abaixo, que é uma string justamente para não mudar essa forma.
+//
+// A consulta passa pela política ÚNICA de retry da borda (fetchWithRetry, mais abaixo neste
+// mesmo arquivo). Ela é declarada DEPOIS daqui e isso é intencional: `async function` é içada,
+// e reordenar o módulo produziria um diff enorme sobre um arquivo que é oráculo de meia dúzia
+// de testes.
+//
+// Por que o catch deixou de devolver `null` (CR3-01): dos cinco filtros de elegibilidade de
+// getStaleDeals, quatro decidem pelo payload do próprio negócio e não podem falhar. Só a
+// exclusão por categoria depende de uma segunda chamada HTTP — esta — e ela falhava na direção
+// INSEGURA: `EXCLUDED_CATEGORIES.includes(null)` é `false`, então um 429 transitório fazia uma
+// organização 'Parceiro' ser notificada, com a rodada reportando sucesso e sem vestígio nenhum.
+// A decisão do usuário (2026-08-05) é retry primeiro e, persistindo a falha, negócio
+// INDECIDÍVEL — fora do envio, dentro do painel. Abortar a rodada inteira por uma organização
+// inatingível foi explicitamente REJEITADO.
+//
+// A guarda `!orgId` continua devolvendo `null`, e não a sentinela: negócio sem organização não
+// tem consulta a falhar — é sem categoria, não indecidível. Oráculo dos dois caminhos:
+// backend/test/agendor.categoriaIndecidivel.test.js.
 async function getOrgCategory(orgId, cache) {
   if (!orgId) return null;
   if (cache.has(orgId)) return cache.get(orgId);
   try {
-    const { data } = await api.get(`/organizations/${orgId}`);
+    const { data } = await fetchWithRetry(() =>
+      api.get(`/organizations/${orgId}`),
+    );
     const category = data.data?.category?.name || null;
     cache.set(orgId, category);
     return category;
   } catch {
-    cache.set(orgId, null);
-    return null;
+    cache.set(orgId, CATEGORIA_INDECIDIVEL);
+    return CATEGORIA_INDECIDIVEL;
   }
 }
 
@@ -95,6 +115,16 @@ async function getDealById(id) {
 }
 
 const INACTIVE_CATEGORY = 'Inativo (sem resposta)';
+
+// Sentinela de categoria INDECIDÍVEL (CR3-01): o valor que getOrgCategory devolve quando a
+// consulta falhou mesmo depois do retry — "não sei", que é diferente de "não tem categoria".
+// É uma STRING, e não um Symbol ou um objeto, pelo mesmo motivo estrutural de D-05: o valor
+// guardado no cache da execução continua sendo `string | null`, então nenhum leitor daquele
+// Map muda de forma. O par de sublinhados nas pontas torna a colisão com uma categoria real
+// cadastrada no Agendor uma impossibilidade prática. Exportada para que os testes a citem sem
+// duplicar o literal (agendor.categoriaIndecidivel.test.js).
+const CATEGORIA_INDECIDIVEL = '__categoria_indecidivel__';
+
 const EXCLUDED_CATEGORIES = [
   'Inativo (sem resposta)',
   'Parceiro',
@@ -258,7 +288,14 @@ async function getStaleDeals(staleDays = 15) {
     const daysSinceUpdate = Math.floor(
       (Date.now() - updatedAt) / (1000 * 60 * 60 * 24),
     );
-    const orgCategory = categoriaPorOrg.get(deal.organization?.id) ?? null;
+    // Tradução da sentinela (CR3-01). A informação nova viaja num campo NOVO em vez de num
+    // valor especial de `orgCategory` porque os agrupamentos de routes/reports.js e de
+    // runWeeklySummary leem `d.orgCategory || 'Indefinido'`: mudar a semântica daquele campo
+    // reescreveria relatórios que este conserto não quer tocar. Reduzido a `null`, o campo
+    // antigo entrega exatamente os tipos de hoje a EXCLUDED_CATEGORIES e a getDealType.
+    const categoriaBruta = categoriaPorOrg.get(deal.organization?.id) ?? null;
+    const categoriaIndecidivel = categoriaBruta === CATEGORIA_INDECIDIVEL;
+    const orgCategory = categoriaIndecidivel ? null : categoriaBruta;
 
     if (EXCLUDED_CATEGORIES.includes(orgCategory)) continue;
     if (EXCLUDED_OWNERS.includes(deal.owner?.name)) continue;
@@ -270,6 +307,18 @@ async function getStaleDeals(staleDays = 15) {
 
     if (isExcludedStage(deal.dealStage?.name)) continue;
 
+    // Único vestígio operacional da falha de categoria — o defeito de CR3-01 era justamente
+    // não deixar nenhum. Loga NOME e id da organização e o id do negócio; NUNCA o objeto de
+    // erro do axios, que carrega `config.headers` com o AGENDOR_TOKEN (mesma regra de CR-02).
+    // Mora aqui, e não em getOrgCategory, porque quem conhece o nome da organização é o laço
+    // de enriquecimento — getOrgCategory só recebe o id. E vem depois dos demais filtros para
+    // que só negócios que de fato entram na lista gerem uma linha de log.
+    if (categoriaIndecidivel) {
+      logger.warn(
+        `[Agendor] Categoria indecidível: a organização "${deal.organization?.name}" (id ${deal.organization?.id}) não pôde ser consultada. O negócio ${deal.id} fica FORA do envio e permanece no painel.`,
+      );
+    }
+
     allDeals.push({
       id: deal.id,
       title: deal.title?.trim(),
@@ -279,6 +328,7 @@ async function getStaleDeals(staleDays = 15) {
       authorName: deal.author?.name || null,
       organization: deal.organization?.name || null,
       orgCategory,
+      categoriaIndecidivel,
       dealType: getDealType(orgCategory),
       stage: deal.dealStage?.name || null,
       funnel: deal.dealStage?.funnel?.name || null,
@@ -346,6 +396,7 @@ async function getDealsWithFutureTasks() {
 }
 
 module.exports = {
+  CATEGORIA_INDECIDIVEL,
   getUsers,
   getStaleDeals,
   getDealById,
