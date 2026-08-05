@@ -4,8 +4,9 @@
 // Por que isto importa: sem essas opções valem os defaults do nodemailer
 // (2min / 30s / **10min**). O socket de 10 minutos é o que permite UMA tentativa
 // travada segurar a rodada inteira: com as 3 tentativas de `sendMailWithRetry`
-// (emailer.js:178-203) o pior caso por destinatário passa de ~30 minutos. Com
-// `socketTimeout` de 30s ele cai para ~1min40s.
+// (o laço `for (let attempt = 1; attempt <= retries; ...)` de `emailer.js`) o pior
+// caso por destinatário passa de ~30 minutos. Com `socketTimeout` de 30s ele cai
+// para ~1min40s.
 //
 // Como a chamada é disparada: `createTransporter()` é privada (não exportada), e o
 // molde deste arquivo é `emailer.smtpPass.test.js` — em vez de abrir um seam no
@@ -30,6 +31,15 @@
 //
 // PC-13: NUNCA imprimir o objeto de opções inteiro nem usá-lo em `deepStrictEqual`
 // — ele carrega `auth.pass`. Só asserções sobre campos individuais.
+//
+// Convenção (WR2-06), aplicada a este arquivo pelo 04-33: todo trecho de código é
+// apontado por âncora NOMEADA — função ou identificador —, nunca por número de linha,
+// que se desloca no próprio commit que o escreve. Este arquivo ficou de fora da limpeza
+// do 04-18 por ter sido editado depois, e as quatro âncoras numéricas que ele tinha
+// apontavam TODAS para o lugar errado (WR4-03). A única referência por número que
+// PERMANECE é a do fonte do `nodemailer`, no caso que compara o `socketTimeout` com o
+// default: arquivo de dependência, versionado pelo lockfile e não por este repositório
+// — a exclusão é deliberada, não esquecimento.
 require('./setup');
 
 const { test, after, beforeEach, mock } = require('node:test');
@@ -175,8 +185,11 @@ test('cada chamada à fábrica produz um transporte novo, e todos com os mesmos 
 // dele SOBRESCREVE `err.code` (`if (type && type !== 'Error') err.code = type`), e o
 // listener de socket usa o tipo 'ESOCKET' — então um ECONNRESET nativo chega a
 // `sendMailWithRetry` como `code: 'ESOCKET'`, e o único ramo que de fato o captura é
-// o da MENSAGEM (`emailer.js:188`). Injetar `{ code: 'ECONNRESET' }` seria um caminho
-// que o nodemailer real nunca produz — verde falso.
+// o da MENSAGEM: dentro da condição `isNetworkError` de `sendMailWithRetry`, o termo
+// `err.message?.toLowerCase().includes('econnreset')` — os dois termos que olham
+// `err.code` esperam 'ECONNRESET'/'ETIMEDOUT' e não casam com 'ESOCKET'. Injetar
+// `{ code: 'ECONNRESET' }` seria um caminho que o nodemailer real nunca produz —
+// verde falso.
 
 test('(4) esgotar as 3 tentativas resolve com success:false, sem lançar (D-03)', async () => {
   aoEnviar = async () => {
@@ -234,8 +247,10 @@ test('(5) falha de rede seguida de sucesso ainda envia, e recria o transporter',
     assert.equal(resultados[0].success, true);
     assert.equal(enviosTentados, 2);
 
-    // O que pina `emailer.js:197`: a retentativa não reusa a conexão morta — passa
-    // pela fábrica de novo (1 no início de sendStaleNotification + 1 no retry).
+    // O que pina a recriação do transporte dentro do `catch` de `sendMailWithRetry`
+    // (`transporter = createTransporter()`, logo depois da espera entre tentativas):
+    // a retentativa não reusa a conexão morta — passa pela fábrica de novo (1 no
+    // início de sendStaleNotification + 1 no retry).
     assert.ok(
       transportesCriados > 1,
       `o transporter deveria ser recriado no retry; criados: ${transportesCriados}`,
@@ -274,8 +289,9 @@ test('(7) authorEmail igual ao ownerEmail rende 1 item apenas', async () => {
     logId: 104,
   });
 
-  // A guarda de `emailer.js:229` (`authorEmail !== ownerEmail`) evita o e-mail
-  // duplicado para quem é dono e autor do mesmo card.
+  // A guarda `authorEmail !== ownerEmail` de `sendStaleNotification` — a condição do
+  // segundo bloco de envio, o do criador — evita o e-mail duplicado para quem é dono
+  // e autor do mesmo card.
   assert.equal(resultados.length, 1);
   assert.equal(resultados[0].to, DONO);
   assert.equal(enviosTentados, 1);
