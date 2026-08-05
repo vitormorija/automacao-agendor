@@ -1,4 +1,5 @@
-// Prova de WR2-02 — uma falha ao REGISTRAR o desfecho do envio apaga o resto da rodada.
+// Prova de WR2-02 e WR3-02 — uma falha numa OPERAÇÃO DE BANCO do laço apaga o resto
+// da rodada.
 //
 // O `catch` do bloco de envio de `runCheck` (`scheduler.js`) chama
 // `updateNotificationStatus` para gravar o desfecho da tentativa. Essa chamada usa a
@@ -23,9 +24,22 @@
 // `notificationStatus.canalParcial.test.js` (04-16). O cenário abaixo foi desenhado para
 // não exercitar nada daquele escopo — ver o comentário do `modoEnvio` no próprio cenário.
 //
-// O cenário:
+// WR3-02 é o VIZINHO de WR2-02, uma construção ACIMA. O laço de `runCheck` toca o banco
+// em TRÊS pontos, todos pela MESMA conexão: `alreadyNotifiedToday` (a leitura de dedup,
+// PRIMEIRA operação do laço), `logNotification` (o insert) e `updateNotificationStatus`
+// (a gravação do desfecho). O 04-15 protegeu o terceiro; o segundo já nascia dentro do
+// `try` do bloco de envio; o PRIMEIRO ficava fora de qualquer `try` interno — uma falha
+// nele subia direto ao `catch` externo, abortava o `for` e deixava TODOS os negócios
+// restantes sem processar. Este arquivo passa a ser o oráculo dos três.
+//
+// Os cenários:
 //   D (WR2-02)  o registro do desfecho lança -> a rodada CONTINUA, o 2º deal é notificado
 //               e a linha do 1º fica 'pending' (retentável amanhã)
+//   E (WR3-02)  a LEITURA de dedup lança -> a rodada CONTINUA e AMBOS os deals são
+//               notificados: não saber se já notificamos é lido como "não deduplica"
+//   F (VIZINHO) o INSERT do notification_log lança -> a rodada CONTINUA, o 1º fica sem
+//               linha e sem envio, o 2º é notificado. Já era seguro ANTES desta rodada,
+//               e entra justamente para deixar de ser presunção e virar asserção
 //
 // PC-13: nada aqui assere nem imprime o objeto de opções do transporte SMTP — ele
 // carrega `auth.pass`.
@@ -115,6 +129,8 @@ installFakeAxios((url) => {
 // no meio do arquivo (`node --test` isola por arquivo, não por `test()`).
 let modoEnvio = 'ok'; // 'ok' | 'excecao-na-fabrica-inicial'
 let modoRegistro = 'ok'; // 'ok' | 'falha'
+let modoDedup = 'ok'; // 'ok' | 'falha'  (cenário E, WR3-02)
+let modoInsert = 'ok'; // 'ok' | 'falha'  (cenário F, o vizinho pinado)
 
 // Contadores que são a PRÉ-CONDIÇÃO do cenário: sem eles o caso poderia ficar verde por
 // coincidência (lição de WR-05 — um teste que não prova o caminho que afirma medir).
@@ -122,6 +138,10 @@ let transportesCriados = 0;
 let enviosConfirmados = 0;
 let registrosTentados = 0;
 let registrosQueFalharam = 0;
+let leiturasDedup = 0;
+let leiturasQueFalharam = 0;
+let insertsTentados = 0;
+let insertsQueFalharam = 0;
 
 // PC-13: o objeto de opções (que carrega auth.pass) não é capturado nem asserido.
 mock.method(nodemailer, 'createTransport', () => {
@@ -145,16 +165,20 @@ mock.method(nodemailer, 'createTransport', () => {
   };
 });
 
-// ── Mock do registro do desfecho ─────────────────────────────────
+// ── Mocks das três operações de banco do laço ────────────────────
 // ARMADILHA DE CommonJS: `scheduler.js` faz
 // `const { updateNotificationStatus } = require('./db')` no TOPO, e a desestruturação
 // captura a REFERÊNCIA no load. Um `mock.method(db, 'updateNotificationStatus', …)`
 // aplicado DEPOIS de `require('../src/scheduler')` não teria efeito nenhum — o
 // scheduler continuaria chamando a função real, o cenário ficaria verde já no RED e
 // pagaríamos com falsa confiança. Por isso a sequência abaixo é obrigatória:
-// require do db -> guardar a referência real -> mock.method -> require do scheduler.
+// require do db -> guardar as referências reais -> mock.method -> require do scheduler.
+// Ela vale igualmente para `alreadyNotifiedToday` e `logNotification`, que o scheduler
+// desestrutura do mesmo require.
 const db = require('../src/db');
 const registroReal = db.updateNotificationStatus;
+const dedupReal = db.alreadyNotifiedToday;
+const insertReal = db.logNotification;
 
 mock.method(db, 'updateNotificationStatus', (...args) => {
   registrosTentados++;
@@ -167,6 +191,32 @@ mock.method(db, 'updateNotificationStatus', (...args) => {
     throw new Error('The database connection is not open');
   }
   return registroReal(...args);
+});
+
+// A LEITURA de dedup (cenário E, WR3-02). Mesma forma do mock acima e pelo mesmo motivo:
+// falhar SÓ na primeira chamada é o que permite ao segundo negócio da rodada ser lido
+// normalmente — e é o que distingue "a rodada continuou" de "a rodada continuou fazendo
+// o seu trabalho". As demais chamadas delegam para a função real, inclusive as que o
+// próprio teste faz para conferir o estado do notification_log.
+mock.method(db, 'alreadyNotifiedToday', (...args) => {
+  leiturasDedup++;
+  if (modoDedup === 'falha' && leiturasDedup === 1) {
+    leiturasQueFalharam++;
+    // Mensagem fiel ao better-sqlite3 com a conexão fechada — a MESMA conexão que
+    // origina a falha de gravação do cenário D.
+    throw new Error('The database connection is not open');
+  }
+  return dedupReal(...args);
+});
+
+// O INSERT do notification_log (cenário F, o vizinho). Mesmo molde.
+mock.method(db, 'logNotification', (...args) => {
+  insertsTentados++;
+  if (modoInsert === 'falha' && insertsTentados === 1) {
+    insertsQueFalharam++;
+    throw new Error('The database connection is not open');
+  }
+  return insertReal(...args);
 });
 
 const { runCheck } = require('../src/scheduler');
@@ -193,10 +243,16 @@ beforeEach(() => {
   // Estado neutro entre casos: cada teste declara explicitamente o que precisa.
   modoEnvio = 'ok';
   modoRegistro = 'ok';
+  modoDedup = 'ok';
+  modoInsert = 'ok';
   transportesCriados = 0;
   enviosConfirmados = 0;
   registrosTentados = 0;
   registrosQueFalharam = 0;
+  leiturasDedup = 0;
+  leiturasQueFalharam = 0;
+  insertsTentados = 0;
+  insertsQueFalharam = 0;
 });
 
 // Linhas do deal, da mais recente para a mais antiga. Usa getNotificationLogs — nenhuma
@@ -276,6 +332,149 @@ test('D: falha ao registrar o desfecho não aborta a rodada — o deal seguinte 
     2,
     'pré-condição: o segundo deal ENVIOU (dono e autor), não apenas gravou uma linha',
   );
+  const linhasSegundo = linhasDoDeal(segundo);
+  assert.equal(linhasSegundo.length, 1, 'uma notificação, uma linha');
+  assert.equal(
+    linhasSegundo[0].status,
+    'sent',
+    'o deal seguinte foi notificado normalmente',
+  );
+  assert.equal(
+    r.notified,
+    1,
+    'exatamente uma notificação confirmada na rodada — a do segundo deal',
+  );
+});
+
+// ── E (WR3-02) — a LEITURA de dedup falha ────────────────────────
+test('E: falha ao LER a dedup não aborta a rodada — os dois deals são processados e notificados', async () => {
+  const primeiro = 2205;
+  const segundo = 2206;
+  servirDeals(primeiro, segundo);
+  modoDedup = 'falha';
+  modoEnvio = 'ok';
+
+  const r = await avancarRelogioAte(runCheck());
+
+  // Pré-condição: o caminho medido é o da LEITURA que lança. Sem ela, um mock nunca
+  // consultado (ver a armadilha de CommonJS acima) passaria como prova.
+  assert.equal(
+    leiturasQueFalharam,
+    1,
+    'pré-condição: a leitura de dedup precisa ter falhado exatamente uma vez',
+  );
+
+  // A asserção central de WR3-02: a exceção nascida na PRIMEIRA operação de banco do
+  // laço não pode escapar para o catch externo de runCheck.
+  assert.equal(
+    r.error,
+    undefined,
+    'a falha ao ler a dedup não pode abortar a rodada',
+  );
+  assert.equal(
+    r.deals.length,
+    2,
+    'os deals seguintes da rodada precisam continuar sendo processados',
+  );
+
+  // Pré-condição avaliada só DEPOIS de `r.deals.length`: no estado defeituoso o array
+  // está vazio, e ler `r.deals[0].id` ali produziria um TypeError em vez de um
+  // vermelho legível.
+  assert.equal(
+    r.deals[0].id,
+    primeiro,
+    'pré-condição: o deal cuja leitura falha é o PRIMEIRO da rodada',
+  );
+
+  // Os DOIS deals notificados — dono e autor de cada um. Que o deal afetado seja
+  // NOTIFICADO é a metade do contrato que mais parece um descuido, e não é:
+  // quando a leitura falha não sabemos se já notificamos hoje, e a escolha entre
+  // reenviar e silenciar é decisão do usuário, registrada no checkpoint C10.
+  // Nas palavras dele: duplicata incomoda e é aceitável; deixar alguém sem
+  // notificação não é. Uma "melhoria" futura que assumisse `true` na falha (isto é,
+  // "no caso de dúvida, não envia") inverteria o fail-safe e reintroduziria a pior
+  // classe de falha do Core Value — notificação perdida em silêncio. É esta asserção,
+  // e o `r.notified` lá embaixo, que ficam vermelhos se alguém tentar.
+  assert.equal(
+    enviosConfirmados,
+    4,
+    'pré-condição: os DOIS deals enviaram (dono e autor de cada um)',
+  );
+
+  const linhasPrimeiro = linhasDoDeal(primeiro);
+  assert.equal(linhasPrimeiro.length, 1, 'uma notificação, uma linha');
+  assert.equal(
+    linhasPrimeiro[0].status,
+    'sent',
+    'não saber se já notificamos significa notificar: a linha fica sent',
+  );
+
+  const linhasSegundo = linhasDoDeal(segundo);
+  assert.equal(linhasSegundo.length, 1, 'uma notificação, uma linha');
+  assert.equal(
+    linhasSegundo[0].status,
+    'sent',
+    'o deal seguinte foi notificado normalmente',
+  );
+
+  assert.equal(
+    r.notified,
+    2,
+    'as duas notificações da rodada foram confirmadas',
+  );
+});
+
+// ── F (VIZINHO) — o INSERT do notification_log falha ─────────────
+// Este cenário JÁ PASSA no estado de entrada, e é exatamente por isso que ele entra:
+// o vizinho imediato da operação consertada precisa ser VERIFICADO e pinado, não
+// presumido — foi a ausência dessa verificação que produziu três rodadas seguidas de
+// achados vizinhos nesta fase. Ele é seguro porque a exceção nasce DENTRO do `try` do
+// bloco de envio: o `catch` a absorve e, com `logId` ainda nulo, não há linha a
+// atualizar. Se alguém mover o insert para fora daquele `try`, este caso fica vermelho.
+test('F: falha no INSERT do notification_log não aborta a rodada — o deal seguinte continua sendo notificado', async () => {
+  const primeiro = 2207;
+  const segundo = 2208;
+  servirDeals(primeiro, segundo);
+  modoInsert = 'falha';
+
+  const r = await avancarRelogioAte(runCheck());
+
+  // Pré-condição: o caminho medido é o do insert que lança.
+  assert.equal(
+    insertsQueFalharam,
+    1,
+    'pré-condição: o insert precisa ter falhado exatamente uma vez',
+  );
+
+  assert.equal(
+    r.error,
+    undefined,
+    'a falha no insert não pode abortar a rodada',
+  );
+  assert.equal(
+    r.deals.length,
+    2,
+    'os deals seguintes da rodada precisam continuar sendo processados',
+  );
+  assert.equal(
+    r.deals[0].id,
+    primeiro,
+    'pré-condição: o deal cujo insert falha é o PRIMEIRO da rodada',
+  );
+
+  // Sem linha e sem envio para o deal afetado: o insert precede o envio, então a
+  // exceção interrompe o bloco antes de qualquer sendMail.
+  assert.equal(
+    linhasDoDeal(primeiro).length,
+    0,
+    'o insert falhou: nenhuma linha nasce para o deal afetado',
+  );
+  assert.equal(
+    r.deals[0].notified,
+    false,
+    'o deal afetado não é dado como notificado',
+  );
+
   const linhasSegundo = linhasDoDeal(segundo);
   assert.equal(linhasSegundo.length, 1, 'uma notificação, uma linha');
   assert.equal(
