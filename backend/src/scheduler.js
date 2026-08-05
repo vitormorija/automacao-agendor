@@ -97,6 +97,26 @@ async function runCheck() {
         continue;
       }
 
+      // Categoria da organização INDECIDÍVEL (CR3-01). A exclusão por categoria é o único
+      // filtro de elegibilidade que depende de uma segunda chamada HTTP; quando ela falha
+      // mesmo depois do retry da borda, "não sei a categoria" é indistinguível de "pode ser
+      // uma categoria excluída", e notificar seria a direção INSEGURA — a mesma regra que a
+      // Decisão Q2 (REL-06) já aplicou às tarefas futuras. A decisão do usuário (2026-08-05)
+      // tem duas metades e as duas valem aqui: o negócio fica FORA do envio E permanece no
+      // painel e nos relatórios, porque getStaleDeals continua devolvendo-o; e a rodada NÃO é
+      // abortada — uma organização inatingível não pode custar as notificações de todos os
+      // outros negócios do dia (rota explicitamente rejeitada). Nenhuma linha entra no
+      // notification_log, porque não houve evento de envio, e o aviso nomeando a organização
+      // já sai em getStaleDeals. Oráculo: scheduler.categoriaIndecidivel.test.js.
+      if (deal.categoriaIndecidivel) {
+        dealResult.skipped = true;
+        dealResult.skipReason =
+          'categoria da organização não pôde ser consultada — negócio não notificado';
+        results.skipped++;
+        results.deals.push(dealResult);
+        continue;
+      }
+
       // Funis sem notificação ao responsável (ex.: Beefor — produto de outra equipe do grupo).
       // O card continua visível no dashboard e relatório admin, só não dispara email pro dono.
       if (!shouldNotifyOwner(deal)) {
