@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: "Completed 04-14-PLAN.md — WR2-01 fechado; results.notified acompanha o status tambem no caminho de excecao. Proximo: 04-15 (WR2-02, termina no checkpoint C10). SEC-01 permanece ABERTO por decisao C8."
-last_updated: "2026-08-05T00:33:05.174Z"
-last_activity: 2026-08-05 -- 04-14 completo (WR2-01 fechado); proximo 04-15 (C10)
+stopped_at: "Completed 04-15-PLAN.md — WR2-02 fechado; a falha ao registrar o desfecho nao derruba mais a rodada. Checkpoint C10 APROVADO pelo usuario (reenvio preferido ao abandono da rodada). Proximo: 04-16 (WR2-04) — despacho do orquestrador. SEC-01 permanece ABERTO por decisao C8."
+last_updated: "2026-08-05T02:08:24.939Z"
+last_activity: 2026-08-05 -- 04-15 completo (WR2-02 fechado; C10 aprovado); proximo 04-16
 progress:
   total_phases: 8
   completed_phases: 3
   total_plans: 34
-  completed_plans: 30
+  completed_plans: 31
   percent: 38
 ---
 
@@ -26,8 +26,41 @@ See: .planning/PROJECT.md (updated 2026-07-22)
 ## Current Position
 
 Phase: 04 (confiabilidade-das-integra-es) — EXECUTING
-Plan: 14 de 18 completos (04-01..04-14). Faltam 04-15..04-18.
-Status: 04-14 COMPLETO (2026-08-05) — WR2-01 fechado; proximo e o 04-15 (WR2-02, termina em C10)
+Plan: 15 de 18 completos (04-01..04-15). Faltam 04-16..04-18.
+Status: 04-15 COMPLETO (2026-08-05) — WR2-02 fechado e C10 APROVADO; proximo e o 04-16 (WR2-04)
+  O 04-15 fechou WR2-02: updateNotificationStatus e chamada de DENTRO do catch do bloco
+  de envio e usa a MESMA conexao SQLite que pode ter causado a excecao original. Quando
+  ela lancava, nada segurava — a falha subia para o catch externo de runCheck, abortava
+  o for dos deals e a rodada terminava sem processar os negocios restantes.
+  RED MEDIDO, e a previsao do plano CORRIGIDA pela medicao: o plano previa
+  r.deals.length === 1; o valor medido e 0, porque results.deals.push(dealResult) fica
+  DEPOIS do try/catch do bloco de envio — a rodada perde tambem o registro do deal que
+  disparou a falha, nao so os seguintes. O defeito e um passo pior do que o estimado.
+  Agora um try/catch proprio envolve o if/else do status; catch (erroDeRegistro) loga
+  SO A MENSAGEM (CR-02 do 04-09: um erro de borda carrega config.headers com o
+  AGENDOR_TOKEN) e a rodada segue.
+  DESVIO DE FORMA declarado: as duas exigencias do plano eram incompativeis entre si
+  ("exatamente 1 catch (erroDeRegistro)" vs "incremento dentro do mesmo ramo"). Prevaleceu
+  o criterio de aceite verificavel: UM try envolve o if/else, e results.notified++ virou
+  um if proprio abaixo do catch. O custo e o que o 04-14 quis evitar — houveEnvioConfirmado
+  testado em duas construcoes seguidas — e a mitigacao esta em comentario E nos oraculos:
+  quem as fizer divergir deixa vermelho o cenario A ou o B de partialFailure.
+  DECISAO C10 (vinculante, usuario, 2026-08-05): o TRADE-OFF DO FAIL-SAFE esta APROVADO.
+  Quando a gravacao falha a linha fica 'pending', nao deduplica, e a rodada seguinte PODE
+  reenviar para quem ja recebeu. Palavras do usuario: duplicata incomoda e aceitavel;
+  deixar alguem sem notificacao nao e. Isso e decisao do USUARIO, nao escolha do executor.
+  DECISAO C10 (2): o todo in-01-status-pending-na-ui MANTEM prioridade media, mesmo com
+  este plano aumentando a frequencia do 'pending' (X vermelho em NotificationHistory.jsx).
+  O arquivo do todo NAO foi editado.
+  emailer.js mudou SO EM COMENTARIO (verificado por contagem = 0 linhas de codigo): parou
+  de citar como coberto o cenario da conexao SQLite fechada e passou a citar o que o canal
+  err.resultadosParciais de fato cobre (cenario A), declarando o desfecho do caso que ele
+  nao cobre. Suite 143 -> 144.
+  ATENCAO para o 04-16: o consumidor do canal parcial (err.resultadosParciais ?? []) NAO
+  foi tocado aqui de proposito — Array.isArray continua ausente. O Cenario D nao exercita
+  aquele caminho (o erro nasce da fabrica INICIAL, sem parcial anexado), entao os dois
+  planos sao revertiveis de forma independente. Nao entrar no 04-16 sem despacho.
+
   O 04-14 fechou WR2-01: o ramo de EXCECAO de scheduler.js gravava a linha do
   notification_log como 'sent' quando err.resultadosParciais trazia sucesso, mas NAO
   incrementava results.notified — sub-contagem, o espelho exato de WR-04 (que o 04-10
@@ -99,9 +132,9 @@ Status: 04-14 COMPLETO (2026-08-05) — WR2-01 fechado; proximo e o 04-15 (WR2-0
   checkpoints bloqueantes: C9, C10, C11).
   A rodada 1 esta preservada em 04-REVIEW-r1.md (origem dos planos 04-08..04-11).
   SEC-01 permanece ABERTO como risco conscientemente aceito (decisao C8) — nao marcar resolvido.
-Last activity: 2026-08-05 -- 04-14 completo (WR2-01 fechado); proximo 04-15 (C10)
+Last activity: 2026-08-05 -- 04-15 completo (WR2-02 fechado; C10 aprovado); proximo 04-16
 
-Progress: [████████░░] 78% (14 de 18 planos da fase 04 completos; WR2-01 fechado)
+Progress: [████████░░] 83% (15 de 18 planos da fase 04 completos; WR2-02 fechado)
 
 ## Performance Metrics
 
@@ -151,6 +184,7 @@ Progress: [████████░░] 78% (14 de 18 planos da fase 04 compl
 | Phase 04 P12 | 26min | 2 tasks (+C9 pendente) | 3 files |
 | Phase 04 P13 | 8min | 3 tasks tasks | 3 files files |
 | Phase 04 P14 | 11min | 2 tasks | 2 files |
+| Phase 04 P15 | 21min | 3 tasks (C10 aprovado) | 3 files |
 
 ## Accumulated Context
 
@@ -263,6 +297,16 @@ Recent decisions affecting current work:
 - [Phase 04]: 04-14: o RED trouxe a prova operacional inteira numa linha de log do proprio SUT — "[Scheduler] Concluido: 1 negocios parados, 0 notificacoes enviadas" com a linha do notification_log daquele deal ja gravada como 'sent'
 - [Phase 04]: 04-13: o RED foi medido pela saida literal do runner (failureType: 'unhandledRejection' com error: 'ERRO REAL DO SUT') — a rejeicao orfa PREEMPTOU o proprio assert.rejects do caso, o que prova que o try/catch do autor do teste nao contem o defeito
 
+- [Phase 04]: 04-15: a gravacao do desfecho dentro do catch do bloco de envio ganhou try/catch proprio (D-WR2-02-a) — uma excecao nascida DENTRO de um catch nao pode ter como destino o catch externo de runCheck, que existe para falhas da VERIFICACAO e nao para falhas de escrita de log
+- [Phase 04]: 04-15: o RED medido CORRIGIU a previsao do plano — o previsto era r.deals.length === 1 e o medido e 0, porque results.deals.push(dealResult) fica DEPOIS do try/catch do bloco de envio; a rodada perdia tambem o registro do deal que disparou a falha, nao so os seguintes
+- [Phase 04]: 04-15: results.notified++ ficou FORA do try de registro (D-WR2-02-c) — o contador acompanha a DECISAO de status, nao o sucesso da gravacao; junto da chamada, uma falha so de gravacao faria a rodada reportar zero num dia em que o e-mail saiu de verdade
+- [Phase 04]: 04-15: DESVIO DE FORMA declarado — as duas exigencias do plano eram incompativeis entre si ('exatamente 1 catch (erroDeRegistro)' vs 'incremento dentro do mesmo ramo'); prevaleceu o criterio de aceite verificavel: UM try envolve o if/else do status e o incremento virou um if proprio abaixo do catch, com a divergencia mitigada por comentario e pelos oraculos A e B de partialFailure
+- [Phase 04]: 04-15: so erroDeRegistro.message vai ao logger, nunca o objeto (D-WR2-02-b) — CR-02 do 04-09: um erro de borda carrega config.headers com o AGENDOR_TOKEN
+- [Phase 04]: 04-15 [C10, decisao vinculante do usuario, 2026-08-05]: o TRADE-OFF DO FAIL-SAFE esta APROVADO — quando a gravacao do desfecho falha a linha fica 'pending', nao deduplica, e a rodada seguinte PODE reenviar para quem ja recebeu. Duplicata incomoda e aceitavel; deixar alguem sem notificacao nao e. Decisao do USUARIO, nao escolha do executor
+- [Phase 04]: 04-15 [C10 (2), usuario, 2026-08-05]: o todo in-01-status-pending-na-ui MANTEM prioridade media mesmo com este plano aumentando a frequencia do 'pending' na UI; o arquivo do todo nao foi editado
+- [Phase 04]: 04-15: o consumidor do canal parcial (err.resultadosParciais ?? []) NAO foi tocado (D-WR2-02-d) — o Cenario D dispara a excecao na fabrica INICIAL de sendStaleNotification, que fica FORA do try, entao o erro chega sem parcial anexado e nada do 04-16 e exercitado; e isso que preserva o rollback independente entre os dois planos
+- [Phase 04]: 04-15: o diff de emailer.js e EXCLUSIVAMENTE de comentario (contagem de linhas de codigo = 0) — parou de citar como coberto o cenario da conexao SQLite fechada e passou a citar o cenario A, declarando o desfecho do caso nao coberto sem nomear a funcao de desligamento
+
 ### Pending Todos
 
 [From .planning/todos/pending/ — ideas captured during sessions]
@@ -314,6 +358,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-05T00:33:05.169Z
-Stopped at: Completed 04-14-PLAN.md — WR2-01 fechado; results.notified acompanha o status tambem no caminho de excecao. Proximo: 04-15 (WR2-02, termina no checkpoint C10). SEC-01 permanece ABERTO por decisao C8.
+Last session: 2026-08-05T02:08:24.939Z
+Stopped at: Completed 04-15-PLAN.md — WR2-02 fechado; C10 aprovado pelo usuario (reenvio preferido ao abandono da rodada). Proximo: 04-16 (WR2-04), aguardando despacho do orquestrador. SEC-01 permanece ABERTO por decisao C8.
 Resume file: None
