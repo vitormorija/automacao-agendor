@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: 04-23 COMPLETO — WR3-02 FECHADO (as tres operacoes de banco do laco de runCheck protegidas)
-stopped_at: Completed 04-19-PLAN.md
-last_updated: "2026-08-05T06:01:07.421Z"
-last_activity: "2026-08-05 -- 04-23 completo (WR3-02: a leitura de dedup deixa de abortar a rodada); suite 164 -> 166"
+status: 04-24 COMPLETO — WR3-03 FECHADO (o canal parcial validado no conteiner E no elemento)
+stopped_at: Completed 04-24-PLAN.md
+last_updated: "2026-08-05T06:10:21.538Z"
+last_activity: "2026-08-05 -- 04-24 completo (WR3-03: o canal parcial validado no elemento, nao so no conteiner); suite 166 -> 168"
 progress:
   total_phases: 8
   completed_phases: 3
   total_plans: 43
-  completed_plans: 39
+  completed_plans: 40
   percent: 38
 ---
 
@@ -26,8 +26,72 @@ See: .planning/PROJECT.md (updated 2026-07-22)
 ## Current Position
 
 Phase: 04 (confiabilidade-das-integra-es) — gap closure r3 EM EXECUCAO
-Plan: 23 de 27 executados (04-01..04-23). Faltam 04-24..04-27 (gap closure r3).
-Status: 04-23 COMPLETO — WR3-02 FECHADO (as tres operacoes de banco do laco de runCheck protegidas)
+Plan: 24 de 27 executados (04-01..04-24). Faltam 04-25..04-27 (gap closure r3).
+Status: 04-24 COMPLETO — WR3-03 FECHADO (o canal parcial validado no conteiner E no elemento)
+
+  O 04-24 fechou WR3-03, o vizinho de WR2-04 um NIVEL MAIS FUNDO. O 04-16 endureceu a
+  leitura do canal parcial com Array.isArray(err?.resultadosParciais) e escreveu no
+  comentario que "ausencia e corrupcao passam a ser lidas do mesmo jeito". Meia corrupcao:
+  Array.isArray valida o CONTEINER e nada mais, e a premissa do proprio cenario E (um erro
+  congelado de biblioteca carregando "uma propriedade homonima de qualquer tipo") nao da
+  razao nenhuma para supor que esse tipo seria preferencialmente string e nao array.
+  RED MEDIDO, e a previsao do plano BATEU nas DUAS direcoes: TypeError "Cannot read
+  properties of null (reading 'success')" com stack em scheduler.js:261 (a linha do .some) e
+  "at Array.some", em F e em G. A prova operacional veio no log do proprio SUT, DUAS vezes, e
+  o catch que capturou nao e nenhum dos internos: e o EXTERNO de runCheck. r.deals.length foi
+  medido a parte (a asseracao de r.error dispara primeiro) e vale ZERO nos dois cenarios —
+  mesmo achado estrutural do 04-15/04-16/04-23 (results.deals.push fica no FIM do laco) — com
+  transportesCriados = 2 em vez de 3, a medida direta de que o SEGUNDO negocio nunca chegou a
+  ser servido. 0 negocios processados, 0 e-mails, num dia em que dois deveriam sair. O modo
+  canal-corrompido na mesma execucao e o CONTROLE: 2/1/2/3, o cenario E ja corrigido pelo
+  04-16 atravessa a rodada inteira.
+  AGORA: o predicado e `r && r.success === true` — comparacao ESTRITA de proposito (o produtor
+  grava success como booleano, entao nada legitimo se perde, e um truthy de outro tipo e lido
+  como nao confirmado). As DUAS guardas foram SOMADAS, nao trocadas: Array.isArray
+  nao-comentario continua = 1. Diff de scheduler.js com EXATAMENTE 6 linhas nao-comentario, as
+  2 mudancas prescritas (a quebra em bloco e do Biome, nao escolha).
+  O CENARIO SIMETRICO EXIGIDO PELA RODADA EXISTE E ESTA NOMEADO: cenario G — parcial
+  [null, { success: true }], com o elemento corrompido ANTES do sucesso genuino DE PROPOSITO
+  (e o primeiro que o .some avalia). Endurecer a leitura para deixar de LANCAR e METADE do
+  conserto; a outra metade e nao PERDER a confirmacao genuina. Descartar o array inteiro ao
+  primeiro elemento invalido rebaixaria para 'error' uma linha cujo e-mail saiu de verdade,
+  'error' nao deduplica, e a rodada de amanha reenviaria para quem ja recebeu — exatamente o
+  desfecho que WR-01 (04-10) existe para impedir. F e G se apoiam em direcoes opostas e e o
+  PAR que fecha o achado. G assere linha 'sent', alreadyNotifiedToday(primeiro) === true,
+  r.notified === 2 E r.deals[0].notified === false (a assimetria do 04-14, por caminho novo).
+  O COMENTARIO E METADE DO CONSERTO: o achado nasceu de um bloco que afirmava mais do que o
+  codigo entregava — mesmo mecanismo de WR3-01 ("politica UNICA" sobre 2 de 5 bordas).
+  Os dois blocos agora dizem CONTEINER E ELEMENTO, enumeram E/F/G pelo nome e trazem a frase
+  em sentido OPOSTO, que nenhum comentario anterior tinha. Escrito SEM reproduzir a expressao
+  do predicado (R3-26): grep -c "r.success === true" = 1, nao 2.
+  emailer.js recebeu diff EXCLUSIVAMENTE DE COMENTARIO — 0 linhas nao-comentario, medido.
+  TODOS os criterios numericos bateram, EXCETO UM, de contagem do proprio criterio: o plano
+  esperava 3 ocorrencias de `Object.freeze`; o grep devolve 4 — as 3 construcoes reais (153,
+  166, 177) mais 1 MENCAO no comentario do cabecalho que explica a armadilha do sloppy mode,
+  que ja existia (baseline do mesmo grep era 2, nao 1). Filtrando comentario: exatamente 3.
+  Mesma classe do desvio do 04-23 (mock.method(db). Valor medido registrado, numero do plano
+  NAO forcado.
+  INVARIANTES HERDADAS MEDIDAS E NAO REGREDIDAS: catch (erroDeRegistro) = 1; results.notified++
+  = 2; continue; = 3; categoriaIndecidivel = 1; `= alreadyNotifiedToday(deal.id);` = 1;
+  `if (alreadyNotifiedToday(deal.id))` = 0; total nao-comentario = 2 (a 2a em runCheckOnly,
+  intocada).
+  Suite 166 -> 168, cobertura de scheduler.js em 81,85% linhas / 76,81% branches e emailer.js
+  em 89,49% / 63,07%, lint exit 0 (44 warnings). Os 8 arquivos vizinhos verdes SEM edicao (40
+  casos); git diff --name-only -- test/ na Task 2 saiu VAZIO e -- src/ na Task 1 tambem.
+  ZERO DESVIOS: nenhuma Rule 1-4 acionada, nenhum pacote instalado.
+  ESCOPO QUE O 04-24 NAO FECHA: a lacuna do `throw null` continua ABERTA e por decisao —
+  results.errors.push(err.message) e a PRIMEIRA instrucao do catch e estoura antes de qualquer
+  guarda deste plano; fecha-la muda outra instrucao e pede plano proprio. `erroDeRegistro?.
+  message` entrou como defesa em profundidade SEM caso dedicado (D-WR3-03-b): pina-lo exigiria
+  mockar a gravacao dentro do arquivo do canal parcial, que deliberadamente nao a mocka — e
+  esse isolamento que mantem os consertos do 04-15 e do 04-16/04-24 revertiveis de forma
+  independente. O contrato de sendStaleNotification nao mudou (continua LANCANDO o erro
+  original), a anexacao no produtor nao aparece no diff, e o desfecho do canal BEM FORMADO e
+  identico (cenarios A e B de partialFailure verdes sem edicao). runCheckOnly intocada.
+  ATENCAO para quem seguir: notificationStatus.canalParcial.test.js deixou de ser o oraculo de
+  UMA corrupcao e virou o das DUAS camadas do canal — o cabecalho lista E, F e G com o papel
+  de cada um. Uma terceira forma de corrupcao do canal entra ali, ao lado das existentes.
+  O proximo e o 04-25 (WR3-06: a paginacao sem teto de paginas em getUsers).
 
   O 04-23 fechou WR3-02, o vizinho de WR2-02 uma construcao ACIMA. O 04-15 protegeu a
   GRAVACAO do desfecho argumentando que "a conexao SQLite pode estar indisponivel — e
@@ -565,7 +629,7 @@ Origem: CODE REVIEW RODADA 3 (2026-08-05)
   SEC-01 permanece ABERTO como risco conscientemente aceito (decisao C8) — nao marcar resolvido.
 Last activity: 2026-08-05 -- 04-23 completo (WR3-02: a leitura de dedup deixa de abortar a rodada); suite 164 -> 166
 
-Progress: [█████████░] 91%
+Progress: [█████████░] 93%
 
 ## Performance Metrics
 
@@ -624,6 +688,7 @@ Progress: [█████████░] 91%
 | Phase 04 P21 | 12 | 2 tasks | 2 files |
 | Phase 04 P22 | 14min | 2 tasks | 2 files |
 | Phase 04 P23 | 12 | 2 tasks | 2 files |
+| Phase 04 P24 | 14min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -819,6 +884,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-05T06:00:44.483Z
-Stopped at: Completed 04-19-PLAN.md
+Last session: 2026-08-05T06:10:21.538Z
+Stopped at: Completed 04-24-PLAN.md
 Resume file: None
