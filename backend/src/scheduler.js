@@ -41,6 +41,12 @@ async function runCheck() {
     // dia, categoria indecidível, funil e "sem destinatário") — que separa "dia calmo" de "a
     // borda de organizações caiu". Ele conta SEMPRE, independente do limiar do alarme abaixo.
     skippedCategoriaIndecidivel: 0,
+    // Mesma razão do contador acima para nascer no literal: o campo existe SEMPRE no payload da
+    // rodada, e nenhum consumidor precisa distinguir `undefined` de zero (in3-08, MODO 1).
+    // O nome NÃO começa com `skipped` DE PROPÓSITO: nada foi suprimido aqui — estes negócios
+    // FORAM notificados. Ele conta em quantos a regra de funil não pôde nem ser avaliada, que é
+    // uma pergunta sobre a FORMA do payload da borda, não sobre quem recebeu e-mail.
+    funilNaoAvaliado: 0,
     errors: [],
     deals: [],
   };
@@ -78,6 +84,18 @@ async function runCheck() {
 
     for (const deal of dealsToNotify) {
       results.checked++;
+
+      // Contagem de forma do payload (in3-08, MODO 1). A POSIÇÃO é decisão, não acaso: ela fica no
+      // TOPO do laço, antes de qualquer guarda, enquanto o contador de categoria indecidível mora
+      // dentro da guarda que ele conta. O motivo é o residual `cr4-01b` já registrado nesta fase —
+      // um contador que só incrementa depois de outra guarda ter feito `continue` não consegue
+      // alcançar o denominador `results.stale` numa rodada MISTA, e o alarme falha ABERTO. Aqui
+      // numerador e denominador percorrem exatamente o mesmo conjunto de negócios.
+      // Este `if` NÃO faz `continue`, não escreve `skipped` e não decide destinatário nenhum:
+      // funil ausente continua NOTIFICANDO (fail-open deliberado), e o negócio segue o fluxo
+      // normal logo abaixo. Oráculo: cenários I e J de scheduler.categoriaIndecidivel.test.js.
+      if (deal.funilAusente) results.funilNaoAvaliado++;
+
       const owner = users[deal.ownerId];
       const ownerEmail = owner?.email || null;
       const author = users[deal.authorId];
@@ -354,6 +372,43 @@ async function runCheck() {
       }
 
       results.deals.push(dealResult);
+    }
+
+    // Alarme de FORMA do payload: a regra de funil não pôde ser avaliada em NENHUM negócio da
+    // rodada (in3-08, MODO 1). Como o bloco irmão logo abaixo, este é ADITIVO e mora DEPOIS do
+    // laço: não condiciona nenhum `continue`, nenhuma guarda e nenhuma decisão de notificar ou
+    // pular, e portanto NÃO decide quem recebe e-mail — nenhuma escolha de limiar, alta ou baixa,
+    // pode fazer isso aqui. O que ele toca é exclusivamente o sinal AGREGADO da rodada.
+    //
+    // A AFIRMAÇÃO DA MENSAGEM É ESTREITA DE PROPÓSITO, e a redação larga é PROIBIDA: nunca
+    // escrever que ninguém ficou sem notificação. O contador incrementa no TOPO do laço, antes das
+    // guardas de dedup e de categoria, então a condição total pode valer numa rodada COMPOSTA em
+    // que alguns desses mesmos negócios foram pulados por OUTRA causa — e ali a frase larga seria
+    // factualmente falsa, minando justamente a ameaça que esta mensagem existe para mitigar (um
+    // operador que conclua ter perdido envios dispara a rodada de novo e gera duplicatas). O que o
+    // contador garante é só isto: a regra de funil não tirou ninguém do envio. Os cenários I e J do
+    // oráculo isolam a causa e portanto NÃO exercitam a rodada composta — a defesa aqui é a
+    // redação, não um caso de teste, e é por isso que ela não deve ser "melhorada" depois.
+    //
+    // Por que vem ANTES do bloco de categoria indecidível: quando as duas condições totais valem
+    // na mesma rodada, o campo escalar de erro fica com a mensagem MAIS GRAVE (a de lá, em que
+    // ninguém foi notificado), porque quem escreve depois vence; e as DUAS mensagens ficam no
+    // array de erros, que é o único bloco que o Dashboard de fato renderiza. Ordem de escrita é
+    // precedência do campo escalar — decisão, não acaso.
+    //
+    // E o par que impede este alarme de virar ruído diário são os cenários I e J: J tem construção
+    // idêntica à de I e muda EXCLUSIVAMENTE o nome do funil, então uma implementação que ligasse o
+    // alarme por QUANTIDADE — `notified === 0`, `skipped === stale` ou sempre — fica vermelha lá.
+    // Só inteiros e texto fixo entram na mensagem (CR-02 do 04-09).
+    if (results.stale > 0 && results.funilNaoAvaliado === results.stale) {
+      const avisoDeForma =
+        `Nenhum dos ${results.stale} negócio(s) parado(s) do dia trouxe funil: a regra de ` +
+        'supressão por funil não pôde ser avaliada em nenhum deles, e a forma do payload da ' +
+        'Agendor pode ter mudado. A rodada CONCLUIU e a supressão por funil não impediu ' +
+        'nenhuma notificação — este é um alarme de FORMA, não de supressão.';
+      results.error = avisoDeForma;
+      results.errors.push(avisoDeForma);
+      logger.error(`[Scheduler] ${avisoDeForma}`);
     }
 
     // Alarme de supressão TOTAL por categoria indecidível (CR4-01). Este bloco é ADITIVO e mora
