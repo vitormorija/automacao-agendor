@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: FASE 04 COMPLETA (2026-08-05) — 18/18 planos
-stopped_at: "Completed 04-18-PLAN.md — o ULTIMO da Fase 4. WR2-06 fechado (escopo obrigatorio 53 -> 2 referencias por numero de linha; backend/src 12 -> 0; diff dos .js com 0 linhas nao-comentario). IN2-01..IN2-04 registrados como todo pendente. DECISAO C9 aplicada ao ROADMAP e a REQUIREMENTS. FASE 04 COMPLETA (18/18), pronta para verificacao. SEC-01 permanece ABERTO por decisao C8. || anterior: Completed 04-17-PLAN.md — WR2-05 fechado; o transporte recriado no retry serve o destinatario seguinte, sem que o retorno por destinatario mude de forma. Checkpoint C11 APROVADO pelo usuario (2026-08-05), com os tres desvios de medicao aceitos e o todo rel-02b mantido em prioridade alta. Proximo: 04-18, o ULTIMO da fase (WR2-06 + todos IN2-01..IN2-04 + DECISAO C9) — quem despacha e o coordenador. SEC-01 permanece ABERTO por decisao C8."
+status: executing
+stopped_at: "FASE 04 REABERTA pelo code review rodada 3 (2026-08-05): 18/18 planos executados e suite em 148/148, mas o 04-REVIEW.md r3 achou 1 BLOCKER (CR3-01), 7 warnings e 8 info. A fase NAO esta completa. Proximo: /gsd:plan-phase 4 --gaps sobre o 04-REVIEW.md. || anterior: Completed 04-18-PLAN.md — o ULTIMO da Fase 4. WR2-06 fechado (escopo obrigatorio 53 -> 2 referencias por numero de linha; backend/src 12 -> 0; diff dos .js com 0 linhas nao-comentario). IN2-01..IN2-04 registrados como todo pendente. DECISAO C9 aplicada ao ROADMAP e a REQUIREMENTS. FASE 04 COMPLETA (18/18), pronta para verificacao. SEC-01 permanece ABERTO por decisao C8. || anterior: Completed 04-17-PLAN.md — WR2-05 fechado; o transporte recriado no retry serve o destinatario seguinte, sem que o retorno por destinatario mude de forma. Checkpoint C11 APROVADO pelo usuario (2026-08-05), com os tres desvios de medicao aceitos e o todo rel-02b mantido em prioridade alta. Proximo: 04-18, o ULTIMO da fase (WR2-06 + todos IN2-01..IN2-04 + DECISAO C9) — quem despacha e o coordenador. SEC-01 permanece ABERTO por decisao C8."
 last_updated: "2026-08-05T03:33:14.682Z"
-last_activity: 2026-08-05 -- 04-18 completo; FASE 04 COMPLETA (18/18), pronta para verificacao
+last_activity: 2026-08-05 -- code review r3 reabriu a fase 04 (blocker CR3-01); aguardando plan-phase 4 --gaps
 progress:
   total_phases: 8
-  completed_phases: 4
+  completed_phases: 3
   total_plans: 34
   completed_plans: 34
-  percent: 50
+  percent: 38
 ---
 
 # Project State
@@ -25,9 +25,54 @@ See: .planning/PROJECT.md (updated 2026-07-22)
 
 ## Current Position
 
-Phase: 04 (confiabilidade-das-integra-es) — COMPLETA, pronta para verificacao
-Plan: 18 de 18 completos (04-01..04-18).
-Status: FASE 04 COMPLETA (2026-08-05) — 18/18 planos
+Phase: 04 (confiabilidade-das-integra-es) — REABERTA pelo code review rodada 3
+Plan: 18 de 18 executados (04-01..04-18). A fase NAO esta completa.
+Status: CODE REVIEW RODADA 3 REABRIU A FASE (2026-08-05)
+
+  O 04-REVIEW.md (round: 3, 16 arquivos, standard) achou 1 BLOCKER, 7 warnings e 8 info
+  sobre o codigo do gap closure r2. As rodadas 1 e 2 estao preservadas em 04-REVIEW-r1.md
+  e 04-REVIEW-r2.md. Suite em 148/148 e lint exit 0 — os testes NAO acusam o blocker.
+
+  PADRAO PELA TERCEIRA VEZ: dos 7 achados da r2, so 2 fecharam limpos (WR2-01, WR2-06).
+  CINCO fecharam o cenario que o teste novo exercita e deixaram o VIZINHO aberto:
+  CR2-01 -> CR3-01 | WR2-02 -> WR3-02 | WR2-04 -> WR3-03 | WR2-03 -> WR3-05 | WR2-05 -> IN3-07
+
+  CR3-01 (BLOCKER): a exclusao por categoria falha ABERTA. getOrgCategory engole o erro e
+  devolve null; EXCLUDED_CATEGORIES.includes(null) e false. /organizations/:id e a UNICA
+  borda Agendor fora do fetchWithRetry — e a que faz N requisicoes por rodada. Um unico 429
+  transitorio faz uma organizacao 'Parceiro' (categoria EXCLUIDA) receber e-mail, com
+  results.error undefined, log dizendo "1 notificacoes enviadas", UI em ✅ e notification_log
+  em 'sent'. Notificacao indevida, SILENCIOSA, sem vestigio. Reproduzido deterministicamente.
+  O comportamento e pre-existente, mas a FREQUENCIA DE EXPOSICAO foi multiplicada por
+  REL-04/CR2-01: antes a categoria era memoizada pelo tempo de vida do processo; depois do
+  04-07 e do 04-12 toda rodada reconsulta todas as organizacoes. O preco do isolamento entre
+  execucoes — que era correto e necessario — nunca foi nomeado em nenhum plano.
+  AGRAVANTE: agendor.cacheInvalidation.test.js:163-164 assere o fail-open COMO CONTRATO
+  (idsComFalha.includes(305) === true). Existe uma asseracao que fica VERMELHA quando alguem
+  conserta o defeito. Ela precisa ser reescrita junto com a correcao.
+
+  DECISAO DO USUARIO sobre CR3-01 (vinculante, 2026-08-05) — ROTA "INDECIDIVEL":
+  1. Colocar /organizations/:id na politica UNICA de retry da borda (fetchWithRetry), como
+     ja fazem /deals e /tasks.
+  2. Se ainda assim falhar, o deal e marcado INDECIDIVEL: fica FORA do envio, mas PERMANECE
+     no dashboard e nos relatorios, com logger.warn nomeando a organizacao.
+  NAO abortar a rodada inteira por uma organizacao inatingivel — preserva o fail-safe sem
+  custar a rodada. O cenario (3) de agendor.cacheInvalidation.test.js deve ser reescrito para
+  asserir o novo contrato, e um caso novo deve pinar "429 em /organizations -> nenhum e-mail
+  para a organizacao excluida", com contagem de tentativas.
+
+  DECISAO DO USUARIO sobre o escopo (2026-08-05): planejar a gap closure r3 COMPLETA
+  (blocker + warnings), nao apenas o blocker.
+
+  RESSALVA DO REVISOR: WR3-02 NAO esta coberto pela decisao C10 — o custo dele e a rodada
+  INTEIRA, nao uma linha reenviavel.
+
+  Desvios que o revisor CONFIRMOU como aceitaveis: o duplo teste de houveEnvioConfirmado
+  (cenario A pina o ramo verdadeiro, E pina o falso — so o comentario cita o oraculo errado)
+  e a ordem de avancarRelogioAte (o snippet do review travaria a suite). Discordou em parte
+  do desvio 4: a mensagem de asseracao da linha 247 nao e oraculo e PODE ser corrigida.
+
+  --- historico da execucao dos 18 planos abaixo ---
   O 04-18, ULTIMO da fase, fechou WR2-06 e registrou os 4 achados Info da rodada 2.
   WR2-06: o review conferiu 7 referencias por numero de linha; a VARREDURA MEDIDA achou
   53 no escopo obrigatorio — 12 em backend/src e 41 nos arquivos de teste do gap closure.
