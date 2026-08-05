@@ -89,8 +89,32 @@ async function runCheck() {
         skipped: false,
       };
 
-      // Não notificar duas vezes no mesmo dia
-      if (alreadyNotifiedToday(deal.id)) {
+      // Não notificar duas vezes no mesmo dia.
+      //
+      // A leitura vive num try/catch próprio (WR3-02) porque ela é a PRIMEIRA operação de
+      // banco do laço e usa a MESMA conexão SQLite que o 04-15 protegeu na gravação do
+      // desfecho — o argumento daquele plano valia aqui desde o início, e só a gravação
+      // recebeu a guarda. Sem ela, uma falha aqui sobe direto ao catch externo, aborta o
+      // `for` e deixa TODOS os negócios restantes sem processar: silêncio total num dia de
+      // notificar, e não apenas um negócio perdido.
+      //
+      // A variável nasce `false` de propósito: não saber se já notificamos é lido como
+      // "não deduplica", e a escolha entre reenviar e silenciar é decisão do usuário
+      // (checkpoint C10 — duplicata incomoda e é aceitável; deixar alguém sem notificação
+      // não é). Registre-se que C10 NÃO cobria este caso: lá o custo era uma linha
+      // 'pending' retentável amanhã, aqui era a rodada inteira. Só a MENSAGEM do erro vai
+      // ao log (CR-02 do 04-09: um erro de borda carrega config.headers com o
+      // AGENDOR_TOKEN). Oráculo: notificationStatus.registroResiliente.test.js, cenário E.
+      let jaNotificadoHoje = false;
+      try {
+        jaNotificadoHoje = alreadyNotifiedToday(deal.id);
+      } catch (erroDeDedup) {
+        logger.error(
+          '[Scheduler] Falha ao consultar a dedup do dia:',
+          erroDeDedup.message,
+        );
+      }
+      if (jaNotificadoHoje) {
         dealResult.skipped = true;
         results.skipped++;
         results.deals.push(dealResult);
