@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: "Completed 04-35-PLAN.md — IN3-08 FECHADO, o ULTIMO filtro de elegibilidade fail-open da fase. MODO 2 CORRIGIDO: a comparacao de funil deixou de ser por igualdade EXATA e passou a ser por SUBSTRING — um rename no CRM ('Beefor' -> 'Beefor Comercial') nao desliga mais em silencio a regra de quem-recebe, e isso vale nos TRES consumidores (runCheck, runCheckOnly, sendOwnerWeeklySummary), que leem a MESMA funcao exportada. Os DOIS casos QUIRK do oraculo unitario INVERTERAM: a palavra QUIRK nao sobrevive no arquivo. MODO 1 MANTIDO fail-open COM SINAL: funil ausente CONTINUA notificando (decisao do usuario, 15/15 das fixtures tem a estrutura, e um fail-safe uniforme reintroduziria o CR4-01); o que mudou foi observabilidade — campo funilAusente, aviso AGREGADO em getStaleDeals e contador results.funilNaoAvaliado com alarme aditivo. Suite 186 -> 192, agendor.js 100% linhas / 92,08% branches, lint exit 0 (44 warnings). Residual in3-08b criado com as 5 medicoes (33 -> 34 todos). A FASE 04 PERMANECE REABERTA — quem a fecha e o coordenador, depois do code review rodada 5. || anterior: Completed 04-34-PLAN.md — RESIDUO DOCUMENTAL DA R4 FECHADO e GAP CLOSURE R4 COMPLETA (7 de 7 planos). Nenhum achado da rodada 4 termina a fase sem dono: IN4-02..IN4-06 e os 5 residuais dos inventarios de irmaos (cr4-01b, cr4-01c, wr4-03b, wr4-04b, wr4-07b) viraram todos pendentes (23 -> 33), cada residual carregando a MEDICAO que o excluiu do escopo. IN4-01 NAO virou arquivo: fechado pelo 04-30, medido `grep -c \"batches de 10\"` = 0. ROADMAP ganhou o success criterion 8 (comportamento garantido, zero identificadores). REQUIREMENTS intocado (D-IN4-e). Diff de codigo ZERO nas 3 tasks, suite 186/186, lint exit 0. A FASE 04 PERMANECE REABERTA — quem a fecha e o coordenador, depois do code review rodada 5. || anterior: Completed 04-33-PLAN.md — WR4-02 e WR4-03 FECHADOS: os comentarios da suite deixaram de afirmar que existe uma copia do helper de relogio que foi removida, e as 4 ancoras por numero de linha do oraculo de REL-02 viraram ancoras NOMEADAS, cada uma conferida contra o emailer.js atual antes de escrita. UNICO plano da r4 com DIFF DE PRODUCAO ZERO por criterio (backend/src/ vazio nas duas tasks). Inventario medido: 4 linhas em 4 arquivos sobre a copia, 45 -> 41 linhas com referencia por numero; residual de 39 linhas em 9 arquivos vai para o todo wr4-03b (04-34). Suite 186/186 (mesmo total da entrada), cobertura exit 0, lint exit 0 (44 warnings). Falta so o 04-34 da gap closure r4. || anterior: Completed 04-32-PLAN.md — WR4-07 FECHADO: um responsavel SEM NOME deixou de derrubar o resumo semanal de TODOS os comerciais. O rotulo do relatorio individual passou a resolver pelo CADASTRO (negocio -> users[d.ownerId]?.name -> rotulo neutro) e o template ganhou a guarda gemea como defesa em profundidade. Suite 183 -> 186, cobertura exit 0, lint exit 0 (44 warnings). Faltam 04-33 e 04-34 da gap closure r4. || anterior: Completed 04-31-PLAN.md — WR4-06 FECHADO: a PREVIA do envio (runCheckOnly) passou a MARCAR quem sera notificado, com os MESMOS quatro predicados de runCheck, e o rotulo do botao do painel deixou de contar negocios parados para contar destinatarios. A divergencia entre previa e envio virou VERMELHO (cenarios F e G), nao comentario. Suite 181 -> 183, lint exit 0 no backend e no frontend, build do frontend exit 0. Faltam 04-32..04-34 da gap closure r4. || anterior: Completed 04-30-PLAN.md — WR4-04 e IN4-01 FECHADOS: a unica borda do modulo com fan-out proporcional ao VOLUME DE DADOS ganhou teto de CONCORRENCIA (LOTE_DE_ORGS), sem mudar o resultado de getStaleDeals, e o lote IRMAO da paginacao esta VERIFICADO por medicao. Suite 178 -> 181, agendor.js 100% linhas / 91,72% branches, lint exit 0. Faltam 04-31..04-34 da gap closure r4. || anterior: Completed 04-29-PLAN.md — WR4-01 e WR4-05 FECHADOS: as TRES paginacoes de agendor.js tem o mesmo teto e o mesmo tratamento de envelope, com as irmas VERIFICADAS por teste e nao presumidas. Suite 174 -> 178, agendor.js em 100% linhas / 91,6% branches, lint exit 0. Faltam 04-30..04-34 da gap closure r4. || anterior: Completed 04-28-PLAN.md — CR4-01 (o BLOCKER da r4) FECHADO. || GAP CLOSURE R4 PLANEJADA E VERIFICADA (2026-08-05): 7 planos aditivos 04-28..04-34 sobre o 04-REVIEW.md round 4. Plan-checker: VERIFICATION PASSED NA PRIMEIRA PASSADA. Cobertura REL-01..06 = 6/6. || FASE 04 REABERTA PELA 4a VEZ pelo code review rodada 4: 1 BLOCKER (CR4-01), 7 warnings e 6 info."
+stopped_at: "FASE 04 REABERTA PELA 5a VEZ pelo code review rodada 5 (2026-08-05): 35/35 planos executados e suite em 192/192, mas o 04-REVIEW.md r5 achou 1 BLOCKER (CR5-01), 5 warnings e 4 info. ESCOPO DECIDIDO PELO USUARIO: corrigir SO CR5-01 + WR5-01 e reescrever o todo cr4-01b; os outros 4 warnings e 4 info viram todos pendentes. Proximo: /gsd:plan-phase 4 --gaps."
 last_updated: "2026-08-05T20:48:00.000Z"
-last_activity: 2026-08-05 -- 04-35 completo (in3-08 fechado: comparacao de funil por SUBSTRING nos tres consumidores; funil ausente segue notificando, agora contado e avisado; residual in3-08b com 5 medicoes); suite 186 -> 192, agendor.js 100% linhas / 92,08% branches, lint exit 0
+last_activity: 2026-08-05 -- code review r5 reabriu a fase (blocker CR5-01); escopo r5 travado em CR5-01 + WR5-01
 progress:
   total_phases: 8
   completed_phases: 3
@@ -25,559 +25,54 @@ See: .planning/PROJECT.md (updated 2026-07-22)
 
 ## Current Position
 
-Phase: 04 (confiabilidade-das-integra-es) — gap closure r4 COMPLETA + in3-08 promovido e fechado; FASE AINDA REABERTA
-Plan: 35 de 35 executados (04-01..04-35). Nenhum plano pendente.
-Status: IN3-08 FECHADO PELO 04-35 (2026-08-05)
+Phase: 04 (confiabilidade-das-integra-es) — REABERTA PELA 5a VEZ pelo code review rodada 5
+Plan: 35 de 35 executados (04-01..04-35). A fase NAO esta completa; falta a gap closure r5.
+Status: CODE REVIEW RODADA 5 REABRIU A FASE (2026-08-05)
 
-  O 04-35 fechou o UNICO todo desta fase que foi PROMOVIDO A PLANO por decisao do usuario, e o
-  unico da gap closure que MUDA COMPORTAMENTO na logica de quem-recebe — o Core Value do
-  milestone. O todo descrevia DOIS modos de falha misturados; as medicoes os separaram e o
-  usuario decidiu cada um por si, em 2026-08-05. NENHUMA DAS DUAS DEVE SER REABERTA.
-  MODO 2 — COMPARACAO FRAGIL: CORRIGIDO. NO_OWNER_NOTIFY_FUNNELS comparava por igualdade
-  EXATA, entao bastava um administrador renomear o funil dentro do Agendor ('Beefor' ->
-  'Beefor Comercial') para a comparacao deixar de casar e a notificacao que a regra manda
-  suprimir voltar a sair. Nao dependia de falha nenhuma. Agora e SUBSTRING sobre o nome
-  normalizado. Consequencia VISTA E ESCOLHIDA pelo usuario: 'beeforx' TAMBEM passa a ser
-  suprimido — quem "consertar" isso com limite de palavra esta DESFAZENDO uma decisao.
-  OS DOIS CASOS QUIRK INVERTERAM, e e esse o sinal de que a decisao foi tomada: um caso cujo
-  nome dizia "comportamento ATUAL" nao sobrevive a uma mudanca deliberada. `grep -c QUIRK` no
-  oraculo unitario = 0 (era 2). O arquivo ganhou tambem a TESTEMUNHA DE NAO-SUPRESSAO
-  ('Comercial' NOTIFICA): sem ela, uma implementacao que devolvesse false SEMPRE passaria em 7
-  dos 8 casos, porque com os dois quirks invertidos os unicos true restantes seriam os de funil
-  ausente. 6 -> 8 casos.
-  MODO 1 — FUNIL AUSENTE: MANTIDO FAIL-OPEN, COM SINAL. Funil ausente CONTINUA NOTIFICANDO, e
-  a assercao principal do caso `funil null/ausente NAO suprime` NAO mudou. Razao medida e
-  escrita no codigo: 15 de 15 negocios das fixtures tem `dealStage.funnel.name`, entao funil
-  ausente e caminho de EXCECAO e nao caso comum; um fail-safe uniforme faria "nao sei o funil"
-  virar o default de qualquer payload que mudasse de forma, REINTRODUZINDO o CR4-01 (supressao
-  em massa invisivel) que o 04-28 acabou de fechar. O que mudou foi OBSERVABILIDADE.
-  OS TRES CONSUMIDORES ENTREGUES COM GATE, nao presumidos: runCheck e runCheckOnly (cenario H,
-  com a igualdade previa-x-envio herdada de F e G) e sendOwnerWeeklySummary (caso (8), com
-  assercao sobre o CORPO enviado e nao sobre contagem — licao do 04-32). Medicao estrutural que
-  sustenta: `grep -rin "beefor" scheduler.js emailer.js | grep -cv '//'` = 0, ou seja nao existe
-  segunda comparacao de funil para divergir.
-  O PAR I + J E O GUARDA-CORPO DO SINAL, mesmo papel de D+E no 04-28: I prova que a mudanca de
-  forma do payload deixou de ser invisivel; J tem construcao IDENTICA e muda EXCLUSIVAMENTE o
-  nome do funil, entao uma implementacao que ligasse o alarme por QUANTIDADE (notified === 0,
-  skipped === stale, ou sempre) fica vermelha la. Cenarios 7 -> 10.
-  O CONTADOR INCREMENTA NO TOPO DO LACO, e a posicao e DECISAO (D-IN3-08-f): o contador do
-  04-28 mora dentro da guarda que conta, este mora logo depois de results.checked++ e ANTES da
-  dedup. Motivo: o residual cr4-01b ja registrado nesta fase mostra que um contador que so
-  incrementa depois de outra guarda ter feito `continue` nao alcanca o denominador results.stale
-  numa rodada MISTA, e o alarme falha ABERTO. Aqui numerador e denominador percorrem o mesmo
-  conjunto. O nome NAO comeca com `skipped` de proposito: nada foi suprimido — estes negocios
-  FORAM notificados.
-  A MENSAGEM DO ALARME E ESTREITA POR EXIGENCIA DE GATE: `grep -c 'ninguem deixou de ser
-  notificado'` = 0. A frase larga seria FALSA numa rodada COMPOSTA (o contador incrementa antes
-  das guardas de dedup e categoria), e uma mitigacao que mente em parte dos casos e pior que
-  nenhuma (T-04-35-05). O que o contador garante e so isto: a supressao por funil nao impediu
-  nenhuma notificacao.
-  O ALARME NOVO VEM ANTES DO BLOCO DO 04-28 (D-IN3-08-g), verificado por leitura da ordem de
-  escrita: na colisao das duas condicoes totais o campo escalar results.error fica com a
-  mensagem MAIS GRAVE (a do 04-28, em que ninguem foi notificado) e as DUAS ficam em
-  results.errors, o unico bloco que o Dashboard renderiza.
-  O AVISO DE getStaleDeals E AGREGADO, uma linha por CHAMADA (D-IN3-08-e): a funcao e tambem o
-  caminho de LEITURA do painel — 8 invocacoes fora do modulo, com auto-refresh —, e um aviso por
-  negocio inundaria o log a cada atualizacao de tela. So inteiros e texto fixo (T-04-35-02).
-  RED literal, previsao batendo nos SETE casos: unitario 5 pass / 3 fail (casos 4, 5 e 6);
-  emailer 7 pass / 1 fail (caso 8); scheduler 7 pass / 3 fail, com H falhando em (b)
-  (`true !== false`), I falhando em (d) (`undefined !== 2`) DEPOIS de (a)(b)(c) — e e esse
-  trecho verde que PROVA que o fail-open ja estava correto e continua correto — e J falhando em
-  (b) (`undefined !== 0`). Nenhuma condicao de PARAR foi atingida.
-  DUAS DIVERGENCIAS DE MEDICAO, registradas e nenhuma forcada — DECIMA PRIMEIRA rodada da fase:
-  (1) `servirDealsDoFunilBeefor` da 4 e nao 3, por MENCAO em comentario no helper irmao; o
-  NAO-COMENTARIO da exatamente 3 e o `grep -c '^-[^-]'` do diff da 0, entao o helper de E e G
-  esta byte a byte; (2) o gate das irmas de filtro da 1 e nao 0 por CABECALHO DE HUNK do
-  `git diff -U0` (`@@ ... @@ const EXCLUDED_OWNERS = [...]`), que e anotacao de contexto do git
-  e nao linha alterada; filtrando para as linhas +/- reais da 0. As duas sao das classes ja
-  registradas nesta fase (mencao em comentario, no 04-29/04-30; contexto de diff, no 04-34).
-  UM CONFLITO INTERNO DO PLANO, resolvido a favor do gate e registrado: a acao pedia citar o
-  identificador `isExcludedStage` no comentario novo, e o criterio de aceite exigia 0
-  ocorrencias dele no diff. A SUBSTANCIA foi preservada (o comentario diz que a irma do mesmo
-  modulo ja comparava por correspondencia parcial pelo mesmo motivo) sem escrever o
-  identificador, e o gate fecha em 0 nas linhas reais.
-  UM DESVIO DE FERRAMENTAL, Rule 3 (escopo): `npm run format` do backend reformatou SEIS
-  arquivos de teste PRE-EXISTENTES sem relacao com este plano (dealId.validation,
-  deals.errorLog, envExample, notificationStatus.canalParcial, notifications.resolved,
-  secrets.grep). Foram REVERTIDOS e nao entraram em commit nenhum — sao divida de formatacao
-  anterior, fora do escopo. QUEM SEGUIR PRECISA SABER: rodar `npm run format` no backend hoje
-  produz ruido de diff nesses seis arquivos.
-  CONTRATOS HERDADOS MEDIDOS E NAO REGREDIDOS: `continue;` = 3 (a cadeia de guardas de runCheck
-  intacta), `skippedCategoriaIndecidivel` ausente do diff (0), `seraNotificado` ausente do diff
-  (0 — o cenario I PROVA que funilAusente atravessa o spread `{ ...deal }` sem edicao manual),
-  `results.error = ` 2 -> 3, `NO_OWNER_NOTIFY_FUNNELS` nao-comentario = 2, `logger.warn` em
-  agendor.js = 2, EXCLUDED_STAGE_WORDS/EXCLUDED_CATEGORIES/EXCLUDED_OWNERS/NEGOCIO_CATEGORIES
-  fora do diff, package.json e lockfiles intocados, ZERO arquivos de teste editados na Task 3.
-  in3-08b CRIADO com as 5 medicoes que excluiram cada irma do escopo, e NENHUM todo existente
-  foi editado — inclusive o proprio in3-08, que quem fechar a fase resolvera. 33 -> 34 todos.
-  ATENCAO PARA QUEM SEGUIR: os casos 5 ('beeforx' SUPRIME) e 7 ('Comercial' NOTIFICA) do
-  oraculo unitario sao um PAR e nao devem ser mexidos isoladamente — o 5 impede que a decisao
-  seja desfeita por engano e o 7 impede que a supressao vire larga demais. E o cenario I mistura
-  de proposito assercoes de COMPORTAMENTO e de INSTRUMENTO em blocos rotulados: quem reordenar
-  os blocos destroi a capacidade do vermelho de distinguir "o fail-open regrediu" de "o
-  instrumento ainda nao existe".
-  Commits: ceda55d (RED unitario + emailer), 78be496 (RED dos consumidores), 42a3de5 (GREEN).
+  35/35 planos, suite 148 -> 192 verdes. Os CINCO blockers de REGRA DE NEGOCIO estao fechados
+  (CR-01, CR-02, CR2-01, CR3-01, CR4-01) e o todo in3-08 — o ultimo filtro de elegibilidade
+  fail-open — foi promovido ao plano 04-35 e resolvido. As rodadas 1-4 estao preservadas em
+  04-REVIEW-r1.md .. -r4.md.
 
-Status anterior: RESIDUO DOCUMENTAL DA R4 FECHADO PELO 04-34 (2026-08-05)
+  MUDANCA DE PERFIL: os achados da r5 NAO mudam quem recebe. Sao defeitos nos INSTRUMENTOS —
+  quebram os sinais construidos para perceber falha. O eixo "quem recebe" esta estavel desde o
+  04-21.
 
-  A GAP CLOSURE R4 ESTA COMPLETA: os 7 planos (04-28..04-34) executaram. O blocker CR4-01 e
-  os 7 warnings foram fechados; os 6 Info e os 5 residuais tem dono.
-  A FASE 04 NAO ESTA FECHADA. `completed_phases` continua 3 e `percent` 38 de proposito —
-  quem decide fechar a fase e o COORDENADOR, depois do code review rodada 5. O handler
-  `roadmap.update-plan-progress` marcou a Fase 4 como Complete e o desvio foi REVERTIDO a
-  mao (ver Desvios, abaixo): so o checkbox do 04-34 e a contagem 34/34 ficaram.
-  O 04-34 e um plano de REGISTRO, nao de conserto: DIFF DE CODIGO ZERO nas TRES tasks
-  (`git status --porcelain backend/ frontend/` vazio em cada uma). Suite 186/186 e lint
-  exit 0 (44 warnings) — os MESMOS valores da entrada, como exigido de um plano que nao
-  toca codigo. Precedentes de diff zero na fase: 04-26, 04-27 e 04-33.
-  10 TODOS CRIADOS, 23 -> 33 pendentes. Os 5 Info (in4-02 baixa, in4-03 media, in4-04
-  media, in4-05 baixa, in4-06 media) e os 5 residuais dos inventarios de irmaos (cr4-01b,
-  cr4-01c, wr4-03b, wr4-04b media; wr4-07b baixa).
-  CADA INFO FOI CONFERIDO NO CODIGO REAL ANTES DE ESCRITO (mitigacao de R4-37): quatro dos
-  cinco vivem em modulos que os planos 04-28 a 04-31 reescreveram, e os cinco continuam
-  validos. IN4-02, em particular, esta em DOIS arquivos (agendor.js e agendor.retry429).
-  IN4-01 FECHADO COM MEDICAO, SEM ARQUIVO (D-IN4-a): `grep -c \"batches de 10\"
-  backend/src/agendor.js` = 0 — o comentario agora diz \"em lotes de `batchSize`\", com o
-  numero REMOVIDO em vez de corrigido. Justificativa D-WR4-04-e: o 04-30 introduziu uma
-  segunda constante de lote cujo valor E 10, e a frase errada ao lado dela tornaria os dois
-  lotes indistinguiveis — a correcao foi NECESSARIA, nao carona. Precedente: in2-02 / 04-26.
-  CADA RESIDUAL CARREGA A MEDICAO QUE O EXCLUIU DO ESCOPO, incluindo a alternativa avaliada
-  e REJEITADA no cr4-01b (o denominador derivado faria o alarme falhar ABERTO por caminho
-  novo, porque na lista enriquecida o campo de organizacao e o NOME e nao o id).
-  ROADMAP: success criterion 8 da Fase 4, escrito como COMPORTAMENTO GARANTIDO e sem nomear
-  identificador (D-IN4-f / licao C9). Declara tambem os NAO-GATILHOS — supressao parcial e
-  supressao total por OUTRO filtro nao disparam o alarme —, que e o que distingue um sinal
-  que discrimina a CAUSA de um que reage a QUANTIDADE. numstat: 1 adicao, 0 remocoes.
-  REQUIREMENTS.md INTOCADO (D-IN4-e): a r4 acrescentou OBSERVABILIDADE de uma regra ja
-  coberta por REL-06, nao uma regra nova; um REL-07 fragmentaria a rastreabilidade.
-  NENHUM TODO COM PRIORIDADE DO USUARIO FOI EDITADO (mitigacao de R4-39): os pares foram
-  declarados NOS ARQUIVOS NOVOS, por referencia. `git status --porcelain .planning/todos/`
-  listou APENAS os 10 arquivos novos, todos nao rastreados. in3-08 intocado. SEC-01 continua
-  ABERTO (C8) e nenhum valor de segredo aparece em artefato nenhum (grep = 0 nos 10).
-  QUATRO DIVERGENCIAS DE MEDICAO, registradas e nenhuma forcada — DECIMA rodada da fase:
-  (1) o residual do wr4-03b e 41 linhas em 10 arquivos, nao 39 em 9: db.smtpPassMigration.keep
-  tem 2 e nao 1, e config.bootFailFast.test.js (1) estava inteiramente FORA da lista do
-  04-33; os outros oito valores bateram, e a conclusao fica MAIS forte; (2) o wr4-03b ficou
-  com 85 linhas contra o teto de 80 — classe ORCAMENTO DE PROSA, a mesma da divergencia nº1
-  do 04-33: encurtar exigiria cortar a tabela de medicao, um dos dois pares mandatados por
-  D-IN4-d, ou o aviso de conferencia; (3) o grep de identificadores no ROADMAP devolve 1 e
-  nao 0 — e `results.error` na linha de RESUMO da Fase 4 no topo do arquivo, texto
-  PRE-EXISTENTE; com `git diff -U0` da 0; (4) `grep -c \"PLAN.md\"` no diff devolve 1 por
-  CONTEXTO de diff (a linha do 04-01 aparece com prefixo de espaco); com -U0 da 0. As
-  divergencias 3 e 4 sao da mesma classe da nº2 do 04-30.
-  UM DESVIO, Rule 1: o handler `roadmap.update-plan-progress` marcou a FASE 4 inteira como
-  Complete — checkbox `[x]`, sufixo \"(completed 2026-08-05)\" e a linha da tabela de
-  rastreabilidade como Complete. Isso CONTRADIZ a decisao travada de que a fase permanece
-  reaberta ate o code review rodada 5. Revertido a mao: ficaram apenas o checkbox do
-  04-34-PLAN.md e a contagem 34/34, que sao fatos de PLANO e nao de FASE.
-  ATENCAO PARA QUEM SEGUIR: quem for fechar o wr4-03b precisa CONFERIR cada referencia
-  contra o arquivo apontado antes de converte-la — o 04-33 converteu 4 e as 4 estavam
-  erradas. E o cr4-01b descreve um caminho em que o alarme do blocker da r4 FALHA ABERTO
-  (a rodada MISTA); nao e regressao do conserto, e o cenario que o limiar nao cobria.
-  A linha de resumo da Fase 4 no topo do ROADMAP ainda diz \"Gap closure r4 pendente: 1
-  blocker + 7 warnings\" — ficou intocada de proposito (fora do escopo autorizado da Task 3)
-  e cabe ao coordenador atualiza-la quando fechar a fase.
-  Commits: c17eada (Info), cee8b9c (residuais), 2badae0 (ROADMAP), e247ba2 (SUMMARY).
+  CR5-01 (BLOCKER): `runCheck` usa a chave `skipped` para DUAS coisas incompativeis — o contrato
+  `{ skipped: true, reason }` do lock de concorrencia e o contador `results.skipped`. O POST /run
+  devolve o objeto inteiro e o Dashboard.jsx:90 faz `if (result.skipped) toast.error(result.reason)`.
+  Sonda: `results.skipped: 3` -> `true` -> toast.error com `reason` UNDEFINED. TOAST VERMELHO EM
+  BRANCO em toda rodada com >=1 negocio pulado, inclusive no caso banal de clicar "Enviar" depois
+  do cron das 8h (dedup). Realiza literalmente a ameaca T-04-35-05 e ANULA a metade audivel do
+  CR4-01 no caminho manual. A rodada 4 afirmou o OPOSTO sobre esse toast e o 04-28 herdou o
+  enquadramento errado.
 
-Status anterior: WR4-02 E WR4-03 FECHADOS PELO 04-33 (2026-08-05)
+  WR5-01: o conserto do CR4-01 ABRIU UM VIZINHO, como o do CR3-01 tinha aberto o CR4-01. O contador
+  incrementa DENTRO da segunda guarda, entao QUALQUER `continue` anterior desarma o alarme — mais
+  comumente a DEDUP DO DIA, nao "negocio sem organizacao". Sonda: apagao total de /organizations,
+  3 negocios parados, ZERO e-mails, skippedCategoriaIndecidivel 2 vs stale 3 -> alarme SILENCIOSO.
+  AGRAVANTE: a "Correcao proposta" escrita dentro do todo `cr4-01b` conserta o DENOMINADOR; o
+  defeito esta no NUMERADOR. Executar aquele todo o fecharia COM O DEFEITO DE PE — o cr4-01b PRECISA
+  ser reescrito. O 04-35 escreveu o mecanismo geral certo no topo do laco e nunca o aplicou 60
+  linhas abaixo.
 
-  O 04-33 e o UNICO plano da r4 com DIFF DE PRODUCAO ZERO por criterio de aceite
-  (`git diff --name-only backend/src/` vazio nas DUAS tasks) — precedente: 04-26 e 04-27.
-  Os dois achados sao sobre o INSTRUMENTO, nao sobre o produto.
-  WR4-02 — o commit 46cf90a (WR3-05, plano 04-26) removeu a copia local do helper de
-  relogio mas atualizou apenas 2 dos 4 comentarios que a declaravam viva. DOIS ARQUIVOS DO
-  REPOSITORIO AFIRMAVAM O OPOSTO SOBRE O MESMO FATO: helpers/fakeTimers.js dizia "NAO
-  existe mais nenhuma" e agendor.retry429.test.js dizia "Restam duas variantes ... continua
-  de proposito", com um motivo que o proprio 04-26 extinguiu. E
-  agendor.cacheConcurrency.test.js apontava para "o helper homonimo de
-  emailer.timeout.test.js", simbolo que nao existe mais naquele arquivo.
-  A FONTE DA VERDADE E helpers/fakeTimers.js (D-WR4-02-a) e ficou BYTE A BYTE — `git diff
-  --name-only backend/test/helpers/` vazio nas duas tasks. Os que contradiziam foram
-  alinhados a ela, nunca o contrario: foi a inversao desse sentido que produziu o achado na
-  primeira vez. O paragrafo do envelope local do 04-13 foi PRESERVADO (D-WR4-02-b): so saiu
-  a afirmacao das duas variantes.
-  WR4-03 — emailer.timeout.test.js mantinha 4 referencias por numero de linha a emailer.js
-  e AS 4 APONTAVAM PARA O LUGAR ERRADO, porque o modulo foi reescrito por 04-17, 04-21 e
-  04-24 depois de o teste ter sido escrito. E o defeito que a convencao de WR2-06 descreve,
-  no arquivo que e o ORACULO DE REL-02.
-  CADA ANCORA FOI LOCALIZADA NO emailer.js ATUAL ANTES DE SER ESCRITA (mitigacao de R4-31):
-  sendMailWithRetry; o termo de MENSAGEM da condicao isNetworkError (com o porque escrito —
-  com code 'ESOCKET' os dois termos que olham err.code nao casam); a recriacao do transporte
-  dentro do catch; e a guarda authorEmail !== ownerEmail de sendStaleNotification. O que as
-  linhas antigas apontavam hoje: :178 = `<!-- Footer -->`, :188 = `</body>`, :197 = linha de
-  comentario, :229 = fecha-bloco do ramo de retry.
-  A REFERENCIA AO FONTE DO nodemailer PERMANECE (D-WR4-03-b), com a exclusao DECLARADA por
-  escrito no cabecalho: e arquivo de dependencia, versionado pelo lockfile e nao por este
-  repositorio, entao o numero nao se desloca a cada commit daqui. Mesma forma da decisao
-  registrada em in3-06 sobre o nome do caso — para que a assimetria nao pareca esquecimento.
-  INVENTARIO DE IRMAOS ENTREGUE, com os dois numeros do plano batendo exatamente: 4 linhas
-  em 4 arquivos para "copia local|helper homonimo" (2 corrigidas, 2 verificadas-e-sas, uma
-  delas a fonte da verdade) e 45 linhas em 11 arquivos com referencia por numero na ENTRADA,
-  41 na SAIDA (so emailer.timeout mudou, de 5 para 1). Verificadas-e-sas por MEDICAO, nao
-  por leitura: a frase de emailer.timeout esta no PASSADO e descreve corretamente o 04-26;
-  agendor.loteDeOrganizacoes.test.js tem 0; backend/src tem 0 em todos os arquivos.
-  RESIDUAL COM DONO, medido: 39 linhas em 9 arquivos (scheduler.failsafe 12,
-  notificationStatus 11, agendor.timeout 8, notifications.resolved 3, e 1 em cada um de
-  config.route.smtpPass, db.smtpPassMigration.clear, db.smtpPassMigration.keep,
-  emailer.smtpPass e setup.js) — o in3-06 nomeia APENAS scheduler.resilience.test.js. Dono:
-  todo `wr4-03b`, a criar no 04-34, junto do gate de CI de in3-04.
-  DUAS DIVERGENCIAS DE MEDICAO, registradas e nao forcadas: (1) o cabecalho novo ficou com 8
-  linhas de texto e o plano pedia "3 a 5" — sao DUAS declaracoes independentes e cada uma
-  precisa carregar o seu porque; encurtar exigiria cortar um deles. NONA rodada da fase com
-  divergencia de contagem, e de classe NOVA (orcamento de prosa, nao forma de grep nem
-  reformatacao do Biome); (2) emailer.js:229 nao e `error: err.message` como o plano dizia,
-  e sim o fecha-bloco do ramo de retry (a atribuicao esta na 232) — a conclusao que importa
-  (a referencia aponta para lugar sem relacao) sobrevive e fica ate mais forte.
-  IN4-02 INTOCADO: `grep -c "tres vezes"` no diff = 0 (mitigacao de R4-36).
-  TODOS OS DEMAIS NUMEROS PRESCRITOS BATERAM: copia local|helper homonimo = 0 nos dois
-  corrigidos e 2 linhas nos dois corretos, emailer.js:N = 0, .js:N = 1, 0 assercoes no diff
-  das duas tasks, 8/3/9 casos preservados. Suite 186 -> 186 (o mesmo total da entrada, como
-  exigido de um plano sem mudanca de comportamento), cobertura exit 0, lint exit 0 (44
-  warnings, baseline). emailer.js em 89,78% linhas / 63,7% branches — identico ao 04-32.
-  ZERO DESVIOS: nenhuma Rule 1-4 acionada, nenhum pacote instalado.
-  ATENCAO PARA QUEM SEGUIR: quem for fechar o wr4-03b precisa CONFERIR cada referencia
-  contra o arquivo apontado antes de converte-la — este plano converteu 4 e as 4 estavam
-  erradas; trocar numero por nome sem conferir reproduz o defeito com outra sintaxe, e ai
-  ele fica invisivel para o grep que hoje o encontra.
-  Commits: 70721d5 (WR4-02), 8356ed1 (WR4-03).
+  DECISAO DO USUARIO sobre o escopo da r5 (vinculante, 2026-08-05): corrigir SOMENTE CR5-01 e
+  WR5-01, e reescrever o todo cr4-01b. Os outros 4 warnings (WR5-02 aviso por negocio no caminho de
+  leitura; WR5-03 alarme de forma do funil disparando com N=1; WR5-04 contadores irmaos usando
+  console.log vs logger.warn; WR5-05 asseracoes de envio afrouxadas de `=== 1` para `>= 1`, perdendo
+  deteccao de e-mail DUPLICADO) e os 4 info (IN5-01..IN5-04) viram TODOS PENDENTES, nao planos.
 
-Status anterior: WR4-07 FECHADO PELO 04-32 (2026-08-05)
-
-  O 04-32 fechou o achado cujo dano NAO E PROPORCIONAL A CAUSA: `ownerWeeklyHtml`
-  desreferenciava `ownerName` sem guarda, e `getStaleDeals` produz `ownerName: null`
-  explicito quando o payload da borda traz `owner` sem `name`. O template e montado DENTRO
-  do laco de destinatarios e ANTES do try/catch que envolve o sendMail, entao a excecao
-  saia de sendOwnerWeeklySummary, subia ate o catch de runWeeklySummary e encerrava o
-  resumo semanal INTEIRO — um unico responsavel sem nome custava o relatorio de TODOS os
-  comerciais, inclusive os que ja teriam recebido, com vestigio de UMA linha generica de
-  log. A assimetria que provava descuido e nao decisao: POST /test-owner-summary ja
-  guardava o mesmo campo (`ownerName || d.ownerName || 'Comercial Teste'`).
-  O CUSTO AGREGADO FOI MEDIDO, NAO PRESUMIDO (D-WR4-07-d). Sonda temporaria sobre o
-  cenario (6) no estado defeituoso: `enviosCapturados.length = 0` com DOIS responsaveis na
-  lista — zero de dois. O vizinho sem defeito nenhum nao recebia nada. A sonda foi apagada
-  antes do commit; o numero esta no SUMMARY.
-  AGORA: o rotulo do grupo resolve pela MELHOR FONTE — `d.ownerName || users[d.ownerId]?.name
-  || 'Comercial'` — e nao apenas evita a excecao. O dicionario de getUsers tem o nome
-  cadastrado mesmo quando o negocio nao tem; so evitar a excecao trocaria um erro por uma
-  saudacao generica. A guarda gemea no template (`(ownerName || 'Comercial')`) e DEFESA EM
-  PROFUNDIDADE declarada SEM caso dedicado (D-WR4-07-c), com o motivo escrito no codigo (o
-  outro chamador ja guarda; pinar exigiria seam num modulo que nao exporta a funcao) e o
-  precedente nomeado (D-WR3-03-b, 04-24).
-  QUEM RECEBE NAO MUDOU: a decisao continua vindo de `owner?.email`; a mudanca e so no
-  ROTULO guardado ao lado da lista.
-  A ASSERCAO E SOBRE O HTML, NAO SOBRE A CONTAGEM (D-WR4-07-e): os tres casos novos exigem
-  que o corpo enviado NAO contenha as strings `undefined` nem `null`. Um conserto que
-  apenas evitasse a excecao e imprimisse "Ola, undefined!" passaria por qualquer assercao
-  de quantidade. O caso (7) e o FUNDO do encadeamento (sem nome no negocio E sem nome no
-  cadastro) — sem ele a cadeia poderia parar no penultimo elo sem ninguem perceber.
-  A ORDEM DO CASO (6) E INSTRUMENTO, NAO ESTILO: o sem-nome vem PRIMEIRO porque
-  Object.entries(byOwner) segue a ordem de insercao, que e a ordem da lista notificavel —
-  com ele em segundo lugar o primeiro grupo ja teria sido enviado antes da excecao e o
-  caso ficaria VERDE com o defeito presente.
-  RED literal: os tres vermelhos com TypeError "Cannot read properties of null (reading
-  'split')" em ownerWeeklyHtml, e (1) a (4) verdes sem ajuste — a condicao de PARAR ("a
-  extensao da armacao afetou a politica") nao foi atingida. Acrescentar os ids 12 e 13 a
-  USERS nao mexeu em nada: os casos antigos so referenciam o id 11.
-  A POLITICA DE CR3-01 FICOU INTOCADA e medida: `categoriaIndecidivel` e `skippedByFunnel`
-  ausentes do diff (0 e 0). sendWeeklySummary (consolidado do admin) continua NAO filtrando
-  de proposito. dealEmailHtml ausente do diff (0) — o residual `wr4-07b` NAO foi fechado de
-  carona. agendor.js ausente do diff: produzir `ownerName: null` explicito e DELIBERADO, e
-  consertar a FONTE esconderia o dado ausente do painel, dos relatorios e do snapshot para
-  consertar um template.
-  DUAS DIVERGENCIAS DE MEDICAO, registradas e nao forcadas: (1) o baseline do plano dizia 8
-  ocorrencias do identificador `ownerName` no emailer.js; medido `grep -o` = 11 em 10
-  linhas — a conclusao que importa (UMA desreferencia, `.split(` = 1) sobrevive intacta;
-  (2) o teto de "4 linhas nao-comentario no diff" ficou em 5 adicionadas / 2 removidas,
-  porque o Biome quebrou o literal de objeto em quatro linhas ao passar de 80 colunas — as
-  mudancas SEMANTICAS continuam sendo DUAS, e o proprio plano previa "mais o que o Biome
-  reformatar". OITAVA rodada da fase com divergencia de contagem.
-  TODOS OS DEMAIS NUMEROS PRESCRITOS BATERAM: ownerName.split( nao-comentario = 0, .split(
-  nao-comentario = 1, users[d.ownerId]?.name nao-comentario = 1, 7 casos no arquivo,
-  0 assercoes removidas/alteradas, 0 referencias por numero de linha.
-  Suite 183 -> 186, emailer.js 89,78% linhas / 63,7% branches, cobertura exit 0, lint exit
-  0 (44 warnings, baseline). Os CINCO arquivos vizinhos verdes SEM edicao (21 casos);
-  git diff --name-only -- backend/test/ VAZIO na Task 2.
-  ZERO DESVIOS: nenhuma Rule 1-4 acionada, nenhum pacote instalado.
-  ATENCAO PARA QUEM SEGUIR: o cenario (6) e o UNICO da suite que mede o custo AGREGADO de
-  uma excecao montada FORA do try/catch do envio. Quem inverter a ordem dos dois negocios o
-  torna verde com o defeito presente. E a assercao de ausencia de `undefined`/`null` no
-  HTML nao deve ser "simplificada" para contagem de envios.
-  Commits: 3f38b6a (RED), 5fd6be8 (GREEN).
-
-Status anterior: WR4-06 FECHADO PELO 04-31 (2026-08-05)
-
-  O 04-31 fechou o achado em que o ERRO ERA LIDO PELO OPERADOR ANTES DE UMA DECISAO: a previa
-  somente-leitura (runCheckOnly, POST /api/notifications/check) aplicava UM filtro — tarefas
-  futuras — enquanto runCheck aplicava QUATRO guardas antes do envio (dedup do dia, categoria
-  indecidivel, funil sem notificacao ao responsavel, e o else de notificacoes/destinatario). O
-  consumidor nao e tabela decorativa: e o rotulo do botao de disparo, que renderizava
-  literalmente "Enviar notificacoes (N negocios)". A UI prometia N e o envio entregava
-  N menos (indecidiveis + Beefor). Medido na entrada: ZERO casos sobre runCheckOnly em toda a
-  suite, e ZERO ocorrencias de seraNotificado no repositorio.
-  AGORA: runCheckOnly acrescenta `seraNotificado` por negocio — a conjuncao dos MESMOS quatro
-  predicados — e le notify_author e notifications_enabled, como a rodada real. A configuracao de
-  notificacoes entra de proposito (D-WR4-06-b): a pergunta do botao e "quantos vao receber se eu
-  clicar AGORA", e com as notificacoes desligadas a resposta honesta e zero. A dedup e consultada
-  UMA vez por negocio e o valor e reusado pelos dois campos — alreadyNotifiedToday(deal.id)
-  nao-comentario continua em 2, o mesmo valor de entrada (D-WR4-06-c).
-  MARCA, NAO REMOVE (D-WR4-06-a): a lista continua filtrada so por tarefas futuras
-  (futureTasks.has(deal.id) nao-comentario = 1) e o comprimento dela nao muda — e a metade
-  "permanece no painel" da decisao do usuario, e e ela que da sentido ao `total` que o card
-  exibe. O card e o toast continuam contando `total` (D-WR4-06-g): sao perguntas diferentes.
-  O ORACULO E A IGUALDADE, NAO O CAMPO (D-WR4-06-d, a decisao central). Duplicar os predicados
-  cria um segundo lugar para a regra divergir — o mecanismo exato de WR3-01 —, e extrair um
-  predicado compartilhado seria refatoracao estrutural da cadeia de guardas de runCheck, no
-  caminho do Core Value, que a constraint de processo do CLAUDE.md proibe misturar a uma
-  correcao. A resposta foi um oraculo: os cenarios F e G rodam runCheckOnly() e runCheck() contra
-  a MESMA armacao e exigem que o conjunto de ids PROMETIDOS seja IGUAL ao conjunto de ids
-  NOTIFICADOS de fato — medido pela linha 'sent' no notification_log, e NAO por r.notified, que e
-  contador e nao diz QUAIS. Cada caso tem guarda de NAO-VACUIDADE (o conjunto prometido e
-  asserido contra [segundo]), senao dois conjuntos vazios satisfariam a igualdade.
-  O SIMETRICO E DE FILTRO, NAO DE POSICAO, e e ele que fecha o achado: F cobre o filtro do
-  achado (categoria indecidivel, do 04-20) e G cobre o funil Beefor, ANTERIOR ao 04-20. Sem o G,
-  um conserto que tratasse so `categoriaIndecidivel` ficaria verde e a previa continuaria
-  mentindo pelo funil. Ordem fixada por D-WR4-06-e: runCheckOnly() ANTES de runCheck(), porque a
-  previa e somente leitura e o envio grava — invertida, a linha 'sent' mudaria a resposta da
-  dedup DENTRO da previa e o oraculo mediria o rastro do proprio teste.
-  RED literal, previsao do plano batendo nos dois: F e G vermelhos na PRIMEIRA assercao sobre
-  seraNotificado, com `+ undefined / - expected false`, e A a E verdes. A condicao de PARAR
-  ("se algum ficar verde, o campo ja existe por caminho nao medido") nao foi atingida.
-  FRONTEND: aNotificarCount conta os itens com seraNotificado verdadeiro, com FALLBACK para
-  `total` quando nenhum item traz o campo (D-WR4-06-f) — a resposta anterior e restaurada de
-  localStorage sob `dashboard_check_cache` ao montar, entao logo apos o deploy o painel pode
-  renderizar uma resposta de backend antigo; sem fallback o botao diria ZERO e o operador
-  concluiria que nao ha ninguem a notificar. O rotulo passou a dizer "(N a notificar)".
-  TODOS OS NUMEROS PRESCRITOS BATERAM, inclusive `git diff | grep -c "results\."` = 0 no comando
-  LITERAL do plano (sem precisar de -U0, ao contrario do 04-30) — runCheck ficou byte a byte.
-  Invariantes de scheduler.js preservadas e medidas: 1 catch (erroDeRegistro), 2
-  results.notified++, 3 continue;, 3 skipReason, 3 skippedCategoriaIndecidivel, 1
-  futureTasks.has(deal.id), 2 alreadyNotifiedToday(deal.id), 1 seraNotificado nao-comentario.
-  agendor.js, routes/notifications.js e os todos: AUSENTES do diff.
-  UMA DIVERGENCIA DE MEDICAO, registrada e nao forcada: `grep -c "checkResult.total"` no
-  Dashboard.jsx da 2 como o plano previa, mas por COMPOSICAO DIFERENTE — o plano dizia "o card e
-  o toast", e o toast usa `result.total` (sem o prefixo `checkResult`), que o padrao nao casa; os
-  2 sao o card e o FALLBACK novo. Numero igual, motivo diferente. Segunda medicao ajustada: o
-  inventario dizia que nenhum texto do DealsList.jsx usa "notificar" para prometer envio, e a
-  palavra APARECE uma vez — em "(sem notificacao)", que DECLARA uma exclusao em vez de prometer
-  um envio, e a exclusao declarada e justamente a de tarefas futuras, o unico filtro que a previa
-  ja aplicava. A classificacao verificada-e-sa sobrevive por outra medicao, mais forte: nem
-  DealsList.jsx nem ReportPanel.jsx tem botao de disparo (0 chamadas a notifications/run|check).
-  in3-08 CONTINUA ABERTO E NAO FOI TOCADO, por decisao registrada: shouldNotifyOwner transforma
-  funil ausente em string vazia e por isso NOTIFICA; conserta-lo mudaria QUEM RECEBE, esta pinado
-  como quirk em agendor.funnel.test.js, e a pergunta central e de DIRECAO (fail-open ou fail-safe
-  para os filtros de elegibilidade), reservada ao usuario. Este plano o ALCANCA sem o consertar:
-  a previa passou a EXIBIR o resultado de shouldNotifyOwner, tornando o efeito visivel.
-  ZERO DESVIOS: nenhuma Rule 1-4 acionada, nenhum pacote instalado, package.json e lockfiles
-  intocados. Suite 181 -> 183 (os 2 novos sao F e G), cobertura exit 0, lint exit 0 no backend
-  (44 warnings) e no frontend (60 warnings), `npm run build` exit 0.
-  ATENCAO PARA QUEM SEGUIR: os cenarios F e G sao o UNICO lugar da suite que compara a PREVIA com
-  o ENVIO. Quem acrescentar uma quinta guarda a runCheck e NAO acrescentar o predicado
-  correspondente a runCheckOnly deixa os dois vermelhos — e essa e a funcao deles. Nao
-  "simplificar" a guarda de nao-vacuidade nem inverter a ordem das duas chamadas.
-  Commits: 15f534a (RED), 1b82e39 (GREEN), ca05995 (frontend).
-
-Status anterior: WR4-04 E IN4-01 FECHADOS PELO 04-30 (2026-08-05)
-
-  O 04-30 fechou o achado que nasceu como CONSEQUENCIA NAO AVALIADA do 04-19: o retry da borda
-  entrou no UNICO ponto do modulo cujo fan-out e proporcional ao VOLUME DE DADOS. getOrgCategory
-  dispara uma requisicao por organizacao unica, todas simultaneas num Promise.all, e desde CR3-01
-  cada uma passa por fetchWithRetry — sob HTTP 429, N requisicoes viram 3N. O erro retentado e
-  justamente o que a API usa para pedir MENOS trafego, entao retentar em massa PROLONGA a propria
-  janela de rate limit que causou a falha, e e essa janela que produz a supressao em massa que o
-  04-28 tornou audivel.
-  O AGRAVANTE, MEDIDO: getStaleDeals e tambem o caminho de LEITURA do painel. Sao OITO invocacoes
-  de getStaleDeals( fora do agendor.js — 3 no scheduler.js, 1 em routes/deals.js, 1 em
-  routes/reports.js e TRES em routes/notifications.js (o plano media 6, contando notifications
-  uma vez so). Com o auto-refresh do DealsList.jsx, cada atualizacao de tela com a API rate-
-  limitada passou a custar 3N requisicoes e ate ~15 s dentro do handler HTTP.
-  AGORA: LOTE_DE_ORGS = 10, constante de modulo EXPORTADA, e a fase de categorias saiu do
-  Promise.all unico para um `for` sobre fatias de uniqueOrgIds com Promise.all por fatia. O par
-  [id, categoria] foi preservado byte a byte — e ele que impede a categoria trocada que reabriria
-  o fail-open de CR3-01 por caminho novo. SEM pausa entre lotes (D-WR4-04-b): a pausa da
-  paginacao existe porque cada requisicao de la traz 100 registros; aqui o objetivo e limitar
-  CONCORRENCIA, nao taxa. Promise.all nao-comentario em agendor.js continua em 2, e nenhum
-  setTimeout novo entrou no diff. O lote vive DENTRO de getStaleDeals, entao as OITO invocacoes
-  herdam de graca — zero linhas de rota no diff.
-  O ORACULO E CONCORRENCIA EM VOO, NAO CONTAGEM TOTAL (D-WR4-04-d), e a distincao e o proprio
-  conserto: totalOrganizacoes vale 25 nos DOIS estados, antes e depois. Contagem total nao
-  distingue "10 de cada vez" de "25 de uma vez". O stub mantem emVoo/maxEmVoo/total por borda e
-  resolve por setImmediate — um stub sincrono resolveria antes de a proxima chamada do map sair e
-  o maximo medido seria SEMPRE 1, marcando concorrencia 1 em QUALQUER implementacao (R4-15, nao
-  materializado porque a mitigacao estava prescrita).
-  RED literal, previsao do plano batendo nos tres casos: (1) vermelho com
-  `maximo em voo medido = 25`, (2) SIMETRICO e (3) IRMAO VERIFICADO verdes ja no estado atual. A
-  condicao de PARAR nao foi atingida.
-  IN4-01 FECHADO DENTRO DESTE PLANO, e por necessidade e nao por carona (D-WR4-04-e): o
-  comentario dizia "batches de 10" logo acima de `const batchSize = 5;`, e este plano introduziu
-  uma SEGUNDA constante de lote cujo valor E 10 — a frase errada ao lado dela tornaria os dois
-  lotes indistinguiveis. O numero foi REMOVIDO em vez de corrigido: o comentario aponta para o
-  identificador batchSize, que nao pode divergir de si mesmo. grep "batches de 10" = 0.
-  QUATRO DIVERGENCIAS DE MEDICAO, todas registradas e nenhuma forcada: (1) ORGS_UNICAS NAO e
-  derivada de LOTE_DE_ORGS e sim ASSERIDA contra ela (`LOTE_DE_ORGS < ORGS_UNICAS`) — no instante
-  do RED a constante nao existe, o import devolve undefined e uma derivacao daria NaN, apagando
-  a propria medicao de 25 em voo que o plano exige; a guarda explicita e MAIS FORTE contra o
-  falso positivo, porque uma derivacao faria a fixture crescer EM SILENCIO junto com o teto;
-  (2) os greps de IN4-02 e IN4-05 devolvem 1 e nao 0 pelo CONTEXTO do diff e pelo cabecalho de
-  hunk — com `git diff -U0` os dois dao 0, e as duas conclusoes sobrevivem por medicao; (3) os
-  "6 pontos de chamada" de getStaleDeals sao 8 invocacoes, o que torna o inventario MAIS forte;
-  (4) Promise.all nao-comentario em backend/src = 11 (bate), mas as linhas que casam subiram de
-  14 para 16 por MENCAO em comentario novo.
-  SEXTA rodada da fase com divergencia de contagem; a de nº 2 e da mesma classe da nº 2 do 04-29
-  (forma do padrao de grep), e a nº 1 e de classe NOVA: decisao de instrumento tomada dentro da
-  acao porque a prescricao era impossivel no instante do RED.
-  IN4-02 e IN4-05 AUSENTES do diff por criterio (-U0 = 0 nos dois). Contratos herdados medidos e
-  nao regredidos: await api.get( = 0, fetchWithRetry( = 6, api.get( = 5, MAX_PAGES nao-comentario
-  = 10, of data.data) = 0. Os DEZ arquivos vizinhos verdes SEM edicao (55 casos); em particular
-  agendor.cacheInvalidation.test.js verde e byte a byte — e ELE a evidencia de que o RESULTADO
-  nao mudou (git diff --name-only -- backend/test/ VAZIO na Task 2). Suite 178 -> 181, agendor.js
-  100% linhas / 91,72% branches (era 100% / 91,6%), lint exit 0 (44 warnings, baseline).
-  ZERO DESVIOS de escopo: nenhuma Rule 1-4 acionada, nenhum pacote instalado.
-  ESCOPO QUE O 04-30 NAO FECHA: jitter e circuit breaker (o achado os nomeia; este plano entrega
-  so o teto de concorrencia, e D-WR4-04-b exige medir antes) e o fan-out gemeo de
-  GET /api/notifications/resolved — o TERCEIRO Promise.all proporcional ao dado do backend, com
-  getNotifiedDeals() sem LIMIT; dono: todo `wr4-04b`, a criar no 04-34.
-  ATENCAO: agendor.loteDeOrganizacoes.test.js e o oraculo de CONCORRENCIA, e a distincao importa —
-  ele fica vermelho se alguem "otimizar" o lote de volta para um Promise.all unico, e continua
-  verde se o total de requisicoes mudar. Uma sexta borda com fan-out proporcional ao dado entra
-  ali com o trio completo: teto medido em voo, simetrico de resultado inalterado, irmao
-  VERIFICADO. A guarda de nao-vacuidade do caso (1) e deliberada e NAO deve ser "simplificada"
-  para uma derivacao.
-  Commits: adbe279 (RED), 531479e (GREEN), 0ede631 (SUMMARY).
-
-Status anterior: WR4-01 E WR4-05 FECHADOS PELO 04-29 (2026-08-05)
-
-  O 04-29 fechou os dois vizinhos de codigo que a r3 deixou abertos no MESMO modulo, e os dois
-  terminavam no mesmo lugar: o finally de runCheck que devolve isRunning a false.
-  WR4-01 — getStaleDeals era a TERCEIRA paginacao sem teto, e a justificativa ESCRITA no
-  agendor.js para dispensa-la era factualmente FALSA ("limitada por construcao, e nao existe ali
-  condicao de parada vinda da resposta a ser frustrada"). O array de paginas e finito, mas o seu
-  COMPRIMENTO sai de Math.ceil(meta.totalCount / perPage) — um valor da BORDA.
-  O RED MEDIU O DESFECHO DE FUNDO, e ele e pior do que o travamento: com totalCount inflado,
-  getStaleDeals percorreu as 201 paginas anunciadas e RESOLVEU COM SUCESSO em 39,08 s (40 lotes
-  de 5 com a pausa de 1 s). Uma rodada que resolve nao deixa vestigio de erro nenhum; num
-  totalCount de 10^9 os mesmos 39 s viram semanas de laco com isRunning preso. O estouro de tempo
-  so aparece porque o runner tem teto — producao nao tem.
-  AGORA: `totalPages > MAX_PAGES` com throw IMEDIATAMENTE apos derivar totalPages e ANTES do
-  Array.from — a posicao E a decisao, porque a alocacao do array sozinha ja e modo de falha
-  contra o max_memory_restart de 300M. Nunca Math.min (grep = 0), que trocaria nao-terminacao por
-  resultado PARCIAL silencioso. MESMA constante MAX_PAGES das outras duas bordas (nao-comentario
-  8 -> 10), mas MENSAGEM PROPRIA: /users e /tasks culpam o parametro page, /deals culpa
-  meta.totalCount — mecanismo diferente, e uma mensagem copiada mandaria o investigador para o
-  lugar errado. O teste ganhou padraoDoTetoDeDeals() separado, com o numero ainda DERIVADO.
-  WR4-05 — getUsers era a UNICA das quatro desreferencias de data.data do modulo sem fallback.
-  RED literal, e a previsao do plano bateu ate na mensagem: TypeError 'data.data is not iterable'
-  em getUsers, que NAO e capturado em lugar nenhum da funcao e sobe pelo Promise.all de runCheck,
-  abortando a rodada ANTES do laco de envio. Agora `data.data || []`, a MESMA forma da irma — a
-  uniformidade entre as tres E o conserto. getUsers RESOLVE e nao rejeita (D-WR4-05-b): sem data
-  tambem nao ha links.next, entao o laco encerra na mesma volta e rejeitar transformaria "zero
-  usuarios cadastrados" em rodada abortada. `of data.data)` nao-comentario = 0: as quatro
-  desreferencias estao guardadas.
-  O CASO (8) E O MOLDE DO MANDATO DA RODADA: um unico caso serve envelope sem `data` em /tasks E
-  /deals e assere que as DUAS irmas resolvem — VERIFICADAS por medicao, nao presumidas pela
-  leitura. Mesmo papel do cenario F do 04-23.
-  TRES DIVERGENCIAS DE MEDICAO, todas registradas e nenhuma forcada: (1) a FORMA do RED — o caso
-  (5) cancela o ARQUIVO inteiro por timeout e (6),(7),(8) nunca sao reportados; medidos
-  separadamente por --test-name-pattern, exatamente o precedente do 04-25 no mesmo arquivo;
-  (2) `Array.from({ length:` devolve 0 e nao 1 porque o Biome quebrou a chamada em duas linhas —
-  `Array.from(` nao-comentario = 1, e a conclusao do inventario sobrevive; (3) o plano media que
-  ROADMAP e REQUIREMENTS nao nomeiam getStaleDeals, e nomeiam (4 e 3 vezes) — mas NENHUMA das 7
-  ocorrencias fala de paginacao, volume ou teto (sao TEST-02, REL-04/C9, titulos de plano e
-  PERF-01), entao a classificacao verificadas-e-sas sobrevive POR MEDICAO. meta.totalCount e
-  MAX_PAGES = 0 nos dois, como previsto. QUINTA rodada da fase com divergencia de contagem; as 4
-  anteriores foram MENCAO em comentario, estas duas sao de outra classe (forma do padrao de grep
-  e sub-termo errado numa medicao composta).
-  IN4-05 e IN4-02 AUSENTES do diff por criterio (TASKS_PER_PAGE, getDealsWithFutureTasks e
-  "tres vezes" = 0). Contrato de 04-22/04-25 preservado: await api.get( = 0, fetchWithRetry( = 6,
-  while (page <= MAX_PAGES) = 2. Os NOVE arquivos vizinhos verdes SEM edicao (git diff --name-only
-  -- backend/test/ vazio na Task 2). Suite 174 -> 178, agendor.js 100% linhas / 91,6% branches
-  (era 90,69% / 88,42%), lint exit 0 (44 warnings, baseline). ZERO DESVIOS de escopo.
-  ATENCAO: agendor.paginacao.test.js deixou de ser o oraculo so da TERMINACAO e passou a ser
-  tambem o do TRATAMENTO DO ENVELOPE. Uma quarta borda entra ali com o par completo: teto +
-  simetrico legitimo + envelope sem `data`.
-  Commits: fcc9611 (RED), 6f6d3a3 (GREEN), 375ed55 (SUMMARY).
-
-Status anterior: CR4-01 (O BLOCKER DA R4) FECHADO PELO 04-28 (2026-08-05)
-
-  O 04-28 fechou CR4-01. O conserto do CR3-01 tinha fechado o fail-open para UMA organizacao e
-  aberto uma supressao em massa OPERACIONALMENTE INVISIVEL: com a borda /organizations/:id fora,
-  results.error undefined, results.errors [], zero e-mails, zero linhas em notification_log e o
-  log dizendo "Concluido: N negocios parados, 0 notificacoes enviadas" — o mesmo resultado
-  observavel de um dia calmo. results.skipped era o MESMO contador de dedup, funil e "sem
-  destinatario".
-  AGORA: results.skippedCategoriaIndecidivel nasce no LITERAL de results (o campo existe SEMPRE
-  no payload, nenhum consumidor precisa distinguir undefined de zero) e incrementa SEMPRE. O
-  ALARME so na supressao TOTAL (results.stale > 0 && contador === results.stale), preenchendo as
-  DUAS superficies — results.error (a que a decisao do usuario nomeia) e results.errors (a UNICA
-  que o Dashboard renderiza, medido) — mais logger.error com tag [Scheduler], so com inteiros e
-  texto fixo (CR-02 do 04-09). O quarto e ultimo ramo de skip sem motivo ganhou skipReason,
-  distinguindo "notificacoes desativadas" de "nenhum destinatario com e-mail cadastrado".
-  O ENQUADRAMENTO CORRETO DE D-CR4-01-a FICOU ESCRITO NO CODIGO: o bloco do alarme e ADITIVO,
-  mora DEPOIS do laco e NAO decide quem recebe e-mail — nenhum limiar pode fazer isso. A
-  invariante preservada e o CONTRATO AGREGADO-OBSERVAVEL do CR3-01, pinado nos cenarios A e B
-  (campo de erro vazio com 1 de 2 suprimidos). A formulacao antiga e FALSA ("um limiar menor
-  mudaria o comportamento por-negocio") NAO foi escrita.
-  O PAR D + E E O QUE FECHA O ACHADO: D (2 de 2 por categoria) prova que o apagao passa a ser
-  audivel; E (2 de 2 por FUNIL Beefor, com o MESMO results.skipped, o MESMO notified: 0 e a MESMA
-  linha de conclusao) prova que o alarme discrimina a CAUSA e nao a quantidade. Sem o E, qualquer
-  implementacao que ligasse o alarme em results.notified === 0 ou em skipped === stale passaria.
-  PRIMEIRA RODADA DA FASE EM QUE NENHUM NUMERO PRESCRITO DIVERGIU DO MEDIDO: as 4 rodadas
-  anteriores tiveram divergencia por MENCAO dentro de comentario; aqui os comentarios novos foram
-  escritos sem reproduzir os identificadores medidos (skipReason total = nao-comentario = 3).
-  UMA DIVERGENCIA DE PREVISAO, registrada e nao forcada: o plano previa o cenario E VERDE no RED,
-  mas E assere o contador === 0 e o campo era undefined — E nao tinha como ficar verde. A ordem
-  das assercoes de E foi escrita com as do funil ANTES da do contador (o plano so fixa ordem para
-  D), entao o RED provou por MEDICAO que a armacao do funil produzia a supressao esperada — a
-  condicao de PARAR ("a armacao do funil nao esta produzindo a supressao") nao foi atingida.
-  IN4-04 e runCheckOnly AUSENTES do diff por criterio (grep = 0 nos dois). agendor.js intocado.
-  2 RESIDUAIS COM DONO ja previstos para o 04-34, agora com medicao no SUMMARY: `cr4-01b` (a
-  rodada MISTA — um negocio SEM organizacao escapa da contagem e desarma o alarme; denominador
-  derivado REJEITADO porque deal.organization na lista enriquecida e o NOME e nao o id, o que
-  faria o alarme falhar ABERTO por caminho novo) e `cr4-01c` (skipReason invisivel na UI, 0
-  ocorrencias em frontend/src).
-  Commits: a8c4e67 (RED), c801cf7 (GREEN), c5c426c (SUMMARY).
-
-  --- planejamento da r4 abaixo ---
-Status anterior: 7 PLANOS DA R4 CRIADOS E VERIFICADOS (2026-08-05)
-
-  Planos 04-28..04-34, waves 21-27, cadeia sequencial. Plan-checker: VERIFICATION PASSED NA
-  PRIMEIRA PASSADA — primeira vez nesta fase. Cobertura REL-01..06 = 6/6.
-  04-28 CR4-01 (blocker) | 04-29 WR4-01+WR4-05 | 04-30 WR4-04 | 04-31 WR4-06
-  04-32 WR4-07 | 04-33 WR4-02+WR4-03 (diff de producao zero) | 04-34 IN4-* + 5 residuais
-
-  O MANDATO "INVENTARIO DE IRMAOS" PASSOU NO TESTE DECISIVO (o mesmo que expos a lacuna do 04-26
-  na r3): todo item classificado como corrigida/verificada-e-sa carrega grep, teste de regressao
-  ou citacao de leitura de codigo — nenhum item nomeado sem gate. O checker reproduziu
-  independentemente os conjuntos de linhas do 04-33 e bateu no numero exato.
-
-  DECISAO D-CR4-01-a — LIMIAR DO ALARME: supressao TOTAL (todos os negocios da rodada).
-  O contador `results.skippedCategoriaIndecidivel` incrementa SEMPRE (desfaz a ambiguidade dos 4
-  `results.skipped++` compartilhados com dedup, funil e "sem destinatario"); o ALARME so na
-  supressao total, preenchendo `results.error` E `results.errors` — medido: o Dashboard.jsx NAO le
-  `results.error` em lugar nenhum, o unico bloco renderizado e `lastRun.errors`.
-  ENQUADRAMENTO CORRETO (corrigido apos o checker, commit 82d2550): o bloco do alarme e ADITIVO,
-  fica DEPOIS do laco e NAO condiciona nenhum continue/skip — NENHUM limiar pode mudar quem recebe.
-  A invariante preservada e o CONTRATO AGREGADO-OBSERVAVEL do CR3-01, pinado nos casos A e B de
-  scheduler.categoriaIndecidivel.test.js (`r.error === undefined` com 1 de 2 suprimidos). Um limiar
-  abaixo de 100% os tornaria vermelhos porque a rodada passaria a se ANUNCIAR como falha num
-  cenario que o contrato fixou como normal — nao porque alguem deixaria de ser notificado.
-  NAO citar este precedente para justificar mudanca de comportamento por-negocio.
-
-  `in3-08` NAO foi promovido a plano, por decisao do planejador registrada como
-  fora-de-escopo-com-medicao no inventario do 04-31: conserta-lo muda QUEM RECEBE (negocios sem
-  funil deixariam de ser notificados), esta pinado como quirk em agendor.funnel.test.js, e a
-  pergunta central e de DIRECAO (fail-open ou fail-safe para filtros de elegibilidade). Promove-lo
-  seria um plano 04-35 e uma decisao do usuario.
-
-  IN4-01 e fechado DENTRO do 04-30 (nao vira todo): o comentario "(batches de 10)" fica ao lado de
-  `batchSize = 5` e o 04-30 introduz uma segunda constante de lote cujo valor E 10 — deixar a frase
-  errada tornaria os dois lotes indistinguiveis. Mesmo precedente do in2-02 fechado pelo 04-26.
-
-  5 RESIDUAIS NOVOS com dono, criados no 04-34, saidos dos inventarios de irmaos: `cr4-01b` (o
-  limiar "todos" nao cobre a rodada MISTA — um negocio sem organizacao escapa da contagem e desarma
-  o alarme), `cr4-01c` (skipReason invisivel na UI: 0 ocorrencias em frontend/src), `wr4-03b` (39
-  linhas em 9 arquivos com referencia por numero, contra o in3-06 que nomeia so um arquivo),
-  `wr4-04b` (fan-out gemeo em GET /api/notifications/resolved, com SELECT sem LIMIT), `wr4-07b`
-  (dealEmailHtml interpolando nome nulo).
+  VEREDITO DO REVISOR SOBRE O MANDATO "INVENTARIO DE IRMAOS": FUNCIONOU e NAO virou cerimonia —
+  todo `verificada-e-sa` amostrado carrega grep ou caso de teste, e varios EXECUTAM o irmao em vez
+  de le-lo. Melhora real sobre as rodadas 1-3 (foi ele que produziu WR4-01 e WR4-02).
+  PONTO CEGO ESTRUTURAL, medido tres vezes nesta rodada: o inventario pergunta "este irmao esta
+  sao?" e nunca "o que eu acabei de construir DEPENDE do comportamento dele?". O 04-28 classificou
+  a dedup como sa COM EVIDENCIA CORRETA PARA A PERGUNTA ERRADA — e e o `continue` dela que desarma
+  o alarme que o 04-28 estava construindo.
+  DUAS CLAUSULAS A ACRESCENTAR NA R5:
+  (a) DIRECAO REVERSA — listar o que pode NEUTRALIZAR o construto novo, nao so se os irmaos estao sos;
+  (b) RETROATIVIDADE DA JUSTIFICATIVA — grepar o mesmo arquivo por construcoes que o comentario novo
+      CONDENA (so isso pega o WR5-02 em menos de um minuto).
 
   --- historico anterior abaixo ---
 Origem: CODE REVIEW RODADA 4 (2026-08-05)
