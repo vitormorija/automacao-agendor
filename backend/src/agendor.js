@@ -256,8 +256,10 @@ async function getStaleDeals(staleDays = 15) {
   // Cache de categorias POR EXECUÇÃO (REL-04 / Decisão D-05 / CR2-01). Ele nasce aqui dentro
   // e morre com a rodada que o criou. É isso que entrega REL-04: uma organização
   // recategorizada no Agendor vale já na execução seguinte, porque a seguinte não tem nada
-  // herdado para servir; e o `null` que o catch de getOrgCategory grava num erro transitório
-  // morre junto com a execução que falhou, em vez de decidir quem OUTRA rodada notifica.
+  // herdado para servir; e a sentinela CATEGORIA_INDECIDIVEL que o catch de getOrgCategory
+  // grava num erro transitório morre junto com a execução que falhou, em vez de decidir quem
+  // OUTRA rodada notifica. (Até CR3-01 o valor gravado ali era `null`, e o problema não era o
+  // isolamento — era a direção da falha: `null` atravessava EXCLUDED_CATEGORIES.)
   //
   // NÃO existe mais limpeza na entrada desta função porque não existe mais estado
   // compartilhado para limpar. Enquanto o cache era um dicionário de módulo, a limpeza podia
