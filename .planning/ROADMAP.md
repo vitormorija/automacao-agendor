@@ -133,7 +133,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Gap closure r4** (fonte: `04-REVIEW.md`, `round: 4`, status `issues_found` — 1 critical, 7 warning, 6 info; a rodada 4 verificou ceticamente as conclusões da r3 e REABRIU a fase pela quarta vez). 7 planos **aditivos**, waves 21-27, `gap_closure: true`. Ordem por risco: o blocker primeiro, depois os warnings de produção agrupados por módulo, a higiene dos instrumentos de teste por último, e o resíduo documental no fim. **Requisito estrutural desta rodada — o INVENTÁRIO DE IRMÃOS, que SUBSTITUI o mandato do cenário simétrico da r3:** o revisor avaliou o mandato anterior e concluiu que ele funcionou mas resolveu o problema errado — o padrão que reprovou r1→r2→r3 nunca foi "faltou o input simétrico", foi **"faltou o CÓDIGO VIZINHO"** (a função irmã, o terceiro ponto de chamada, o outro arquivo que documenta o mesmo fato), e simétrico de *entrada* não detecta vizinho de *código*. Agora todo plano de correção contém, por escrito, um inventário das construções GÊMEAS do conserto, com cada item marcado como **corrigida**, **verificada-e-sã** (provada por medição ou teste, nunca presumida) ou **fora-de-escopo-com-medição e com dono**. Foi exatamente esse método que produziu WR4-01 (a terceira paginação sem teto, cuja justificativa escrita para excluí-la é factualmente falsa) e WR4-02 (dois comentários que hoje se contradizem):
 - [x] 04-28-PLAN.md — A supressão TOTAL por categoria indecidível vira erro da rodada: contador próprio, campo de erro, array de erros e log em nível de erro (CR4-01, blocker)
 - [x] 04-29-PLAN.md — Teto de páginas na terceira paginação e guarda de envelope em `getUsers` (WR4-01, WR4-05)
-- [ ] 04-30-PLAN.md — Teto de concorrência na consulta de categoria por organização, o único fan-out proporcional ao volume de dados (WR4-04)
+- [x] 04-30-PLAN.md — Teto de concorrência na consulta de categoria por organização, o único fan-out proporcional ao volume de dados (WR4-04)
 - [ ] 04-31-PLAN.md — A prévia do envio marca quem será notificado, e o botão do painel conta por ela (WR4-06)
 - [ ] 04-32-PLAN.md — Responsável sem nome deixa de derrubar o resumo semanal de todos os comerciais (WR4-07)
 - [ ] 04-33-PLAN.md — Comentários da suíte alinhados ao instrumento único e âncoras nomeadas no oráculo de REL-02 (WR4-02, WR4-03)
@@ -191,7 +191,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | 1. Rede de Testes (Safety-Net) | 5/5 | Complete   | 2026-07-24 |
 | 2. Toolchain de Qualidade & CI | 4/4 | Complete   | 2026-07-29 |
 | 3. Config & Segredos por Ambiente | 7/7 | Complete   | 2026-07-30 |
-| 4. Confiabilidade das Integrações | 29/34 | In Progress|  |
+| 4. Confiabilidade das Integrações | 30/34 | In Progress|  |
 | 5. Logging & Padronização de Erros | 0/TBD | Not started | - |
 | 6. Hardening de Segurança | 0/TBD | Not started | - |
 | 7. Refatoração Incremental de Arquitetura | 0/TBD | Not started | - |
