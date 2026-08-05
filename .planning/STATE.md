@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Gap closure r1 (04-08..04-11) executado, mas a 2a rodada de code review reabriu a fase — 04-REVIEW.md traz CR2-01 (Critical) e 6 warnings. Fase 04 NAO esta completa. Proximo passo: /gsd:plan-phase 04 --gaps sobre o 04-REVIEW.md da rodada 2.
-last_updated: "2026-08-04T22:41:06.154Z"
-last_activity: 2026-08-04 -- Phase 04: code review r2 reabriu a fase (CR2-01 critico)
+stopped_at: Gap closure r2 PLANEJADA e verificada (04-12..04-18, waves 5-11; 0 blockers). Fase 04 NAO esta completa — bloqueada por CR2-01. Proximo passo: /gsd:execute-phase 04, retomando na wave 5 (04-12). auto_advance OFF (checkpoints C9, C10, C11). SEC-01 permanece ABERTO por decisao C8.
+last_updated: "2026-08-05T00:00:40.643Z"
+last_activity: 2026-08-05 -- Phase 04 planning complete
 progress:
   total_phases: 8
   completed_phases: 3
-  total_plans: 27
+  total_plans: 34
   completed_plans: 27
   percent: 38
 ---
@@ -25,22 +25,34 @@ See: .planning/PROJECT.md (updated 2026-07-22)
 
 ## Current Position
 
-Phase: 04 (confiabilidade-das-integra-es) — REABERTA (gap closure r2 pendente)
-Plan: 11 of 11 executados; nova rodada de planos ainda nao criada
-Status: Gap closure r1 (04-08..04-11) executado e suite verde (139/139). A 2a rodada de code review
-  (04-REVIEW.md, round: 2) verificou as conclusoes CETICAMENTE e reabriu a fase:
+Phase: 04 (confiabilidade-das-integra-es) — REABERTA; gap closure r2 PLANEJADA
+Plan: 11 de 18 executados. Os 7 novos (04-12..04-18, waves 5-11) estao planejados e verificados,
+  nenhum executado ainda.
+Status: Ready to execute — retomar na wave 5 (04-12)
+  A 2a rodada de code review (04-REVIEW.md, round: 2) verificou as conclusoes da r1 CETICAMENTE
+  e reabriu a fase:
+
   - Fechados de fato: CR-02, WR-02, WR-03, WR-05
   - Fechados so em parte: CR-01, WR-01, WR-04 — cada um deixou aberto o cenario vizinho que o
     comentario novo no codigo declara resolvido
+
   - CR2-01 (CRITICAL): orgCategoryCache continua sendo estado de modulo compartilhado. O 04-08
     fechou "B apaga antes de A ler"; a direcao oposta segue aberta — A grava null apos a limpeza
     de B, e B le esse null cacheado sem consultar a API. Reproduzido deterministicamente: deal 105
     (org 205, categoria 'Parceiro', EXCLUIDA) entra nas duas listas. Notifica quem nao devia.
+
+  Planos da r2 (fonte: 04-REVIEW.md; nao existe 04-VERIFICATION.md):
+  04-12 CR2-01 (C9) | 04-13 WR2-03 | 04-14 WR2-01 | 04-15 WR2-02 (C10) | 04-16 WR2-04
+  | 04-17 WR2-05 (C11) | 04-18 WR2-06 + todos IN2-01..IN2-04
+  Escopo travado pelo usuario: IN2-01..IN2-04 viram todos pendentes, nao planos. WR2-04 endurece
+  o canal atual — o contrato de sendStaleNotification NAO muda.
+  Execucao estritamente sequencial (parallelization: false); auto_advance deve ficar OFF (3
+  checkpoints bloqueantes: C9, C10, C11).
   A rodada 1 esta preservada em 04-REVIEW-r1.md (origem dos planos 04-08..04-11).
   SEC-01 permanece ABERTO como risco conscientemente aceito (decisao C8) — nao marcar resolvido.
-Last activity: 2026-08-04 -- Phase 04: code review r2 reabriu a fase (CR2-01 critico)
+Last activity: 2026-08-05 -- Phase 04: gap closure r2 planejada (04-12..04-18), verificacao passou
 
-Progress: [█████████░] 92% (execucao dos planos; fase bloqueada por CR2-01)
+Progress: [██████░░░░] 61% (11 de 18 planos executados; fase bloqueada por CR2-01)
 
 ## Performance Metrics
 
