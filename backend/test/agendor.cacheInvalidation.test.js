@@ -113,7 +113,22 @@ after(() => {
 // Zera o contador antes de cada caso para que a contagem do cenário (2) reflita UMA única
 // execução de getStaleDeals (o mock.fn acumula) — padrão do beforeEach de
 // agendor.futureTasks.test.js.
+//
+// E REAFIRMA O ESTADO NEUTRO das TRÊS variáveis mutáveis lidas dentro do routeHandler
+// (`dealsServidos`, `orgQueFalha` e a chave 201 de `ORG_CATEGORY`), em vez de restaurá-las na
+// última instrução do corpo de cada `test()`, como este arquivo fazia até o 04-26 (WR3-07).
+// A restauração no caminho feliz NÃO roda quando uma asserção falha antes dela: o estado sujo
+// sobrevive, o routeHandler passa a responder pelo cenário ERRADO nos casos seguintes, e o
+// vermelho seguinte chega com a mensagem de outro caso — apontando para um defeito de produção
+// que não existe. É o mesmo custo que WR2-03 usou para justificar o conserto do helper de
+// relógio, aplicado ao instrumento. Com o hook, existe UM lugar responsável pelo estado.
+//
+// A ordem de declaração dos casos continua sendo parte do teste (ver o bloco abaixo): o hook não
+// reordena nem renomeia nada, só garante que cada caso comece do mesmo ponto.
 beforeEach(() => {
+  dealsServidos = dealsPage;
+  orgQueFalha = null;
+  delete ORG_CATEGORY[201];
   fake.get.mock.resetCalls();
 });
 
@@ -194,8 +209,6 @@ test('cenário (3): `null` cacheado por erro transitório não contamina a execu
     false,
     'o valor cacheado pelo catch de getOrgCategory sobreviveu à execução em que foi gravado',
   );
-
-  dealsServidos = dealsPage;
 });
 
 test('cenário (1): recategorização no Agendor vale já na execução seguinte', async () => {
@@ -218,6 +231,4 @@ test('cenário (1): recategorização no Agendor vale já na execução seguinte
   );
   // Não-regressão: a limpeza não pode derrubar quem continua elegível.
   assert.equal(idsDepois.includes(103), true);
-
-  delete ORG_CATEGORY[201];
 });
