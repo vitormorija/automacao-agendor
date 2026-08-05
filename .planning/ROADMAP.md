@@ -114,7 +114,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] 04-13-PLAN.md — `avancarRelogioAte` normaliza o desfecho e para de produzir `unhandledRejection` atribuído ao caso errado (WR2-03)
 - [x] 04-14-PLAN.md — `results.notified` acompanha o status também no caminho de exceção (WR2-01)
 - [x] 04-15-PLAN.md — A falha ao REGISTRAR o desfecho do envio para de abortar a rodada: gravação protegida e fail-safe `'pending'` declarado (WR2-02) · termina em C10
-- [ ] 04-16-PLAN.md — O canal `err.resultadosParciais` é validado por tipo antes de ser consumido: parcial corrompido vira "nada confirmado" em vez de derrubar a rodada (WR2-04)
+- [x] 04-16-PLAN.md — O canal `err.resultadosParciais` é validado por tipo antes de ser consumido: parcial corrompido vira "nada confirmado" em vez de derrubar a rodada (WR2-04)
 - [ ] 04-17-PLAN.md — O transporte recriado no retry serve o destinatário seguinte (WR2-05) · termina em C11
 - [ ] 04-18-PLAN.md — Âncoras estáveis nos comentários e registro de IN2-01..IN2-04 como todos pendentes (WR2-06)
 
@@ -170,7 +170,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | 1. Rede de Testes (Safety-Net) | 5/5 | Complete   | 2026-07-24 |
 | 2. Toolchain de Qualidade & CI | 4/4 | Complete   | 2026-07-29 |
 | 3. Config & Segredos por Ambiente | 7/7 | Complete   | 2026-07-30 |
-| 4. Confiabilidade das Integrações | 15/18 | In Progress (gap closure r2: 04-16..04-18) | - |
+| 4. Confiabilidade das Integrações | 16/18 | In Progress (gap closure r2: 04-17..04-18) | - |
 | 5. Logging & Padronização de Erros | 0/TBD | Not started | - |
 | 6. Hardening de Segurança | 0/TBD | Not started | - |
 | 7. Refatoração Incremental de Arquitetura | 0/TBD | Not started | - |
