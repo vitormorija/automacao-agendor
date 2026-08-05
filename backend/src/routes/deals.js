@@ -33,10 +33,11 @@ async function staleHandler(req, res) {
     // Só a MENSAGEM vai para o log — nunca o objeto de erro (CR-02). O AxiosError carrega
     // `config.headers` com o header `Authorization` e o token de serviço da Agendor dentro
     // dele, e a chamada crua de console que estava aqui despejava esse objeto inteiro no
-    // stream que o PM2 persiste em `/opt/agendor/logs/pm2-error.log`
-    // (`ecosystem.config.js:20`) — a credencial gravada em disco, sobrevivendo a restart,
+    // stream que o PM2 persiste em `/opt/agendor/logs/pm2-error.log` (a chave `error_file`
+    // de `ecosystem.config.js`) — a credencial gravada em disco, sobrevivendo a restart,
     // sempre que a API Agendor ficasse lenta.
-    // Mesma razão já registrada em `agendor.js:291-292`, que corrigiu só o outro lado.
+    // Mesma razão já registrada no comentário de `getDealsWithFutureTasks`, em `agendor.js`,
+    // que corrigiu só o outro lado.
     // Pinado por backend/test/deals.errorLog.test.js: o teste injeta um token sintético no
     // header e falha se ele reaparecer na serialização do que foi entregue ao logger.
     logger.error('[Deals] Erro ao listar negócios parados:', err.message);

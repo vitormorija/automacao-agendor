@@ -245,7 +245,7 @@ async function sendStaleNotification({ deal, ownerEmail, authorEmail, logId }) {
   // Por que este try existe (WR-01) — e por que ele NÃO engole a exceção:
   // `results` é uma variável local e se perde junto com a pilha quando algo lança
   // daqui. E lançar DEPOIS de um destinatário já ter recebido é um caminho real:
-  // `sendMailWithRetry` recria o transporte dentro do seu próprio catch (`:211`),
+  // `sendMailWithRetry` (logo acima) recria o transporte dentro do seu próprio catch,
   // e essa recriação pode falhar com o banco VIVO — é o cenário A de
   // notificationStatus.partialFailure.test.js, e é ele que este canal cobre. Sem
   // levar o parcial junto, o catch do agendador não tem como saber que o dono já

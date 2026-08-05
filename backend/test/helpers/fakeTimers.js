@@ -1,7 +1,7 @@
 // Helper de teste (NÃO define testes) — avança o relógio falso do `node:test` até
 // uma promessa concluir, sem esperar tempo real. Serve a qualquer caso que exercite
 // um caminho com `await new Promise((r) => setTimeout(r, ...))` no meio (hoje: a
-// espera de 3s/6s entre as tentativas de `sendMailWithRetry`, em `emailer.js:209`).
+// espera de 3s/6s entre as tentativas de `sendMailWithRetry`, em `emailer.js`).
 //
 // Uso típico:
 //   const { avancarRelogioAte } = require('./helpers/fakeTimers');

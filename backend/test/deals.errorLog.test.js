@@ -4,7 +4,8 @@
 // chamada crua de console passando o objeto de erro INTEIRO. `util.inspect` de um AxiosError
 // imprime suas propriedades próprias enumeráveis — entre elas `config` — e
 // `config.headers.Authorization` carrega o token de serviço da Agendor. Em produção esse
-// stream vai para `/opt/agendor/logs/pm2-error.log` (`ecosystem.config.js:20`), **persistido
+// stream vai para `/opt/agendor/logs/pm2-error.log` (a chave `error_file` de
+// `ecosystem.config.js`), **persistido
 // em disco** e sobrevivente a restart. Ou seja: uma API Agendor lenta bastava para gravar a
 // credencial em arquivo.
 //
@@ -12,7 +13,8 @@
 // engolida dentro de `agendor.js`; com o fail-safe de REL-06 ela propaga e o `staleHandler`
 // responde 500 (pinado pelo caso B3 de `scheduler.failsafe.test.js`). O timeout de 15s do
 // REL-01 (04-03) tornou esse 500 alcançável sempre que a Agendor demorar. A própria fase já
-// havia reconhecido a ameaça do OUTRO lado, em `agendor.js:291-292` — este arquivo fecha a
+// havia reconhecido a ameaça do OUTRO lado, no comentário de `getDealsWithFutureTasks`
+// (`agendor.js`) — este arquivo fecha a
 // inconsistência.
 //
 // Método: o handler é executado DIRETO pelo seam `staleHandler`, com um `res` falso mínimo

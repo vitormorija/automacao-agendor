@@ -1,19 +1,19 @@
 // Prova de WR-01 e WR-04 — os dois defeitos que o bloco de envio de
-// `scheduler.js:110-183` carrega HOJE, ambos sobre a mesma linha do
+// runCheck (`scheduler.js`) carrega HOJE, ambos sobre a mesma linha do
 // `notification_log`.
 //
-// WR-01 (regressão introduzida pelo 04-06): o `catch` de `scheduler.js:169-176`
+// WR-01 (regressão introduzida pelo 04-06): o `catch` do bloco de envio de runCheck
 // grava `updateNotificationStatus(logId, 'error', err.message)` INCONDICIONALMENTE.
 // Quando `sendStaleNotification` lança DEPOIS de um destinatário já ter confirmado
 // o envio — é o que acontece quando a recriação do transporte dentro do laço de
-// retry (`emailer.js:211`) falha —, a única linha do deal é rebaixada para
-// `'error'`, `alreadyNotifiedToday` (`db.js:223-232`, que filtra `status = 'sent'`)
+// retry (em `sendMailWithRetry`, `emailer.js`) falha —, a única linha do deal é rebaixada
+// para `'error'`, `alreadyNotifiedToday` (`db.js`, que filtra `status = 'sent'`)
 // volta a devolver `false` e **a rodada de amanhã reenvia para quem já recebeu**.
 //
-// WR-04: `results.notified++` (`scheduler.js:168`) é incondicional. Numa falha
+// WR-04: `results.notified++` (no bloco de envio de runCheck) é incondicional. Numa falha
 // total por retorno, o mesmo bloco grava `'error'` e em seguida incrementa o
 // contador — e é esse número que `logger.info('[Scheduler] Concluído: …')`
-// (`:187-189`) e a UI exibem. No dia em que o SMTP estiver fora, o log dirá que
+// do fim de runCheck e a UI exibem. No dia em que o SMTP estiver fora, o log dirá que
 // tudo saiu.
 //
 // WR2-01 (lacuna deixada pelo fechamento de WR-01/WR-04): o ramo de EXCEÇÃO grava
@@ -121,7 +121,8 @@ let modoEnvio = 'ok'; // 'ok' | 'falha-total' | 'excecao-apos-envio'
 let transportesCriados = 0;
 let enviosConfirmados = 0;
 
-// Erro classificado como DE REDE por sendMailWithRetry (emailer.js:198-202): a
+// Erro classificado como DE REDE por `isNetworkError`, dentro de sendMailWithRetry
+// (emailer.js): a
 // mensagem contém 'timeout'. É o que faz o retry entrar no ramo que espera 3s e
 // RECRIA o transporte, em vez de devolver { success:false } de imediato.
 function erroDeRede() {
@@ -141,13 +142,14 @@ function erroPermanente() {
 }
 
 // PC-13: o objeto de opções (que carrega auth.pass) não é capturado nem asserido —
-// o stub apenas RAMIFICA por `to`, como já faz notificationStatus.test.js:150.
+// o stub apenas RAMIFICA por `to`, como já faz o stub de createTransport de
+// notificationStatus.test.js.
 mock.method(nodemailer, 'createTransport', () => {
   transportesCriados++;
 
-  // Cenário A: a 1ª chamada é a do topo de sendStaleNotification (emailer.js:220) e
+  // Cenário A: a 1ª chamada é a fábrica do topo de sendStaleNotification (emailer.js) e
   // precisa funcionar — é ela que entrega o e-mail do dono. A 2ª é a recriação de
-  // emailer.js:211, dentro do catch do retry, e é aí que a exceção nasce: DEPOIS de
+  // sendMailWithRetry, dentro do catch do retry, e é aí que a exceção nasce: DEPOIS de
   // um destinatário já ter confirmado o envio.
   if (modoEnvio === 'excecao-apos-envio' && transportesCriados >= 2) {
     throw new Error('transporte SMTP indisponível ao recriar a conexão');
@@ -170,7 +172,8 @@ mock.method(nodemailer, 'createTransport', () => {
 const db = require('../src/db');
 const { runCheck } = require('../src/scheduler');
 
-// O default do projeto é 'false' (db.js:114). Ligado aqui para que dono e autor
+// O default do projeto é 'false' (o objeto de defaults semeado por db.js). Ligado aqui para
+// que dono e autor
 // sejam destinatários distintos — pré-requisito do cenário A.
 db.setConfig('notify_author', 'true');
 
@@ -179,7 +182,8 @@ before(() => {
   // 'Date'): o cenário A depende da espera de 3s do retry de sendMailWithRetry —
   // é dentro daquele ramo que o createTransporter() da recriação é chamado. Com um
   // único deal servido (meta.totalCount = 1) não há segunda página, então a espera
-  // entre lotes de agendor.js:203-210 nunca é atingida e nada mais fica congelado.
+  // entre lotes de páginas de getStaleDeals (agendor.js) nunca é atingida e nada mais fica
+  // congelado.
   mock.timers.enable({ apis: ['Date', 'setTimeout'], now: FIXED_NOW });
 });
 
@@ -198,7 +202,7 @@ beforeEach(() => {
 });
 
 // Linhas do deal, da mais recente para a mais antiga. Usa getNotificationLogs
-// (db.js:210-220) — nenhuma consulta SQL ad-hoc. A ordenação é por `id` e não por
+// (`db.js`) — nenhuma consulta SQL ad-hoc. A ordenação é por `id` e não por
 // `sent_at` porque o relógio está congelado: todas as linhas compartilham o mesmo
 // `sent_at`.
 function linhasDoDeal(dealId) {
