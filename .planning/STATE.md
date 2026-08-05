@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: "Completed 04-31-PLAN.md — WR4-06 FECHADO: a PREVIA do envio (runCheckOnly) passou a MARCAR quem sera notificado, com os MESMOS quatro predicados de runCheck, e o rotulo do botao do painel deixou de contar negocios parados para contar destinatarios. A divergencia entre previa e envio virou VERMELHO (cenarios F e G), nao comentario. Suite 181 -> 183, lint exit 0 no backend e no frontend, build do frontend exit 0. Faltam 04-32..04-34 da gap closure r4. || anterior: Completed 04-30-PLAN.md — WR4-04 e IN4-01 FECHADOS: a unica borda do modulo com fan-out proporcional ao VOLUME DE DADOS ganhou teto de CONCORRENCIA (LOTE_DE_ORGS), sem mudar o resultado de getStaleDeals, e o lote IRMAO da paginacao esta VERIFICADO por medicao. Suite 178 -> 181, agendor.js 100% linhas / 91,72% branches, lint exit 0. Faltam 04-31..04-34 da gap closure r4. || anterior: Completed 04-29-PLAN.md — WR4-01 e WR4-05 FECHADOS: as TRES paginacoes de agendor.js tem o mesmo teto e o mesmo tratamento de envelope, com as irmas VERIFICADAS por teste e nao presumidas. Suite 174 -> 178, agendor.js em 100% linhas / 91,6% branches, lint exit 0. Faltam 04-30..04-34 da gap closure r4. || anterior: Completed 04-28-PLAN.md — CR4-01 (o BLOCKER da r4) FECHADO. || GAP CLOSURE R4 PLANEJADA E VERIFICADA (2026-08-05): 7 planos aditivos 04-28..04-34 sobre o 04-REVIEW.md round 4. Plan-checker: VERIFICATION PASSED NA PRIMEIRA PASSADA. Cobertura REL-01..06 = 6/6. || FASE 04 REABERTA PELA 4a VEZ pelo code review rodada 4: 1 BLOCKER (CR4-01), 7 warnings e 6 info."
-last_updated: "2026-08-05T17:05:00.000Z"
-last_activity: 2026-08-05 -- 04-31 completo (WR4-06: a previa marca quem sera notificado e o botao do painel conta destinatarios); suite 183/183, lint exit 0, build do frontend exit 0
+stopped_at: "Completed 04-32-PLAN.md — WR4-07 FECHADO: um responsavel SEM NOME deixou de derrubar o resumo semanal de TODOS os comerciais. O rotulo do relatorio individual passou a resolver pelo CADASTRO (negocio -> users[d.ownerId]?.name -> rotulo neutro) e o template ganhou a guarda gemea como defesa em profundidade. Suite 183 -> 186, cobertura exit 0, lint exit 0 (44 warnings). Faltam 04-33 e 04-34 da gap closure r4. || anterior: Completed 04-31-PLAN.md — WR4-06 FECHADO: a PREVIA do envio (runCheckOnly) passou a MARCAR quem sera notificado, com os MESMOS quatro predicados de runCheck, e o rotulo do botao do painel deixou de contar negocios parados para contar destinatarios. A divergencia entre previa e envio virou VERMELHO (cenarios F e G), nao comentario. Suite 181 -> 183, lint exit 0 no backend e no frontend, build do frontend exit 0. Faltam 04-32..04-34 da gap closure r4. || anterior: Completed 04-30-PLAN.md — WR4-04 e IN4-01 FECHADOS: a unica borda do modulo com fan-out proporcional ao VOLUME DE DADOS ganhou teto de CONCORRENCIA (LOTE_DE_ORGS), sem mudar o resultado de getStaleDeals, e o lote IRMAO da paginacao esta VERIFICADO por medicao. Suite 178 -> 181, agendor.js 100% linhas / 91,72% branches, lint exit 0. Faltam 04-31..04-34 da gap closure r4. || anterior: Completed 04-29-PLAN.md — WR4-01 e WR4-05 FECHADOS: as TRES paginacoes de agendor.js tem o mesmo teto e o mesmo tratamento de envelope, com as irmas VERIFICADAS por teste e nao presumidas. Suite 174 -> 178, agendor.js em 100% linhas / 91,6% branches, lint exit 0. Faltam 04-30..04-34 da gap closure r4. || anterior: Completed 04-28-PLAN.md — CR4-01 (o BLOCKER da r4) FECHADO. || GAP CLOSURE R4 PLANEJADA E VERIFICADA (2026-08-05): 7 planos aditivos 04-28..04-34 sobre o 04-REVIEW.md round 4. Plan-checker: VERIFICATION PASSED NA PRIMEIRA PASSADA. Cobertura REL-01..06 = 6/6. || FASE 04 REABERTA PELA 4a VEZ pelo code review rodada 4: 1 BLOCKER (CR4-01), 7 warnings e 6 info."
+last_updated: "2026-08-05T18:30:00.000Z"
+last_activity: 2026-08-05 -- 04-32 completo (WR4-07: o rotulo do relatorio individual resolve pelo cadastro e um responsavel sem nome nao custa mais o resumo de todos); suite 186/186, cobertura exit 0, lint exit 0
 progress:
   total_phases: 8
   completed_phases: 3
   total_plans: 50
-  completed_plans: 47
+  completed_plans: 48
   percent: 38
 ---
 
@@ -26,8 +26,71 @@ See: .planning/PROJECT.md (updated 2026-07-22)
 ## Current Position
 
 Phase: 04 (confiabilidade-das-integra-es) — gap closure r4 EM EXECUCAO
-Plan: 31 de 34 executados (04-01..04-31). Faltam 04-32..04-34 (gap closure r4).
-Status: WR4-06 FECHADO PELO 04-31 (2026-08-05)
+Plan: 32 de 34 executados (04-01..04-32). Faltam 04-33 e 04-34 (gap closure r4).
+Status: WR4-07 FECHADO PELO 04-32 (2026-08-05)
+
+  O 04-32 fechou o achado cujo dano NAO E PROPORCIONAL A CAUSA: `ownerWeeklyHtml`
+  desreferenciava `ownerName` sem guarda, e `getStaleDeals` produz `ownerName: null`
+  explicito quando o payload da borda traz `owner` sem `name`. O template e montado DENTRO
+  do laco de destinatarios e ANTES do try/catch que envolve o sendMail, entao a excecao
+  saia de sendOwnerWeeklySummary, subia ate o catch de runWeeklySummary e encerrava o
+  resumo semanal INTEIRO — um unico responsavel sem nome custava o relatorio de TODOS os
+  comerciais, inclusive os que ja teriam recebido, com vestigio de UMA linha generica de
+  log. A assimetria que provava descuido e nao decisao: POST /test-owner-summary ja
+  guardava o mesmo campo (`ownerName || d.ownerName || 'Comercial Teste'`).
+  O CUSTO AGREGADO FOI MEDIDO, NAO PRESUMIDO (D-WR4-07-d). Sonda temporaria sobre o
+  cenario (6) no estado defeituoso: `enviosCapturados.length = 0` com DOIS responsaveis na
+  lista — zero de dois. O vizinho sem defeito nenhum nao recebia nada. A sonda foi apagada
+  antes do commit; o numero esta no SUMMARY.
+  AGORA: o rotulo do grupo resolve pela MELHOR FONTE — `d.ownerName || users[d.ownerId]?.name
+  || 'Comercial'` — e nao apenas evita a excecao. O dicionario de getUsers tem o nome
+  cadastrado mesmo quando o negocio nao tem; so evitar a excecao trocaria um erro por uma
+  saudacao generica. A guarda gemea no template (`(ownerName || 'Comercial')`) e DEFESA EM
+  PROFUNDIDADE declarada SEM caso dedicado (D-WR4-07-c), com o motivo escrito no codigo (o
+  outro chamador ja guarda; pinar exigiria seam num modulo que nao exporta a funcao) e o
+  precedente nomeado (D-WR3-03-b, 04-24).
+  QUEM RECEBE NAO MUDOU: a decisao continua vindo de `owner?.email`; a mudanca e so no
+  ROTULO guardado ao lado da lista.
+  A ASSERCAO E SOBRE O HTML, NAO SOBRE A CONTAGEM (D-WR4-07-e): os tres casos novos exigem
+  que o corpo enviado NAO contenha as strings `undefined` nem `null`. Um conserto que
+  apenas evitasse a excecao e imprimisse "Ola, undefined!" passaria por qualquer assercao
+  de quantidade. O caso (7) e o FUNDO do encadeamento (sem nome no negocio E sem nome no
+  cadastro) — sem ele a cadeia poderia parar no penultimo elo sem ninguem perceber.
+  A ORDEM DO CASO (6) E INSTRUMENTO, NAO ESTILO: o sem-nome vem PRIMEIRO porque
+  Object.entries(byOwner) segue a ordem de insercao, que e a ordem da lista notificavel —
+  com ele em segundo lugar o primeiro grupo ja teria sido enviado antes da excecao e o
+  caso ficaria VERDE com o defeito presente.
+  RED literal: os tres vermelhos com TypeError "Cannot read properties of null (reading
+  'split')" em ownerWeeklyHtml, e (1) a (4) verdes sem ajuste — a condicao de PARAR ("a
+  extensao da armacao afetou a politica") nao foi atingida. Acrescentar os ids 12 e 13 a
+  USERS nao mexeu em nada: os casos antigos so referenciam o id 11.
+  A POLITICA DE CR3-01 FICOU INTOCADA e medida: `categoriaIndecidivel` e `skippedByFunnel`
+  ausentes do diff (0 e 0). sendWeeklySummary (consolidado do admin) continua NAO filtrando
+  de proposito. dealEmailHtml ausente do diff (0) — o residual `wr4-07b` NAO foi fechado de
+  carona. agendor.js ausente do diff: produzir `ownerName: null` explicito e DELIBERADO, e
+  consertar a FONTE esconderia o dado ausente do painel, dos relatorios e do snapshot para
+  consertar um template.
+  DUAS DIVERGENCIAS DE MEDICAO, registradas e nao forcadas: (1) o baseline do plano dizia 8
+  ocorrencias do identificador `ownerName` no emailer.js; medido `grep -o` = 11 em 10
+  linhas — a conclusao que importa (UMA desreferencia, `.split(` = 1) sobrevive intacta;
+  (2) o teto de "4 linhas nao-comentario no diff" ficou em 5 adicionadas / 2 removidas,
+  porque o Biome quebrou o literal de objeto em quatro linhas ao passar de 80 colunas — as
+  mudancas SEMANTICAS continuam sendo DUAS, e o proprio plano previa "mais o que o Biome
+  reformatar". OITAVA rodada da fase com divergencia de contagem.
+  TODOS OS DEMAIS NUMEROS PRESCRITOS BATERAM: ownerName.split( nao-comentario = 0, .split(
+  nao-comentario = 1, users[d.ownerId]?.name nao-comentario = 1, 7 casos no arquivo,
+  0 assercoes removidas/alteradas, 0 referencias por numero de linha.
+  Suite 183 -> 186, emailer.js 89,78% linhas / 63,7% branches, cobertura exit 0, lint exit
+  0 (44 warnings, baseline). Os CINCO arquivos vizinhos verdes SEM edicao (21 casos);
+  git diff --name-only -- backend/test/ VAZIO na Task 2.
+  ZERO DESVIOS: nenhuma Rule 1-4 acionada, nenhum pacote instalado.
+  ATENCAO PARA QUEM SEGUIR: o cenario (6) e o UNICO da suite que mede o custo AGREGADO de
+  uma excecao montada FORA do try/catch do envio. Quem inverter a ordem dos dois negocios o
+  torna verde com o defeito presente. E a assercao de ausencia de `undefined`/`null` no
+  HTML nao deve ser "simplificada" para contagem de envios.
+  Commits: 3f38b6a (RED), 5fd6be8 (GREEN).
+
+Status anterior: WR4-06 FECHADO PELO 04-31 (2026-08-05)
 
   O 04-31 fechou o achado em que o ERRO ERA LIDO PELO OPERADOR ANTES DE UMA DECISAO: a previa
   somente-leitura (runCheckOnly, POST /api/notifications/check) aplicava UM filtro — tarefas
