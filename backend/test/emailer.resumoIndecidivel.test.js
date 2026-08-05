@@ -341,3 +341,47 @@ test('(7) nem no negócio, nem no cadastro: o envio acontece com um rótulo neut
   assert.equal(html.includes('Olá, <strong>Comercial</strong>'), true);
   assertHtmlSemNuloNoNome(html, 'cenário 7');
 });
+
+// ── in3-08 / MODO 2: funil RENOMEADO no CRM ──────────────────────
+// `sendOwnerWeeklySummary` é o TERCEIRO consumidor de `shouldNotifyOwner` — os outros
+// dois são `runCheck` e `runCheckOnly`, em `src/scheduler.js`. Os três chamam a MESMA
+// função exportada, e o cenário abaixo é o que prova que a mudança de comparação
+// atravessa até aqui, em vez de ser presumida pela leitura do código.
+// O modo de falha fechado: enquanto a comparação era por igualdade exata, bastava um
+// administrador renomear o funil no Agendor — 'Beefor' vira 'Beefor Comercial' — para
+// o card voltar ao relatório individual do comercial, que é justamente quem a regra de
+// negócio diz não ser responsável por acompanhá-lo.
+// A asserção é sobre o CORPO ENVIADO, e não sobre `results.length`: um conserto que
+// apenas contasse diferente e continuasse listando o card passaria por qualquer
+// asserção de quantidade — a mesma lição registrada no cenário (1) deste arquivo.
+test('(8) funil RENOMEADO: o card de "Beefor Comercial" também sai do e-mail individual', async () => {
+  const deals = [
+    negocio({ id: 5071, title: 'NEGOCIO-NORMAL', ownerId: 11 }),
+    negocio({
+      id: 5072,
+      title: 'NEGOCIO-BEEFOR-RENOMEADO',
+      ownerId: 11,
+      funnel: 'Beefor Comercial',
+    }),
+    negocio({
+      id: 5073,
+      title: 'NEGOCIO-BEEFOR-EXATO',
+      ownerId: 11,
+      funnel: 'Beefor',
+    }),
+  ];
+
+  const results = await sendOwnerWeeklySummary({ deals, users: USERS });
+
+  assert.equal(enviosCapturados.length, 1);
+  assert.equal(enviosCapturados[0].to, COMERCIAL);
+  assert.equal(results.length, 1);
+
+  // O nome EXATO continua suprimido (não-regressão) e o RENOMEADO passa a ser: a
+  // supressão nova soma-se ao contrato antigo, não o substitui. E o card do funil
+  // normal continua presente — a supressão não é larga demais.
+  const html = enviosCapturados[0].html;
+  assert.equal(html.includes('NEGOCIO-NORMAL'), true);
+  assert.equal(html.includes('NEGOCIO-BEEFOR-RENOMEADO'), false);
+  assert.equal(html.includes('NEGOCIO-BEEFOR-EXATO'), false);
+});
