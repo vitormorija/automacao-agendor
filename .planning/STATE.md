@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: 04-21 COMPLETO — CR3-01 FECHADO nos tres caminhos (borda, envio diario, resumo semanal)
-stopped_at: Completed 04-19-PLAN.md
-last_updated: "2026-08-05T05:41:10.905Z"
-last_activity: 2026-08-05 -- 04-21 completo (CR3-01 3/3 no resumo semanal individual); suite 156 -> 160
+status: 04-22 COMPLETO — WR3-01 FECHADO (as cinco bordas do modulo sob a mesma politica de retry)
+stopped_at: Completed 04-22-PLAN.md
+last_updated: "2026-08-05T06:05:00.000Z"
+last_activity: 2026-08-05 -- 04-22 completo (WR3-01: /users e /deals/:id no fetchWithRetry); suite 160 -> 164
 progress:
   total_phases: 8
   completed_phases: 3
   total_plans: 43
-  completed_plans: 37
+  completed_plans: 38
   percent: 38
 ---
 
@@ -26,8 +26,60 @@ See: .planning/PROJECT.md (updated 2026-07-22)
 ## Current Position
 
 Phase: 04 (confiabilidade-das-integra-es) — gap closure r3 EM EXECUCAO
-Plan: 21 de 27 executados (04-01..04-21). Faltam 04-22..04-27 (gap closure r3).
-Status: 04-21 COMPLETO — CR3-01 FECHADO nos tres caminhos (borda, envio diario, resumo semanal)
+Plan: 22 de 27 executados (04-01..04-22). Faltam 04-23..04-27 (gap closure r3).
+Status: 04-22 COMPLETO — WR3-01 FECHADO (as cinco bordas do modulo sob a mesma politica de retry)
+
+  O 04-22 fechou WR3-01, o primeiro achado INDEPENDENTE da rodada 3 (CR3-01 ja estava
+  fechado nos tres caminhos pelos 04-19/20/21). O comentario da politica em agendor.js abria
+  com "Politica UNICA de retry da borda Agendor" e explicava que duplicar a regra criaria "um
+  segundo lugar para ela divergir" — enquanto o helper cobria DUAS das CINCO chamadas do
+  modulo. /users e /deals/:id ficavam de fora nao por decisao registrada, mas por OMISSAO.
+  AGORA: `await api.get(` em linhas nao-comentario de agendor.js = ZERO. As cinco bordas
+  (/deals em fetchDealsPage, /tasks em getDealsWithFutureTasks, /organizations/:id em
+  getOrgCategory, /users em getUsers, /deals/:id em getDealById) passam pelo MESMO
+  fetchWithRetry — medido: `fetchWithRetry(` = 6 (a definicao mais as cinco), `api.get(` = 5
+  (nenhuma borda nova nem removida).
+  O COMENTARIO PASSOU A ENUMERAR AS BORDAS, com o ponto de chamada de cada uma. Isso e o
+  conserto do achado tanto quanto as duas linhas de codigo: enquanto o bloco dizia apenas
+  "unica", o proximo leitor nao ia procurar as que faltavam — foi assim que WR3-01 nasceu.
+  Quem acrescentar uma sexta borda acrescenta uma linha na lista, ou deixa a lista mentindo
+  de forma VISIVEL. `grep -c organizations` em agendor.js foi de 1 para 2.
+  /users e o caso MAIS CARO das tres que faltavam: esta no mesmo Promise.all que runCheck usa
+  como pre-requisito de tudo, entao a rejeicao aborta a rodada ANTES do laco de envio — zero
+  negocios processados, zero e-mails, vestigio so em results.error. Com o cron diario, 24h de
+  silencio por um rate limit de segundos.
+  A GUARDA DE TIPO DO ID (WR-03) CONTINUA FORA DO CALLBACK, de proposito (D-WR3-01-b):
+  passar pelo helper da RETENTATIVA, nao da PERMISSAO. Dentro do callback, `'../users'` sairia
+  TRES vezes pela instancia compartilhada, com o AGENDOR_TOKEN no header, em vez de nenhuma.
+  Medido: Number.isInteger(dealId) = 1 e dealId.validation.test.js verde SEM edicao.
+  OS DOIS CENARIOS SIMETRICOS EXIGIDOS PELA RODADA EXISTEM E ESTAO NOMEADOS, e cobrem
+  direcoes OPOSTAS da mesma borda: caso (6) — a exaustao ainda PROPAGA com 3 requisicoes, de
+  modo que estender a politica nao virou "engolir o erro" e produzir dicionario parcial (a
+  classe de falha que a Decisao Q2 recusou para as tarefas futuras); caso (7) — o timeout
+  ainda rejeita na PRIMEIRA requisicao, de modo que estender a politica a uma borda nova nao
+  alargou, de carona, a politica em si (retentar timeout levaria o pior caso de ~15s para
+  ~60s, comendo a janela do cron que D-01 protege).
+  DIVERGENCIA MEDIDA E REGISTRADA (o unico numero que nao bateu ate aqui na rodada): o plano
+  previa RED de `1 !== 2` nos casos (5) e (8); o medido e uma falha ANTERIOR — a promessa
+  REJEITA com o 429 cru (testCodeFailure, stack em getUsers/getDealById) e a asseracao de
+  contagem nunca e alcancada. `1 !== 2` seria o desfecho de um fail-OPEN (dicionario parcial),
+  que e o defeito de CR3-01, ja fechado. O defeito de WR3-01 nunca foi protecao parcial: era
+  AUSENCIA DE REDE antes de a falha virar explicita. Valor medido registrado, numero do plano
+  NAO forcado.
+  TODOS os demais criterios numericos bateram. Diff de codigo em agendor.js = EXATAMENTE os 2
+  pontos de chamada (todo o resto do diff e comentario); 0 asseracoes removidas ou alteradas
+  no diff do arquivo de teste; `simetrico` = 4 ocorrencias; `^test(` = 8. Suite 160 -> 164,
+  cobertura de agendor.js em 89,53% linhas / 86,72% branches, lint exit 0 (44 warnings).
+  ZERO DESVIOS: nenhuma Rule 1-4 acionada, nenhum pacote instalado.
+  ESCOPO QUE O 04-22 NAO FECHA: a paginacao NAO ganhou teto de paginas — getUsers continua
+  com while(true) dependendo de data.links?.next. Isso e WR3-06, do 04-25, e antecipa-lo aqui
+  misturaria duas correcoes num commit. getStaleDeals, getOrgCategory,
+  getDealsWithFutureTasks, shouldNotifyOwner, isExcludedStage, getDealType e o module.exports
+  ficaram byte a byte; o arquivo nao foi reordenado. O console.log legado de
+  getDealsWithFutureTasks continua la (LOG-01, Fase 5).
+  ATENCAO para quem seguir: as cinco bordas agora dependem do MESMO helper, entao qualquer
+  mudanca em fetchWithRetry passa a ter cinco consumidores — e o caso (7) de
+  agendor.retry429.test.js e o alarme que dispara se a condicao de 429 for alargada.
 
   O 04-21 fechou o CAMINHO VIZINHO de CR3-01, e com ele o achado inteiro. O 04-20 fechou o
   envio DIARIO e o negocio indecidivel voltava pela SEXTA-FEIRA: sendOwnerWeeklySummary e o
@@ -459,7 +511,7 @@ Origem: CODE REVIEW RODADA 3 (2026-08-05)
   SEC-01 permanece ABERTO como risco conscientemente aceito (decisao C8) — nao marcar resolvido.
 Last activity: 2026-08-05 -- 04-21 completo (CR3-01 3/3 no resumo semanal individual); suite 156 -> 160
 
-Progress: [████████░░] 78% (21 de 27 planos da fase 04 completos; CR3-01 FECHADO nos tres caminhos: borda, envio diario e resumo semanal)
+Progress: [█████████░] 88%
 
 ## Performance Metrics
 
@@ -516,6 +568,7 @@ Progress: [████████░░] 78% (21 de 27 planos da fase 04 compl
 | Phase 04 P19 | 21min | 3 tasks tasks | 4 files files |
 | Phase 04 P20 | 16min | 2 tasks tasks | 2 files files |
 | Phase 04 P21 | 12 | 2 tasks | 2 files |
+| Phase 04 P22 | 14min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -655,6 +708,8 @@ Recent decisions affecting current work:
 - [Phase ?]: 04-20 (D-CR3-01-h..k): a guarda de categoria indecidivel mora no laco de runCheck, entre a dedup e a de funil; nenhuma linha no notification_log; a guarda nao loga; continue e nunca throw
 - [Phase ?]: 04-20: o cenario SIMETRICO da rodada 3 e a ORDEM INVERSA (falha no 2o negocio), o que separa 'a guarda funciona' de 'a guarda funciona porque o afetado era o primeiro'
 - [Phase 04]: D-CR3-01-l/m/n/o aplicadas no 04-21: o e-mail individual do comercial exclui o negocio indecidivel; o consolidado do admin e o snapshot MANTEM (medido nas duas direcoes). Filtro em DOIS PASSOS separados, skippedByFunnel inalterado (3 antes, 3 depois), contagem propria avisada por logger.warn [Emailer]. LOG-01 nao antecipado: console.* em emailer.js = 4 antes e 4 depois.
+- [Phase ?]: 04-22 (WR3-01): as CINCO chamadas HTTP de agendor.js sob a mesma politica de retry — 'await api.get(' = 0; o comentario passou a ENUMERAR as bordas com o ponto de chamada de cada uma
+- [Phase ?]: 04-22: a guarda de tipo do id (WR-03) fica FORA do callback do retry — o helper da retentativa, nao permissao; caso (8) assere 0 requisicoes para '../users'
 
 ### Pending Todos
 
@@ -707,6 +762,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-05T05:40:56.985Z
+Last session: 2026-08-05T05:49:35.583Z
 Stopped at: Completed 04-19-PLAN.md
 Resume file: None
