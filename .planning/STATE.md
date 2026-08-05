@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: 04-12 implementado (CR2-01 fechado) — PAUSADO no checkpoint C9, gate humano bloqueante. Nao entrar no 04-13 sem o sinal de retomada. SEC-01 permanece ABERTO por decisao C8.
+stopped_at: 04-12 COMPLETO (CR2-01 fechado) — checkpoint C9 APROVADO pelo usuario. Executando 04-13. SEC-01 permanece ABERTO por decisao C8.
 last_updated: "2026-08-05T00:14:46.325Z"
-last_activity: 2026-08-05 -- 04-12 executado; aguardando checkpoint C9
+last_activity: 2026-08-05 -- C9 aprovado; 04-12 completo; entrando no 04-13
 progress:
   total_phases: 8
   completed_phases: 3
@@ -25,9 +25,9 @@ See: .planning/PROJECT.md (updated 2026-07-22)
 
 ## Current Position
 
-Phase: 04 (confiabilidade-das-integra-es) — EXECUTING (PAUSADA no checkpoint C9)
-Plan: 12 de 18 executados (04-01..04-12). Faltam 04-13..04-18.
-Status: AGUARDANDO CHECKPOINT C9 (human-verify, gate bloqueante)
+Phase: 04 (confiabilidade-das-integra-es) — EXECUTING
+Plan: 12 de 18 completos (04-01..04-12). Faltam 04-13..04-18.
+Status: C9 APROVADO (2026-08-05) — 04-12 fechado, executando 04-13
   O 04-12 fechou CR2-01, o achado CRITICO da rodada 2: getOrgCategory passou a receber o
   cache da execucao por parametro, getStaleDeals passou a cria-lo, e o dicionario de modulo
   orgCategoryCache mais a limpeza por execucao deixaram de existir. O refetch entre execucoes
@@ -35,8 +35,14 @@ Status: AGUARDANDO CHECKPOINT C9 (human-verify, gate bloqueante)
   GREEN medido (B -> [101, 103], contador 1 -> 2). Suite 139 -> 140, todos verdes.
   ATENCAO para quem verificar a fase: a remocao do delete/limpeza NAO e regressao de REL-04 —
   os 3 cenarios de agendor.cacheInvalidation.test.js seguem verdes SEM edicao de asseracao.
-  O C9 exige decisao humana explicita sobre a redacao de REL-04 / Success Criteria 4 do
-  ROADMAP (manter, ou ajustar no 04-18). Nao entrar no 04-13 sem o sinal de retomada.
+
+  DECISAO C9 (vinculante, usuario, 2026-08-05) — REL-04 / Success Criteria 4 do ROADMAP:
+  a remocao da limpeza por execucao esta APROVADA, porque o cache global deixou de existir
+  nesse caminho. A redacao do Success Criteria 4 DEVE ser atualizada para descrever o
+  COMPORTAMENTO GARANTIDO, nao o mecanismo antigo de "invalidar o cache a cada execucao":
+  afirmar que o estado de categorias e ISOLADO POR EXECUCAO e que nenhuma execucao pode ler,
+  apagar, reutilizar ou contaminar o estado de outra. Aplicar essa atualizacao documental
+  no plano 04-18.
 
   A 2a rodada de code review (04-REVIEW.md, round: 2) verificou as conclusoes da r1 CETICAMENTE
   e reabriu a fase:
@@ -59,9 +65,9 @@ Status: AGUARDANDO CHECKPOINT C9 (human-verify, gate bloqueante)
   checkpoints bloqueantes: C9, C10, C11).
   A rodada 1 esta preservada em 04-REVIEW-r1.md (origem dos planos 04-08..04-11).
   SEC-01 permanece ABERTO como risco conscientemente aceito (decisao C8) — nao marcar resolvido.
-Last activity: 2026-08-05 -- 04-12 executado (CR2-01 fechado); pausado no checkpoint C9
+Last activity: 2026-08-05 -- C9 aprovado; 04-12 completo; entrando no 04-13
 
-Progress: [███████░░░] 67% (12 de 18 planos da fase 04 executados; CR2-01 fechado, C9 pendente)
+Progress: [███████░░░] 67% (12 de 18 planos da fase 04 completos; CR2-01 fechado, C9 aprovado)
 
 ## Performance Metrics
 
