@@ -87,13 +87,36 @@ export default function Dashboard({ onTabChange }) {
     try {
       const r = await fetch('/api/notifications/run', { method: 'POST' });
       const result = await r.json();
-      if (result.skipped) {
-        toast.error(result.reason, { id: toastId });
+      // Por que o ramo de erro é decidido por uma chave PRÓPRIA da recusa, e não pela chave
+      // antiga do payload: aquele nome designava duas coisas incompatíveis ao mesmo tempo — o
+      // booleano de "a verificação já estava em andamento" e o CONTADOR de negócios pulados na
+      // rodada (dedup do dia, categoria indecidível, funil e "sem destinatário"). Um único
+      // negócio pulado — o caso banal de clicar aqui depois de o cron das 8h já ter rodado —
+      // bastava para uma rodada BEM-SUCEDIDA cair no ramo do erro, e o motivo chegava undefined:
+      // toast vermelho SEM TEXTO (CR5-01). O texto de reserva abaixo existe para que esta
+      // superfície não possa renderizar vazio nem se o motivo sumir do payload.
+      //
+      // O array de erros da rodada é o ÚNICO alarme que esta tela renderiza, e ele é POR RODADA
+      // e não por negócio — um toast basta. Ele vai num id PRÓPRIO para SOMAR ao resumo em vez
+      // de substituí-lo. Até aqui esse alarme só aparecia no bloco "Erros na última execução",
+      // alimentado pelo polling de 2 minutos: quem disparava a rodada não via na hora o que ela
+      // mesma produziu. Numa rodada sã o array vem vazio — pinado pelos pares D/E e I/J e pelo
+      // cenário K de backend/test/scheduler.categoriaIndecidivel.test.js.
+      if (result.execucaoIgnorada) {
+        toast.error(result.reason || 'Verificação já em andamento', {
+          id: toastId,
+        });
       } else {
         toast.success(
           `${result.notified} notificação(ões) enviada(s) de ${result.stale} negócio(s) parado(s)`,
           { id: toastId, duration: 5000 },
         );
+        if (result.errors?.length) {
+          toast.error(result.errors[0], {
+            id: `${toastId}-alarme`,
+            duration: 8000,
+          });
+        }
       }
       setCheckResult(null);
       localStorage.removeItem('dashboard_check_cache');

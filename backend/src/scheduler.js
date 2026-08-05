@@ -25,8 +25,39 @@ let lastRunResult = null;
 let isRunning = false;
 
 async function runCheck() {
+  // Guard de concorrência: uma segunda chamada é RECUSADA enquanto outra rodada está em voo.
+  //
+  // POR QUE A RECUSA TEM CHAVE PRÓPRIA (CR5-01). O nome `skipped` designava DUAS coisas
+  // incompatíveis no MESMO payload: este booleano de recusa e o CONTADOR homônimo do literal
+  // `results` logo abaixo, que QUATRO causas incrementam (dedup do dia, categoria indecidível,
+  // funil e "sem destinatário"). Como `POST /api/notifications/run` devolve este objeto INTEIRO,
+  // sem projeção, o consumidor do disparo manual — `sendNow`, em
+  // frontend/src/components/Dashboard.jsx — ramificava por ele e lia uma rodada que CONCLUIU com
+  // UM único negócio pulado como se fosse uma recusa: exibia o erro com o motivo `undefined`, ou
+  // seja, um toast vermelho SEM TEXTO. A desambiguação é feita aqui, no PRODUTOR, e não lá: os
+  // dois significados chegam ao consumidor como o mesmo campo truthy, então qualquer conserto do
+  // lado da UI seria adivinhação de tipo.
+  //
+  // O contrato ANTIGO fica de pé por compatibilidade com consumidores não medidos do payload — a
+  // chave nova é ADITIVA, não substituta. O caso (6) de scheduler.resilience.test.js pina as
+  // duas ao mesmo tempo, justamente para que ninguém remova a antiga a título de "limpar" o
+  // contrato.
+  //
+  // E `execucaoIgnorada` NÃO nasce no literal de `results`: isso é decisão, não esquecimento.
+  // Uma rodada que CONCLUI não deve carregar o campo, nem "padronizado" com valor falso; quem o
+  // colocar lá com valor verdadeiro, ou como contador, fica vermelho no cenário K de
+  // scheduler.categoriaIndecidivel.test.js, que assere a AUSÊNCIA da chave numa rodada concluída
+  // com negócios pulados.
+  //
+  // A ameaça que isto mitiga, por extenso: um vermelho sem texto depois de um envio
+  // bem-sucedido leva o operador a concluir que perdeu envios, disparar a rodada de novo e gerar
+  // DUPLICATAS — a mesma ameaça que o comentário do alarme de FORMA, depois do laço, já nomeia.
   if (isRunning)
-    return { skipped: true, reason: 'Verificação já em andamento' };
+    return {
+      skipped: true,
+      execucaoIgnorada: true,
+      reason: 'Verificação já em andamento',
+    };
   isRunning = true;
 
   const startTime = new Date();
