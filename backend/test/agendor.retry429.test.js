@@ -170,10 +170,10 @@ const {
 // levou essa normalização para DENTRO do helper compartilhado, então o envelope deixou de ter o
 // que compensar e foi removido: as chamadas abaixo são diretas.
 //
-// Restam duas variantes do helper em circulação. A segunda, a cópia local de
-// `emailer.timeout.test.js`, continua de propósito: aquele arquivo é o oráculo de REL-02 e o
-// `emailer.js` ainda muda nesta rodada de gap closure — trocar o instrumento e o objeto medido na
-// mesma rodada é o que a constraint de processo do CLAUDE.md proíbe.
+// NÃO resta nenhuma variante em circulação: `backend/test/helpers/fakeTimers.js` é a ÚNICA
+// implementação de `avancarRelogioAte` desde o 04-26 (WR3-05), que removeu a última — a de
+// `emailer.timeout.test.js`. Quem precisar avançar relógio falso importa de lá; a nota de topo
+// daquele helper é a fonte da verdade sobre o assunto e enumera as três que convergiram para ele.
 
 after(() => {
   mock.timers.reset();

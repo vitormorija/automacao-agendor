@@ -218,7 +218,7 @@ async function cederEventLoop() {
 }
 
 // Falha explícita em vez de travar a suíte, no mesmo espírito de avancarRelogioAte
-// (o helper homônimo de emailer.timeout.test.js).
+// (o helper compartilhado de helpers/fakeTimers.js).
 async function esperarAte(condicao, descricao) {
   for (let i = 0; i < 20 && !condicao(); i++) {
     await cederEventLoop();
