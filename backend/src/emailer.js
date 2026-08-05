@@ -189,11 +189,26 @@ function dealEmailHtml({ deal, ownerName, role, logId }) {
 }
 
 // Envia um e-mail com retry automático em caso de falha de rede (ECONNRESET, Timeout)
+//
+// Por que o transporte volta junto do resultado (WR2-05): a recriação lá embaixo troca
+// o PARÂMETRO desta função, não a variável do chamador. Sem devolvê-lo, o destinatário
+// seguinte recomeça com a conexão que já se provou quebrada, paga outro ciclo de 3s+6s
+// e tem chance maior de falhar — e o segundo destinatário é o elo frágil do fluxo: com
+// a semântica de sucesso parcial (≥ 1 confirmação mantém a linha do notification_log em
+// 'sent'), quem NÃO recebeu simplesmente some, porque a dedup bloqueia o negócio pelo
+// dia inteiro e o único vestígio é a coluna `error` de uma linha 'sent'.
+// Ele volta TAMBÉM no retorno de falha, de propósito: se a exaustão veio depois de uma
+// ou duas recriações, o transporte mais novo ainda é a melhor aposta para o próximo
+// destinatário — devolvê-lo só no sucesso deixaria justamente o pior caso sem conserto.
+// Quem pina a contagem de conexões por rodada é emailer.transporteVivo.test.js; quem
+// pina o shape do retorno por destinatário — o transporte NÃO pode entrar em `results`
+// — é emailer.timeout.test.js. Nada mais aqui muda: 3 tentativas, esperas de 3s e 6s,
+// a classificação de erro de rede e a exaustão que RESOLVE em vez de lançar são D-03.
 async function sendMailWithRetry(transporter, mailOptions, retries = 3) {
   for (let attempt = 1; attempt <= retries; attempt++) {
     try {
       await transporter.sendMail(mailOptions);
-      return { success: true };
+      return { success: true, transporteEmUso: transporter };
     } catch (err) {
       const isNetworkError =
         err.code === 'ECONNRESET' ||
@@ -211,7 +226,11 @@ async function sendMailWithRetry(transporter, mailOptions, retries = 3) {
         transporter = createTransporter();
         continue;
       }
-      return { success: false, error: err.message };
+      return {
+        success: false,
+        error: err.message,
+        transporteEmUso: transporter,
+      };
     }
   }
 }
@@ -260,34 +279,50 @@ async function sendStaleNotification({ deal, ownerEmail, authorEmail, logId }) {
   try {
     // Email para o dono do card
     if (ownerEmail) {
-      const result = await sendMailWithRetry(transporter, {
-        from,
-        to: ownerEmail,
-        subject,
-        html: dealEmailHtml({
-          deal,
-          ownerName: deal.ownerName,
-          role: 'owner',
-          logId,
-        }),
-      });
-      results.push({ to: ownerEmail, ...result });
+      // A desestruturação com rest é o que separa o transporte do resultado: `results`
+      // continua com as MESMAS chaves de antes ({to, success} no sucesso, {to, success,
+      // error} na falha). Espalhar o retorno inteiro faria o transporte vazar para o
+      // array que viaja em `err.resultadosParciais` até o agendador e é agregado na
+      // coluna `error` do notification_log.
+      const { transporteEmUso, ...resultado } = await sendMailWithRetry(
+        transporter,
+        {
+          from,
+          to: ownerEmail,
+          subject,
+          html: dealEmailHtml({
+            deal,
+            ownerName: deal.ownerName,
+            role: 'owner',
+            logId,
+          }),
+        },
+      );
+      if (transporteEmUso) transporter = transporteEmUso;
+      results.push({ to: ownerEmail, ...resultado });
     }
 
     // Email para o criador (se diferente do dono)
     if (authorEmail && authorEmail !== ownerEmail) {
-      const result = await sendMailWithRetry(transporter, {
-        from,
-        to: authorEmail,
-        subject,
-        html: dealEmailHtml({
-          deal,
-          ownerName: deal.authorName,
-          role: 'author',
-          logId,
-        }),
-      });
-      results.push({ to: authorEmail, ...result });
+      // Aqui está o ganho de WR2-05: se o envio acima só funcionou depois de recriar a
+      // conexão, `transporter` já é a conexão NOVA — este envio não recomeça pela que
+      // já se provou quebrada. Mesma separação do transporte do resultado no push.
+      const { transporteEmUso, ...resultado } = await sendMailWithRetry(
+        transporter,
+        {
+          from,
+          to: authorEmail,
+          subject,
+          html: dealEmailHtml({
+            deal,
+            ownerName: deal.authorName,
+            role: 'author',
+            logId,
+          }),
+        },
+      );
+      if (transporteEmUso) transporter = transporteEmUso;
+      results.push({ to: authorEmail, ...resultado });
     }
   } catch (err) {
     if (err && typeof err === 'object') err.resultadosParciais = results;
