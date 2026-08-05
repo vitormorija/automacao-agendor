@@ -133,11 +133,17 @@ async function runCheck() {
         // reabre a duplicata — a linha deixa de deduplicar e a rodada de amanhã
         // reenvia para quem já recebeu.
         //
-        // Por que results.notified++ mora DENTRO do ramo 'sent' (WR-04): esse
-        // contador é o número que o logger.info('[Scheduler] Concluído: …') de
-        // :187-189 e a UI exibem como "notificações enviadas". Incrementá-lo numa
-        // falha total faria o log dizer que tudo saiu justamente no dia em que o
-        // SMTP estivesse fora.
+        // Por que results.notified++ mora DENTRO do ramo 'sent' (WR-04), NOS DOIS
+        // CAMINHOS: esse contador é o número que o logger.info('[Scheduler]
+        // Concluído: …') do fim desta função e a UI exibem como "notificações
+        // enviadas". Incrementá-lo numa falha total faria o log dizer que tudo saiu
+        // justamente no dia em que o SMTP estivesse fora (super-contagem); deixar de
+        // incrementá-lo no caminho de EXCEÇÃO que grava 'sent' faz o log dizer que
+        // nada saiu num dia em que houve envio real (sub-contagem, WR2-01). Status
+        // gravado e contador são um único ponto de verdade: quem grava 'sent'
+        // incrementa, e é por isso que a decisão do status é um if/else nos dois
+        // ramos, e não um ternário dentro da chamada — o incremento precisa ter
+        // lugar físico ao lado do status.
         let logId = null;
         let houveEnvioConfirmado = false;
         try {
@@ -189,11 +195,18 @@ async function runCheck() {
             // O que já foi confirmado antes da exceção chega aqui anexado ao erro.
             const parciais = err.resultadosParciais ?? [];
             if (parciais.some((r) => r.success)) houveEnvioConfirmado = true;
-            updateNotificationStatus(
-              logId,
-              houveEnvioConfirmado ? 'sent' : 'error',
-              err.message,
-            );
+            if (houveEnvioConfirmado) {
+              // O contador segue o status TAMBÉM aqui (WR2-01): houve envio real, e
+              // é este número que o logger.info de conclusão e a UI exibem como
+              // "notificações enviadas". Já dealResult.notified permanece false DE
+              // PROPÓSITO — ele responde a outra pergunta ("todos os destinatários
+              // confirmaram?"), e no sucesso parcial a resposta é não. Quem pina
+              // essa relação é o cenário A de notificationStatus.partialFailure.test.js.
+              updateNotificationStatus(logId, 'sent', err.message);
+              results.notified++;
+            } else {
+              updateNotificationStatus(logId, 'error', err.message);
+            }
           }
         }
       } else {
