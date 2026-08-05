@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: "FASE 04 REABERTA PELA 4a VEZ pelo code review rodada 4 (2026-08-05): 27/27 planos executados e suite em 172/172, mas o 04-REVIEW.md r4 achou 1 BLOCKER (CR4-01), 7 warnings e 6 info. A fase NAO esta completa. Proximo: /gsd:plan-phase 4 --gaps sobre o 04-REVIEW.md r4. || anterior: Completed 04-27-PLAN.md"
+stopped_at: "GAP CLOSURE R4 PLANEJADA E VERIFICADA (2026-08-05): 7 planos aditivos 04-28..04-34 sobre o 04-REVIEW.md round 4. Plan-checker: VERIFICATION PASSED NA PRIMEIRA PASSADA (2 warnings de redacao, ja corrigidos no commit 82d2550). Cobertura REL-01..06 = 6/6. Proximo: /gsd:execute-phase 4. || FASE 04 REABERTA PELA 4a VEZ pelo code review rodada 4: 27/27 planos executados e suite em 172/172, mas o r4 achou 1 BLOCKER (CR4-01), 7 warnings e 6 info. || anterior: Completed 04-27-PLAN.md"
 last_updated: "2026-08-05T06:48:49.022Z"
-last_activity: 2026-08-05 -- code review r4 reabriu a fase 04 (blocker CR4-01); aguardando plan-phase 4 --gaps
+last_activity: 2026-08-05 -- gap closure r4 planejada e verificada (04-28..04-34); pronta para execute-phase 4
 progress:
   total_phases: 8
   completed_phases: 4
@@ -25,9 +25,52 @@ See: .planning/PROJECT.md (updated 2026-07-22)
 
 ## Current Position
 
-Phase: 04 (confiabilidade-das-integra-es) — REABERTA PELA 4a VEZ pelo code review rodada 4
-Plan: 27 de 27 executados (04-01..04-27). A fase NAO esta completa; falta a gap closure r4.
-Status: CODE REVIEW RODADA 4 REABRIU A FASE (2026-08-05)
+Phase: 04 (confiabilidade-das-integra-es) — gap closure r4 PLANEJADA, pronta para executar
+Plan: 27 de 34 executados (04-01..04-27). Faltam 04-28..04-34 (gap closure r4).
+Status: 7 PLANOS DA R4 CRIADOS E VERIFICADOS (2026-08-05)
+
+  Planos 04-28..04-34, waves 21-27, cadeia sequencial. Plan-checker: VERIFICATION PASSED NA
+  PRIMEIRA PASSADA — primeira vez nesta fase. Cobertura REL-01..06 = 6/6.
+  04-28 CR4-01 (blocker) | 04-29 WR4-01+WR4-05 | 04-30 WR4-04 | 04-31 WR4-06
+  04-32 WR4-07 | 04-33 WR4-02+WR4-03 (diff de producao zero) | 04-34 IN4-* + 5 residuais
+
+  O MANDATO "INVENTARIO DE IRMAOS" PASSOU NO TESTE DECISIVO (o mesmo que expos a lacuna do 04-26
+  na r3): todo item classificado como corrigida/verificada-e-sa carrega grep, teste de regressao
+  ou citacao de leitura de codigo — nenhum item nomeado sem gate. O checker reproduziu
+  independentemente os conjuntos de linhas do 04-33 e bateu no numero exato.
+
+  DECISAO D-CR4-01-a — LIMIAR DO ALARME: supressao TOTAL (todos os negocios da rodada).
+  O contador `results.skippedCategoriaIndecidivel` incrementa SEMPRE (desfaz a ambiguidade dos 4
+  `results.skipped++` compartilhados com dedup, funil e "sem destinatario"); o ALARME so na
+  supressao total, preenchendo `results.error` E `results.errors` — medido: o Dashboard.jsx NAO le
+  `results.error` em lugar nenhum, o unico bloco renderizado e `lastRun.errors`.
+  ENQUADRAMENTO CORRETO (corrigido apos o checker, commit 82d2550): o bloco do alarme e ADITIVO,
+  fica DEPOIS do laco e NAO condiciona nenhum continue/skip — NENHUM limiar pode mudar quem recebe.
+  A invariante preservada e o CONTRATO AGREGADO-OBSERVAVEL do CR3-01, pinado nos casos A e B de
+  scheduler.categoriaIndecidivel.test.js (`r.error === undefined` com 1 de 2 suprimidos). Um limiar
+  abaixo de 100% os tornaria vermelhos porque a rodada passaria a se ANUNCIAR como falha num
+  cenario que o contrato fixou como normal — nao porque alguem deixaria de ser notificado.
+  NAO citar este precedente para justificar mudanca de comportamento por-negocio.
+
+  `in3-08` NAO foi promovido a plano, por decisao do planejador registrada como
+  fora-de-escopo-com-medicao no inventario do 04-31: conserta-lo muda QUEM RECEBE (negocios sem
+  funil deixariam de ser notificados), esta pinado como quirk em agendor.funnel.test.js, e a
+  pergunta central e de DIRECAO (fail-open ou fail-safe para filtros de elegibilidade). Promove-lo
+  seria um plano 04-35 e uma decisao do usuario.
+
+  IN4-01 e fechado DENTRO do 04-30 (nao vira todo): o comentario "(batches de 10)" fica ao lado de
+  `batchSize = 5` e o 04-30 introduz uma segunda constante de lote cujo valor E 10 — deixar a frase
+  errada tornaria os dois lotes indistinguiveis. Mesmo precedente do in2-02 fechado pelo 04-26.
+
+  5 RESIDUAIS NOVOS com dono, criados no 04-34, saidos dos inventarios de irmaos: `cr4-01b` (o
+  limiar "todos" nao cobre a rodada MISTA — um negocio sem organizacao escapa da contagem e desarma
+  o alarme), `cr4-01c` (skipReason invisivel na UI: 0 ocorrencias em frontend/src), `wr4-03b` (39
+  linhas em 9 arquivos com referencia por numero, contra o in3-06 que nomeia so um arquivo),
+  `wr4-04b` (fan-out gemeo em GET /api/notifications/resolved, com SELECT sem LIMIT), `wr4-07b`
+  (dealEmailHtml interpolando nome nulo).
+
+  --- historico anterior abaixo ---
+Origem: CODE REVIEW RODADA 4 (2026-08-05)
 
   O 04-REVIEW.md (round: 4, 15 arquivos, standard) achou 1 BLOCKER, 7 warnings e 6 info sobre o
   codigo do gap closure r3. As rodadas 1-3 estao preservadas em 04-REVIEW-r1.md, -r2.md e -r3.md.
