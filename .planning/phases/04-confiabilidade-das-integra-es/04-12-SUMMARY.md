@@ -233,6 +233,12 @@ A Task 3 do plano é `checkpoint:human-verify` com `gate="blocking"` e `auto_adv
 - **SEC-01 permanece ABERTO** como risco conscientemente aceito (decisão C8) — nada neste plano o altera.
 - Nota para quem verificar a fase: a ausência de `delete`/limpeza em `getStaleDeals` **não** é gap de REL-04. Ver "Decisions Made" item 2 e `must_haves.truths` do `04-12-PLAN.md`.
 
+## Self-Check: PASSED
+
+- Arquivos declarados existem: `backend/src/agendor.js`, `backend/test/agendor.cacheConcurrency.test.js`, `backend/test/agendor.cacheInvalidation.test.js`, `.planning/phases/04-confiabilidade-das-integra-es/04-12-SUMMARY.md`.
+- Commits declarados existem: `2fb6e15` (RED), `da86a24` (GREEN), `bc95793` (SUMMARY).
+- Sonda temporária `backend/probe-red-04-12.js` confirmada como removida e ausente de todos os commits.
+
 ---
 *Phase: 04-confiabilidade-das-integra-es*
 *Completed: 2026-08-05 (implementação; checkpoint C9 pendente)*
