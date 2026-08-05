@@ -16,6 +16,13 @@
 // (`:187-189`) e a UI exibem. No dia em que o SMTP estiver fora, o log dirá que
 // tudo saiu.
 //
+// WR2-01 (lacuna deixada pelo fechamento de WR-01/WR-04): o ramo de EXCEÇÃO grava
+// `'sent'` quando houve envio confirmado, mas não incrementa `results.notified` —
+// sub-contagem, o espelho de WR-04. O cenário A passou a cobrir também a relação
+// linha↔contador no caminho de EXCEÇÃO, que WR-04 só fechou no caminho de retorno:
+// ele agora assere o contador da rodada (`results.notified`) e o desfecho por deal
+// (`dealResult.notified`), não só o status gravado.
+//
 // Este arquivo NÃO substitui `notificationStatus.test.js` — soma-se a ele. Aquele
 // arquivo (os 6 cenários de REL-05/Q1) NÃO é editado nesta rodada: ele é o oráculo
 // que garante que o conserto de WR-01/WR-04 não desfaz o 04-06. Como `node --test`
@@ -221,6 +228,26 @@ test('A: exceção após o dono já ter recebido mantém "sent" e a dedup proteg
     transportesCriados,
     2,
     'pré-condição: a exceção precisa ter vindo da recriação do transporte, não da fábrica inicial',
+  );
+
+  // WR2-01 — as duas asserções abaixo NÃO se contradizem, e é de propósito que uma
+  // diz 1 e a outra diz false. Elas respondem a perguntas diferentes:
+  //   `results.notified` conta RODADAS DE NOTIFICAÇÃO EM QUE HOUVE ENVIO CONFIRMADO
+  //     — é o número operacional, o mesmo do ramo de retorno, e é o que o
+  //     `logger.info('[Scheduler] Concluído: …')` e a UI exibem.
+  //   `dealResult.notified` responde "TODOS os destinatários receberam?" — e no
+  //     sucesso parcial a resposta é não.
+  // Sem este comentário, um leitor futuro pode "harmonizar" a assimetria e
+  // reintroduzir exatamente o defeito que WR2-01 nomeia.
+  assert.equal(
+    r.notified,
+    1,
+    'houve envio real: o número que o logger.info do scheduler e a UI exibem não pode dizer que nada saiu',
+  );
+  assert.equal(
+    r.deals[0].notified,
+    false,
+    'nem todos os destinatários confirmaram — o objeto do deal registra isso, e é por isso que ele NÃO acompanha o contador aqui',
   );
 
   // D-03 intocado: a rodada registra o erro e segue; nada é relançado.
