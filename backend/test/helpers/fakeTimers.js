@@ -18,27 +18,53 @@
 // teste é uma microtask que ainda não rodou quando o tick retorna.
 //
 // Nota sobre duplicação deliberada: `backend/test/emailer.timeout.test.js` (04-04)
-// mantém a SUA cópia local desta função de propósito. Os arquivos de teste das ondas
-// 1-7 não são editados nesta rodada de gap closure — editá-los tiraria deles o papel
-// de oráculo estável enquanto o código de produção muda. A deduplicação (fazer aquele
-// arquivo passar a importar daqui) fica registrada como trabalho futuro.
+// mantém a SUA cópia local desta função de propósito, e por isso restam DUAS variantes
+// em circulação — não três. A terceira (o envelope `avancarRelogioAteDesfecho`, que vivia
+// em `agendor.retry429.test.js`) desapareceu no 04-13, porque ela existia exatamente para
+// compensar o ramo de rejeição que agora é tratado aqui dentro. A cópia de
+// `emailer.timeout.test.js` continua: aquele arquivo é o oráculo de REL-02 e o `emailer.js`
+// muda ainda nesta rodada de gap closure — trocar o instrumento e o objeto medido na mesma
+// rodada é o que a constraint de processo do CLAUDE.md proíbe. A deduplicação (fazer aquele
+// arquivo passar a importar daqui) segue registrada como trabalho futuro.
 const { mock } = require('node:test');
 
+// Por que o `then` tem DOIS argumentos (WR2-03): com apenas o ramo de sucesso, a promessa
+// derivada `encerrada` fica ÓRFÃ quando `promessa` rejeita — a flag nunca vira verdadeira, o
+// laço estoura, esta função lança a mensagem genérica e a rejeição aflora como
+// `unhandledRejection`. O `node:test` credita uma rejeição não tratada ao caso que estiver
+// correndo NAQUELE momento, então ela pode reprovar um caso VIZINHO com a mensagem de outro
+// caso — e um instrumento que atribui a falha ao ator errado corrói a confiança em toda a
+// suíte. Tratando os dois ramos, `encerrada` nunca rejeita e o erro REAL do SUT é relançado
+// abaixo, sem embrulho, para que o `assert.rejects` do chamador continue sendo o oráculo.
+//
+// Por que a falha explícita vem ANTES do `await encerrada`: o snippet do code review (WR2-03)
+// propõe a ordem inversa, e ela reintroduz o defeito que a mensagem explícita existe para
+// evitar — se a promessa NUNCA assentar, `await encerrada` fica pendurado para sempre e a
+// suíte TRAVA em vez de falhar de forma legível. Uma `encerrada` pendente para sempre é
+// inofensiva justamente porque tem handler de rejeição anexado. (Coberto pelo caso (3) de
+// `fakeTimers.helper.test.js`.)
 async function avancarRelogioAte(promessa) {
-  let concluida = false;
-  const encerrada = promessa.then((valor) => {
-    concluida = true;
-    return valor;
-  });
-  for (let i = 0; i < 20 && !concluida; i++) {
+  let desfecho = null;
+  const encerrada = promessa.then(
+    (valor) => {
+      desfecho = { ok: true, valor };
+    },
+    (erro) => {
+      desfecho = { ok: false, erro };
+    },
+  );
+  for (let i = 0; i < 20 && !desfecho; i++) {
     await new Promise((r) => setImmediate(r));
-    if (!concluida) mock.timers.tick(10000);
+    if (!desfecho) mock.timers.tick(10000);
   }
   // Falha explícita em vez de travar a suíte se o laço não for suficiente.
-  if (!concluida) {
+  if (!desfecho) {
     throw new Error('a promessa não concluiu após avançar o relógio falso');
   }
-  return encerrada;
+  // A esta altura já está assentada, e não pode rejeitar (os dois ramos foram tratados).
+  await encerrada;
+  if (!desfecho.ok) throw desfecho.erro;
+  return desfecho.valor;
 }
 
 module.exports = { avancarRelogioAte };
