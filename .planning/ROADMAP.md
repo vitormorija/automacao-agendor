@@ -17,7 +17,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 1: Rede de Testes (Safety-Net)** - Testes de caracterização fixam o comportamento atual da lógica crítica de notificação antes de qualquer mudança (completed 2026-07-24)
 - [x] **Phase 2: Toolchain de Qualidade & CI** - Lint, formatação, scripts npm e pipeline de CI que bloqueia PRs com falha (completed 2026-07-29)
 - [x] **Phase 3: Config & Segredos por Ambiente** - Segredos fora do código, `.env.example`, separação dev/prod e validação no boot (completed 2026-07-30)
-- [ ] **Phase 4: Confiabilidade das Integrações** - Timeouts em Agendor/SMTP, cron resiliente a falhas e isolamento de estado por execução (18/18 planos executados em 2026-08-05, suíte 148/148; **reaberta pela 3ª rodada de review** — 04-REVIEW round 3 com CR3-01 BLOCKER: a exclusão por categoria falha ABERTA — um 429 em `/organizations` faz uma organização de categoria excluída ser notificada silenciosamente, e a rodada reporta sucesso)
+- [ ] **Phase 4: Confiabilidade das Integrações** - Timeouts em Agendor/SMTP, cron resiliente a falhas e isolamento de estado por execução (18/18 planos executados em 2026-08-05, suíte 148/148; **reaberta pela 3ª rodada de review** — 04-REVIEW round 3 com CR3-01 BLOCKER: a exclusão por categoria falha ABERTA — um 429 em `/organizations` faz uma organização de categoria excluída ser notificada silenciosamente, e a rodada reporta sucesso. Gap closure r3 planejada: 9 planos, 04-19 a 04-27)
 - [ ] **Phase 5: Logging & Padronização de Erros** - `console.*` residual migrado para `logger` estruturado e resposta de erro consistente
 - [ ] **Phase 6: Hardening de Segurança** - Riscos do CONCERNS.md fechados; mudanças comportamentais só com teste do novo fluxo (ou adiadas com justificativa)
 - [ ] **Phase 7: Refatoração Incremental de Arquitetura** - Extrair `getEnrichedStaleDeals` e serviço de agregação, sem alterar comportamento, protegido pelos testes
@@ -94,7 +94,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   5. Status `'sent'` só é gravado após envio confirmado; falha total grava `'error'` e a rodada seguinte retenta (dedup de envios bem-sucedidos preservada) (REL-05, Decisão Q1)
   6. Falha na consulta de tarefas futuras aborta a rodada sem notificar — registrada, lock liberado, rodada seguinte executa (REL-06, Decisão Q2)
 **Contrato de entrega**: `.planning/phases/04-confiabilidade-das-integra-es/04-DELIVERY-CONTRACT.md` (aprovado 2026-08-04; 7 planos, decisões Q1-Q5)
-**Plans**: 7 planos originais + 4 de gap closure (r1) + 7 de gap closure (r2) = 18 (execução estritamente sequencial; `parallelization: false`)
+**Plans**: 7 planos originais + 4 de gap closure (r1) + 7 de gap closure (r2) + 9 de gap closure (r3) = 27 (execução estritamente sequencial; `parallelization: false`)
 - [x] 04-01-PLAN.md — Caracterização da resiliência do scheduler: falha registrada, lock liberado, concorrência recusada (REL-03) · termina em C2
 - [x] 04-02-PLAN.md — Fail-safe na consulta de tarefas futuras: completo ou falha explícita, rodada abortada sem notificar (REL-06, Q2)
 - [x] 04-03-PLAN.md — Timeout HTTP de 15s na instância Agendor + `getDealById` + bump `axios@^1.19.0` (REL-01, D-01, Q3) · termina em C4
@@ -117,6 +117,17 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] 04-16-PLAN.md — O canal `err.resultadosParciais` é validado por tipo antes de ser consumido: parcial corrompido vira "nada confirmado" em vez de derrubar a rodada (WR2-04)
 - [x] 04-17-PLAN.md — O transporte recriado no retry serve o destinatário seguinte (WR2-05) · termina em C11
 - [x] 04-18-PLAN.md — Âncoras estáveis nos comentários e registro de IN2-01..IN2-04 como todos pendentes (WR2-06)
+
+**Gap closure r3** (fonte: `04-REVIEW.md`, `round: 3`, status `issues_found` — 1 critical, 7 warning, 8 info; a rodada 3 verificou ceticamente as conclusões da r2 e REABRIU a fase pela terceira vez). 9 planos **aditivos**, waves 12-20, `gap_closure: true`. Ordem por risco: o blocker primeiro, dividido em borda / consumidor diário / consumidor semanal; depois os warnings de produção; a higiene dos instrumentos de teste por último, antes do resíduo documental. **Requisito estrutural desta rodada:** todo plano de correção inclui também o teste do cenário SIMÉTRICO (a mesma falha na direção oposta, ou o vizinho imediato do caminho corrigido), porque nas três rodadas anteriores o achado seguinte foi sempre o vizinho do conserto anterior:
+- [ ] 04-19-PLAN.md — A consulta de categoria entra no retry da borda e falha como INDECIDÍVEL, em vez de fail-open (CR3-01, parte 1)
+- [ ] 04-20-PLAN.md — Negócio de categoria indecidível fica fora do envio diário, sem abortar a rodada (CR3-01, parte 2)
+- [ ] 04-21-PLAN.md — O resumo semanal individual também não lista negócio indecidível; o consolidado do admin mantém (CR3-01, caminho vizinho)
+- [ ] 04-22-PLAN.md — `/users` e `/deals/:id` entram na política única de retry, e o comentário passa a enumerar as bordas (WR3-01)
+- [ ] 04-23-PLAN.md — A leitura de dedup deixa de abortar a rodada quando o SQLite falha (WR3-02)
+- [ ] 04-24-PLAN.md — O canal do resultado parcial é validado no elemento, não só no contêiner (WR3-03)
+- [ ] 04-25-PLAN.md — Teto de páginas com falha explícita nas duas paginações sem limite (WR3-06)
+- [ ] 04-26-PLAN.md — Relógio por caso, helper único e estado neutro em `beforeEach` (WR3-04, WR3-05, WR3-07)
+- [ ] 04-27-PLAN.md — IN3-01..IN3-08 como todos pendentes e o critério do fail-safe de categoria no ROADMAP
 
 ### Phase 5: Logging & Padronização de Erros
 **Goal**: Logging é estruturado e consistente em todo o backend, e o tratamento/resposta de erro nas rotas segue um padrão único.
