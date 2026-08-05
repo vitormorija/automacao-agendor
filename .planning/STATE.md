@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: 04-27 COMPLETO — os 8 achados Info da rodada 3 registrados e a fase descrita no ROADMAP
-stopped_at: Completed 04-27-PLAN.md
+status: executing
+stopped_at: "FASE 04 REABERTA PELA 4a VEZ pelo code review rodada 4 (2026-08-05): 27/27 planos executados e suite em 172/172, mas o 04-REVIEW.md r4 achou 1 BLOCKER (CR4-01), 7 warnings e 6 info. A fase NAO esta completa. Proximo: /gsd:plan-phase 4 --gaps sobre o 04-REVIEW.md r4. || anterior: Completed 04-27-PLAN.md"
 last_updated: "2026-08-05T06:48:49.022Z"
-last_activity: 2026-08-05 -- 04-27 completo (IN3-01..IN3-08 como todos + Success Criteria 7 no ROADMAP + nota de CR3-01 em REL-06); diff de backend ZERO, suite 172/172
+last_activity: 2026-08-05 -- code review r4 reabriu a fase 04 (blocker CR4-01); aguardando plan-phase 4 --gaps
 progress:
   total_phases: 8
   completed_phases: 4
@@ -25,9 +25,60 @@ See: .planning/PROJECT.md (updated 2026-07-22)
 
 ## Current Position
 
-Phase: 04 (confiabilidade-das-integra-es) — gap closure r3 EXECUTADA, fase aguarda verificacao
-Plan: 27 de 27 executados (04-01..04-27). Nenhum plano pendente na fase 04.
-Status: 04-27 COMPLETO — os 8 achados Info da rodada 3 registrados e a fase descrita no ROADMAP
+Phase: 04 (confiabilidade-das-integra-es) — REABERTA PELA 4a VEZ pelo code review rodada 4
+Plan: 27 de 27 executados (04-01..04-27). A fase NAO esta completa; falta a gap closure r4.
+Status: CODE REVIEW RODADA 4 REABRIU A FASE (2026-08-05)
+
+  O 04-REVIEW.md (round: 4, 15 arquivos, standard) achou 1 BLOCKER, 7 warnings e 6 info sobre o
+  codigo do gap closure r3. As rodadas 1-3 estao preservadas em 04-REVIEW-r1.md, -r2.md e -r3.md.
+  Suite 172/172 e lint exit 0 — os testes NAO acusam o blocker.
+
+  CR4-01 (BLOCKER): o conserto do CR3-01 fechou o fail-open para UMA organizacao e abriu uma
+  SUPRESSAO EM MASSA OPERACIONALMENTE INVISIVEL. Sonda com 5 organizacoes em 429 persistente:
+  results.error undefined, results.errors [], results.notified 0, ZERO e-mails, ZERO linhas em
+  notification_log, e o log diria "Concluido: 5 negocios parados, 0 notificacoes enviadas".
+  results.skipped e o MESMO contador de dedup, funil e "sem destinatario"; skipReason existe mas
+  `grep -rn "skipReason" frontend/src` devolve 0. Um apagao total e indistinguivel de um dia calmo.
+  A decisao do usuario cobriu "nao abortar por UMA organizacao" — ninguem perguntou o que acontece
+  quando sao TODAS.
+
+  DECISAO DO USUARIO sobre CR4-01 (vinculante, 2026-08-05): SINALIZAR COMO ERRO DA RODADA.
+  Quando a supressao por indecidivel passa de um limiar (todos os negocios, ou uma proporcao alta),
+  a rodada preenche `results.error` e logga em nivel de erro, para que o dia calmo deixe de ser
+  indistinguivel do apagao. NAO muda o comportamento POR-NEGOCIO ja aprovado no CR3-01 — o negocio
+  indecidivel isolado continua fora do envio, dentro do painel, com logger.warn.
+
+  DECISAO DO USUARIO sobre o escopo (2026-08-05): gap closure r4 COMPLETA — blocker + os 7 warnings.
+
+  VEREDITO DO REVISOR SOBRE O MANDATO DO CENARIO SIMETRICO (r3): funcionou — os simetricos
+  entregues sao majoritariamente substantivos, nao cerimoniais (o melhor e o G do 04-24, que
+  antecipou a armadilha do conserto "natural" de F; o F do 04-23 e a unica vez na fase em que o
+  vizinho foi VERIFICADO em vez de presumido; o mais fraco e o B do 04-20). MAS O MANDATO RESOLVEU
+  O PROBLEMA ERRADO: o padrao que reprovou r1->r2->r3 nunca foi "faltou o input simetrico", foi
+  "FALTOU O CODIGO VIZINHO" — a funcao irma, o terceiro call-site, o outro arquivo que documenta a
+  mesma coisa. Simetrico de ENTRADA nao detecta vizinho de CODIGO.
+  RECOMENDACAO PARA A R4, adotada: trocar o mandato por "INVENTARIO DE IRMAOS" — para cada
+  conserto, listar POR ESCRITO todas as construcoes gemeas e marcar cada uma como corrigida /
+  verificada-e-sa / fora-de-escopo-com-medicao. Foi assim que WR4-01 e WR4-02 apareceram.
+
+  Achados da r4 que vieram do inventario de irmaos:
+  - WR4-01: `getStaleDeals` e a TERCEIRA paginacao sem teto, e a justificativa escrita para
+    exclui-la (agendor.js, "nao existe ali condicao de parada vinda da resposta") e FALSA:
+    `Array.from({length: totalPages - 1})` deriva o comprimento de `meta.totalCount`. Sonda: 201
+    requisicoes, passando do MAX_PAGES, sem excecao — o mesmo isRunning preso que WR3-06 existe
+    para impedir. Mesmo perfil de risco do achado que motivou o 04-25.
+  - WR4-02: o commit 46cf90a (WR3-05) atualizou 2 dos 4 comentarios que declaram a copia do helper
+    viva; agendor.retry429.test.js e helpers/fakeTimers.js hoje se CONTRADIZEM.
+  - WR4-03: as 4 referencias por numero de linha em emailer.timeout.test.js estao TODAS erradas.
+  - WR4-04 a WR4-07: 3N requisicoes no caminho de leitura do painel; getUsers sem a guarda de
+    `data.data` que as irmas usam; runCheckOnly promete notificar o que runCheck nao notifica;
+    ownerWeeklyHtml sem guarda de ownerName.
+
+  O revisor concorda que o todo `in3-08` (shouldNotifyOwner falha ABERTA com funil ausente) merece
+  severidade acima de Info — nao o reabriu por ja ter dono, mas e o ULTIMO filtro de elegibilidade
+  fail-open ainda aberto.
+
+  --- historico anterior abaixo ---
 
   O 04-27 fechou o RESIDUO DOCUMENTAL da rodada 3 — o ultimo plano da gap closure r3, e o
   unico da rodada com DIFF DE BACKEND ZERO por criterio de aceite (git status --porcelain
