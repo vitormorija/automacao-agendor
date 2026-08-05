@@ -1,6 +1,7 @@
 const nodemailer = require('nodemailer');
 const { getConfig } = require('./db');
 const { shouldNotifyOwner } = require('./agendor');
+const logger = require('./logger');
 
 // A senha SMTP é a ÚNICA credencial deste transporte que vem do ambiente, e não da
 // tabela `config` — exceção deliberada ao padrão do projeto (D-01, CFG-01). Host,
@@ -765,11 +766,33 @@ function ownerWeeklyHtml({ ownerName, deals, weekLabel, staleDays }) {
 async function sendOwnerWeeklySummary({ deals, users }) {
   // Filtra funis sem notificação ao responsável (ex.: Beefor) — os cards ainda
   // aparecem no relatório admin, mas não no e-mail individual do comercial.
-  const notifiable = deals.filter(shouldNotifyOwner);
-  const skippedByFunnel = deals.length - notifiable.length;
+  //
+  // O MESMO princípio vale para o card de categoria INDECIDÍVEL (CR3-01): quando a
+  // categoria da organização não pôde ser consultada nem depois do retry da borda, o
+  // negócio continua no painel e no consolidado do admin — que é a superfície de
+  // OBSERVAÇÃO — mas sai do e-mail individual do comercial. Não saber a categoria é
+  // indistinguível de "pode ser uma categoria excluída", e notificar em cima dessa
+  // dúvida é o fail-open que o 04-19 e o 04-20 fecharam. Esta função é o SEGUNDO (e
+  // último) produtor de e-mail dirigido ao responsável; o outro é `runCheck`, no
+  // scheduler. Os dois leem a mesma lista de `getStaleDeals`, então fechar só um
+  // deixaria o mesmo card voltar pela sexta-feira. Oráculo:
+  // `emailer.resumoIndecidivel.test.js`.
+  //
+  // Os dois filtros são passos SEPARADOS de propósito: `skippedByFunnel` continua
+  // significando exatamente o que o nome diz, e cada supressão tem contagem própria.
+  const doFunilNotificavel = deals.filter(shouldNotifyOwner);
+  const skippedByFunnel = deals.length - doFunilNotificavel.length;
   if (skippedByFunnel > 0) {
     console.log(
       `[Emailer] Relatório semanal: ${skippedByFunnel} card(s) ignorado(s) por funil sem notificação ao responsável`,
+    );
+  }
+  const notifiable = doFunilNotificavel.filter((d) => !d.categoriaIndecidivel);
+  const ignoradosPorCategoriaNaoConsultada =
+    doFunilNotificavel.length - notifiable.length;
+  if (ignoradosPorCategoriaNaoConsultada > 0) {
+    logger.warn(
+      `[Emailer] Relatório semanal: ${ignoradosPorCategoriaNaoConsultada} card(s) fora do relatório individual porque a categoria da organização não pôde ser consultada`,
     );
   }
   if (!notifiable.length) return [];
