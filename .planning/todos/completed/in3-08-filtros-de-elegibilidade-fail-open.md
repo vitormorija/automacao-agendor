@@ -1,13 +1,50 @@
 ---
 id: in3-08-filtros-de-elegibilidade-fail-open
 type: todo
-status: pending
+status: completed
 priority: alta
 created: 2026-08-05
 source: Fase 4, code review 04-REVIEW.md (rodada 3) §IN3-08 — escopo travado pelo usuário — Info vira todo, não plano
 resolves_phase: null
+resolved: 2026-08-05
+resolved_by: 04-35-PLAN.md
 tags: [backend, agendor, elegibilidade, fail-safe, core-value, candidato-a-requisito, phase-4-carryover]
 ---
+
+
+## Desfecho (2026-08-05) — promovido a plano 04-35 e resolvido
+
+A pergunta de direção que este todo existia para fazer foi **respondida pelo usuário**, depois de a
+medição separar o achado em dois modos de falha distintos que o texto original tratava como um só.
+
+**Medição que mudou o enquadramento:** o campo vem de `deal.dealStage?.funnel?.name`
+(`agendor.js`). Nas fixtures — `real-deals.sample.json` (5 negócios reais anonimizados) e
+`synthetic/deals-page.json` (10 sintéticos) — **15 de 15 têm a estrutura de funil**, com os nomes
+`Funil 1`, `Funil 2` e `Comercial`. Funil ausente é caminho de exceção, não caso comum.
+
+**Modo 2 — comparação exata (CORRIGIDO no 04-35).** `NO_OWNER_NOTIFY_FUNNELS` comparava por
+igualdade exata, então qualquer renomeação no CRM ("Beefor Comercial") reabilitava silenciosamente
+a notificação que a regra manda suprimir — sem depender de falha nenhuma. Passou a comparar por
+substring (`.some((termo) => funnel.includes(termo))`). Consequência deliberada e aprovada pelo
+usuário: `'beeforx'` também passa a ser suprimido. Os dois casos QUIRK de `agendor.funnel.test.js`
+foram reescritos para o contrato novo. Precedente literal no mesmo módulo: `EXCLUDED_STAGE_WORDS`
+já usava correspondência parcial.
+
+**Modo 1 — direção da falha (DECIDIDO: mantém fail-open, com sinal).** Funil desconhecido **continua
+notificando**. A razão é a assimetria que o texto original deste todo não capturava: aqui, ao
+contrário do CR3-01, "não sei o funil" seria o estado padrão de qualquer payload que mude de forma
+— não um evento raro após esgotar retry de uma chamada HTTP específica. Um fail-safe uniforme
+reintroduziria exatamente o CR4-01 (supressão em massa invisível) que o 04-28 acabou de fechar.
+O que mudou foi **observabilidade**: `funilAusente` por negócio, aviso agregado em `getStaleDeals`,
+`results.funilNaoAvaliado` e alarme aditivo em `runCheck`. A asserção principal do caso
+`funil null/ausente NÃO suprime` não mudou uma letra.
+
+**Cobertura dos três consumidores** (`runCheck`, `runCheckOnly`, `sendOwnerWeeklySummary`): provada
+por caso de teste, não por leitura — os três chamam a mesma função exportada. Suíte 186 → 192.
+
+**O que ficou aberto:** [[in3-08b-comparacao-exata-nos-demais-filtros]] — a comparação exata nos
+demais filtros de elegibilidade (`EXCLUDED_CATEGORIES`, `EXCLUDED_OWNERS`), classificados como
+fora-de-escopo-com-medição porque mudá-los muda quem recebe e a decisão do usuário cobriu só o funil.
 
 # IN3-08 — `shouldNotifyOwner` falha ABERTA com funil ausente, e os filtros de elegibilidade nunca foram olhados como categoria
 
