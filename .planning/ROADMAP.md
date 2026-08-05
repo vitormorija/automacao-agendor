@@ -17,7 +17,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 1: Rede de Testes (Safety-Net)** - Testes de caracterização fixam o comportamento atual da lógica crítica de notificação antes de qualquer mudança (completed 2026-07-24)
 - [x] **Phase 2: Toolchain de Qualidade & CI** - Lint, formatação, scripts npm e pipeline de CI que bloqueia PRs com falha (completed 2026-07-29)
 - [x] **Phase 3: Config & Segredos por Ambiente** - Segredos fora do código, `.env.example`, separação dev/prod e validação no boot (completed 2026-07-30)
-- [ ] **Phase 4: Confiabilidade das Integrações** - Timeouts em Agendor/SMTP, cron resiliente a falhas e isolamento de estado por execução (35/35 planos executados em 2026-08-05, suíte 192/192; a fase foi reaberta **cinco** vezes por code review. Os cinco blockers de regra de negócio estão fechados e o `in3-08` — último filtro de elegibilidade fail-open — foi resolvido pelo 04-35. A r5 mudou de perfil: **CR5-01 BLOCKER** e WR5-01 não mudam quem recebe, quebram os **sinais** construídos para perceber falha — a chave `skipped` colide com o contrato do lock e produz toast de erro em branco; o alarme de supressão total é desarmado por qualquer `continue` anterior. Gap closure r5 pendente, escopo travado pelo usuário: CR5-01 + WR5-01 + reescrita do todo `cr4-01b`)
+- [x] **Phase 4: Confiabilidade das Integrações** - Timeouts em Agendor/SMTP, cron resiliente a falhas e isolamento de estado por execução (38 planos, suíte 148 → 196 verdes; **cinco** rodadas de code review, cinco reaberturas, cinco blockers reais fechados — CR-01/CR-02, CR2-01, CR3-01, CR4-01, CR5-01. Verificação: 8/8 Success Criteria e 6/6 requisitos conferidos contra o código. Segurança: 232/233 ameaças fechadas, SEC-01 aberta por decisão consciente C8. 41 todos com dono levados adiante) (completed 2026-08-05)
 - [ ] **Phase 5: Logging & Padronização de Erros** - `console.*` residual migrado para `logger` estruturado e resposta de erro consistente
 - [ ] **Phase 6: Hardening de Segurança** - Riscos do CONCERNS.md fechados; mudanças comportamentais só com teste do novo fluxo (ou adiadas com justificativa)
 - [ ] **Phase 7: Refatoração Incremental de Arquitetura** - Extrair `getEnrichedStaleDeals` e serviço de agregação, sem alterar comportamento, protegido pelos testes
@@ -198,7 +198,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | 1. Rede de Testes (Safety-Net) | 5/5 | Complete   | 2026-07-24 |
 | 2. Toolchain de Qualidade & CI | 4/4 | Complete   | 2026-07-29 |
 | 3. Config & Segredos por Ambiente | 7/7 | Complete   | 2026-07-30 |
-| 4. Confiabilidade das Integrações | 35/35 | Reaberta (review r5: CR5-01 blocker) | — |
+| 4. Confiabilidade das Integrações | 38/38 | Complete | 2026-08-05 |
 | 5. Logging & Padronização de Erros | 0/TBD | Not started | - |
 | 6. Hardening de Segurança | 0/TBD | Not started | - |
 | 7. Refatoração Incremental de Arquitetura | 0/TBD | Not started | - |
