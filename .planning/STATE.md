@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: "Completed 04-33-PLAN.md — WR4-02 e WR4-03 FECHADOS: os comentarios da suite deixaram de afirmar que existe uma copia do helper de relogio que foi removida, e as 4 ancoras por numero de linha do oraculo de REL-02 viraram ancoras NOMEADAS, cada uma conferida contra o emailer.js atual antes de escrita. UNICO plano da r4 com DIFF DE PRODUCAO ZERO por criterio (backend/src/ vazio nas duas tasks). Inventario medido: 4 linhas em 4 arquivos sobre a copia, 45 -> 41 linhas com referencia por numero; residual de 39 linhas em 9 arquivos vai para o todo wr4-03b (04-34). Suite 186/186 (mesmo total da entrada), cobertura exit 0, lint exit 0 (44 warnings). Falta so o 04-34 da gap closure r4. || anterior: Completed 04-32-PLAN.md — WR4-07 FECHADO: um responsavel SEM NOME deixou de derrubar o resumo semanal de TODOS os comerciais. O rotulo do relatorio individual passou a resolver pelo CADASTRO (negocio -> users[d.ownerId]?.name -> rotulo neutro) e o template ganhou a guarda gemea como defesa em profundidade. Suite 183 -> 186, cobertura exit 0, lint exit 0 (44 warnings). Faltam 04-33 e 04-34 da gap closure r4. || anterior: Completed 04-31-PLAN.md — WR4-06 FECHADO: a PREVIA do envio (runCheckOnly) passou a MARCAR quem sera notificado, com os MESMOS quatro predicados de runCheck, e o rotulo do botao do painel deixou de contar negocios parados para contar destinatarios. A divergencia entre previa e envio virou VERMELHO (cenarios F e G), nao comentario. Suite 181 -> 183, lint exit 0 no backend e no frontend, build do frontend exit 0. Faltam 04-32..04-34 da gap closure r4. || anterior: Completed 04-30-PLAN.md — WR4-04 e IN4-01 FECHADOS: a unica borda do modulo com fan-out proporcional ao VOLUME DE DADOS ganhou teto de CONCORRENCIA (LOTE_DE_ORGS), sem mudar o resultado de getStaleDeals, e o lote IRMAO da paginacao esta VERIFICADO por medicao. Suite 178 -> 181, agendor.js 100% linhas / 91,72% branches, lint exit 0. Faltam 04-31..04-34 da gap closure r4. || anterior: Completed 04-29-PLAN.md — WR4-01 e WR4-05 FECHADOS: as TRES paginacoes de agendor.js tem o mesmo teto e o mesmo tratamento de envelope, com as irmas VERIFICADAS por teste e nao presumidas. Suite 174 -> 178, agendor.js em 100% linhas / 91,6% branches, lint exit 0. Faltam 04-30..04-34 da gap closure r4. || anterior: Completed 04-28-PLAN.md — CR4-01 (o BLOCKER da r4) FECHADO. || GAP CLOSURE R4 PLANEJADA E VERIFICADA (2026-08-05): 7 planos aditivos 04-28..04-34 sobre o 04-REVIEW.md round 4. Plan-checker: VERIFICATION PASSED NA PRIMEIRA PASSADA. Cobertura REL-01..06 = 6/6. || FASE 04 REABERTA PELA 4a VEZ pelo code review rodada 4: 1 BLOCKER (CR4-01), 7 warnings e 6 info."
-last_updated: "2026-08-05T19:15:00.000Z"
-last_activity: 2026-08-05 -- 04-33 completo (WR4-02 e WR4-03: comentarios da suite alinhados ao instrumento unico e ancoras nomeadas no oraculo de REL-02); diff de producao ZERO, suite 186/186, cobertura exit 0, lint exit 0
+stopped_at: "Completed 04-34-PLAN.md — RESIDUO DOCUMENTAL DA R4 FECHADO e GAP CLOSURE R4 COMPLETA (7 de 7 planos). Nenhum achado da rodada 4 termina a fase sem dono: IN4-02..IN4-06 e os 5 residuais dos inventarios de irmaos (cr4-01b, cr4-01c, wr4-03b, wr4-04b, wr4-07b) viraram todos pendentes (23 -> 33), cada residual carregando a MEDICAO que o excluiu do escopo. IN4-01 NAO virou arquivo: fechado pelo 04-30, medido `grep -c \"batches de 10\"` = 0. ROADMAP ganhou o success criterion 8 (comportamento garantido, zero identificadores). REQUIREMENTS intocado (D-IN4-e). Diff de codigo ZERO nas 3 tasks, suite 186/186, lint exit 0. A FASE 04 PERMANECE REABERTA — quem a fecha e o coordenador, depois do code review rodada 5. || anterior: Completed 04-33-PLAN.md — WR4-02 e WR4-03 FECHADOS: os comentarios da suite deixaram de afirmar que existe uma copia do helper de relogio que foi removida, e as 4 ancoras por numero de linha do oraculo de REL-02 viraram ancoras NOMEADAS, cada uma conferida contra o emailer.js atual antes de escrita. UNICO plano da r4 com DIFF DE PRODUCAO ZERO por criterio (backend/src/ vazio nas duas tasks). Inventario medido: 4 linhas em 4 arquivos sobre a copia, 45 -> 41 linhas com referencia por numero; residual de 39 linhas em 9 arquivos vai para o todo wr4-03b (04-34). Suite 186/186 (mesmo total da entrada), cobertura exit 0, lint exit 0 (44 warnings). Falta so o 04-34 da gap closure r4. || anterior: Completed 04-32-PLAN.md — WR4-07 FECHADO: um responsavel SEM NOME deixou de derrubar o resumo semanal de TODOS os comerciais. O rotulo do relatorio individual passou a resolver pelo CADASTRO (negocio -> users[d.ownerId]?.name -> rotulo neutro) e o template ganhou a guarda gemea como defesa em profundidade. Suite 183 -> 186, cobertura exit 0, lint exit 0 (44 warnings). Faltam 04-33 e 04-34 da gap closure r4. || anterior: Completed 04-31-PLAN.md — WR4-06 FECHADO: a PREVIA do envio (runCheckOnly) passou a MARCAR quem sera notificado, com os MESMOS quatro predicados de runCheck, e o rotulo do botao do painel deixou de contar negocios parados para contar destinatarios. A divergencia entre previa e envio virou VERMELHO (cenarios F e G), nao comentario. Suite 181 -> 183, lint exit 0 no backend e no frontend, build do frontend exit 0. Faltam 04-32..04-34 da gap closure r4. || anterior: Completed 04-30-PLAN.md — WR4-04 e IN4-01 FECHADOS: a unica borda do modulo com fan-out proporcional ao VOLUME DE DADOS ganhou teto de CONCORRENCIA (LOTE_DE_ORGS), sem mudar o resultado de getStaleDeals, e o lote IRMAO da paginacao esta VERIFICADO por medicao. Suite 178 -> 181, agendor.js 100% linhas / 91,72% branches, lint exit 0. Faltam 04-31..04-34 da gap closure r4. || anterior: Completed 04-29-PLAN.md — WR4-01 e WR4-05 FECHADOS: as TRES paginacoes de agendor.js tem o mesmo teto e o mesmo tratamento de envelope, com as irmas VERIFICADAS por teste e nao presumidas. Suite 174 -> 178, agendor.js em 100% linhas / 91,6% branches, lint exit 0. Faltam 04-30..04-34 da gap closure r4. || anterior: Completed 04-28-PLAN.md — CR4-01 (o BLOCKER da r4) FECHADO. || GAP CLOSURE R4 PLANEJADA E VERIFICADA (2026-08-05): 7 planos aditivos 04-28..04-34 sobre o 04-REVIEW.md round 4. Plan-checker: VERIFICATION PASSED NA PRIMEIRA PASSADA. Cobertura REL-01..06 = 6/6. || FASE 04 REABERTA PELA 4a VEZ pelo code review rodada 4: 1 BLOCKER (CR4-01), 7 warnings e 6 info."
+last_updated: "2026-08-05T19:56:00.000Z"
+last_activity: 2026-08-05 -- 04-34 completo (IN4-02..IN4-06 e os 5 residuais dos inventarios de irmaos como todos pendentes; IN4-01 fechado com medicao; criterio 8 no ROADMAP); GAP CLOSURE R4 COMPLETA, diff de codigo ZERO, suite 186/186, lint exit 0
 progress:
   total_phases: 8
   completed_phases: 3
   total_plans: 50
-  completed_plans: 49
+  completed_plans: 50
   percent: 38
 ---
 
@@ -25,9 +25,70 @@ See: .planning/PROJECT.md (updated 2026-07-22)
 
 ## Current Position
 
-Phase: 04 (confiabilidade-das-integra-es) — gap closure r4 EM EXECUCAO
-Plan: 33 de 34 executados (04-01..04-33). Falta o 04-34 (ultimo da gap closure r4).
-Status: WR4-02 E WR4-03 FECHADOS PELO 04-33 (2026-08-05)
+Phase: 04 (confiabilidade-das-integra-es) — gap closure r4 COMPLETA; FASE AINDA REABERTA
+Plan: 34 de 34 executados (04-01..04-34). Nenhum plano pendente.
+Status: RESIDUO DOCUMENTAL DA R4 FECHADO PELO 04-34 (2026-08-05)
+
+  A GAP CLOSURE R4 ESTA COMPLETA: os 7 planos (04-28..04-34) executaram. O blocker CR4-01 e
+  os 7 warnings foram fechados; os 6 Info e os 5 residuais tem dono.
+  A FASE 04 NAO ESTA FECHADA. `completed_phases` continua 3 e `percent` 38 de proposito —
+  quem decide fechar a fase e o COORDENADOR, depois do code review rodada 5. O handler
+  `roadmap.update-plan-progress` marcou a Fase 4 como Complete e o desvio foi REVERTIDO a
+  mao (ver Desvios, abaixo): so o checkbox do 04-34 e a contagem 34/34 ficaram.
+  O 04-34 e um plano de REGISTRO, nao de conserto: DIFF DE CODIGO ZERO nas TRES tasks
+  (`git status --porcelain backend/ frontend/` vazio em cada uma). Suite 186/186 e lint
+  exit 0 (44 warnings) — os MESMOS valores da entrada, como exigido de um plano que nao
+  toca codigo. Precedentes de diff zero na fase: 04-26, 04-27 e 04-33.
+  10 TODOS CRIADOS, 23 -> 33 pendentes. Os 5 Info (in4-02 baixa, in4-03 media, in4-04
+  media, in4-05 baixa, in4-06 media) e os 5 residuais dos inventarios de irmaos (cr4-01b,
+  cr4-01c, wr4-03b, wr4-04b media; wr4-07b baixa).
+  CADA INFO FOI CONFERIDO NO CODIGO REAL ANTES DE ESCRITO (mitigacao de R4-37): quatro dos
+  cinco vivem em modulos que os planos 04-28 a 04-31 reescreveram, e os cinco continuam
+  validos. IN4-02, em particular, esta em DOIS arquivos (agendor.js e agendor.retry429).
+  IN4-01 FECHADO COM MEDICAO, SEM ARQUIVO (D-IN4-a): `grep -c \"batches de 10\"
+  backend/src/agendor.js` = 0 — o comentario agora diz \"em lotes de `batchSize`\", com o
+  numero REMOVIDO em vez de corrigido. Justificativa D-WR4-04-e: o 04-30 introduziu uma
+  segunda constante de lote cujo valor E 10, e a frase errada ao lado dela tornaria os dois
+  lotes indistinguiveis — a correcao foi NECESSARIA, nao carona. Precedente: in2-02 / 04-26.
+  CADA RESIDUAL CARREGA A MEDICAO QUE O EXCLUIU DO ESCOPO, incluindo a alternativa avaliada
+  e REJEITADA no cr4-01b (o denominador derivado faria o alarme falhar ABERTO por caminho
+  novo, porque na lista enriquecida o campo de organizacao e o NOME e nao o id).
+  ROADMAP: success criterion 8 da Fase 4, escrito como COMPORTAMENTO GARANTIDO e sem nomear
+  identificador (D-IN4-f / licao C9). Declara tambem os NAO-GATILHOS — supressao parcial e
+  supressao total por OUTRO filtro nao disparam o alarme —, que e o que distingue um sinal
+  que discrimina a CAUSA de um que reage a QUANTIDADE. numstat: 1 adicao, 0 remocoes.
+  REQUIREMENTS.md INTOCADO (D-IN4-e): a r4 acrescentou OBSERVABILIDADE de uma regra ja
+  coberta por REL-06, nao uma regra nova; um REL-07 fragmentaria a rastreabilidade.
+  NENHUM TODO COM PRIORIDADE DO USUARIO FOI EDITADO (mitigacao de R4-39): os pares foram
+  declarados NOS ARQUIVOS NOVOS, por referencia. `git status --porcelain .planning/todos/`
+  listou APENAS os 10 arquivos novos, todos nao rastreados. in3-08 intocado. SEC-01 continua
+  ABERTO (C8) e nenhum valor de segredo aparece em artefato nenhum (grep = 0 nos 10).
+  QUATRO DIVERGENCIAS DE MEDICAO, registradas e nenhuma forcada — DECIMA rodada da fase:
+  (1) o residual do wr4-03b e 41 linhas em 10 arquivos, nao 39 em 9: db.smtpPassMigration.keep
+  tem 2 e nao 1, e config.bootFailFast.test.js (1) estava inteiramente FORA da lista do
+  04-33; os outros oito valores bateram, e a conclusao fica MAIS forte; (2) o wr4-03b ficou
+  com 85 linhas contra o teto de 80 — classe ORCAMENTO DE PROSA, a mesma da divergencia nº1
+  do 04-33: encurtar exigiria cortar a tabela de medicao, um dos dois pares mandatados por
+  D-IN4-d, ou o aviso de conferencia; (3) o grep de identificadores no ROADMAP devolve 1 e
+  nao 0 — e `results.error` na linha de RESUMO da Fase 4 no topo do arquivo, texto
+  PRE-EXISTENTE; com `git diff -U0` da 0; (4) `grep -c \"PLAN.md\"` no diff devolve 1 por
+  CONTEXTO de diff (a linha do 04-01 aparece com prefixo de espaco); com -U0 da 0. As
+  divergencias 3 e 4 sao da mesma classe da nº2 do 04-30.
+  UM DESVIO, Rule 1: o handler `roadmap.update-plan-progress` marcou a FASE 4 inteira como
+  Complete — checkbox `[x]`, sufixo \"(completed 2026-08-05)\" e a linha da tabela de
+  rastreabilidade como Complete. Isso CONTRADIZ a decisao travada de que a fase permanece
+  reaberta ate o code review rodada 5. Revertido a mao: ficaram apenas o checkbox do
+  04-34-PLAN.md e a contagem 34/34, que sao fatos de PLANO e nao de FASE.
+  ATENCAO PARA QUEM SEGUIR: quem for fechar o wr4-03b precisa CONFERIR cada referencia
+  contra o arquivo apontado antes de converte-la — o 04-33 converteu 4 e as 4 estavam
+  erradas. E o cr4-01b descreve um caminho em que o alarme do blocker da r4 FALHA ABERTO
+  (a rodada MISTA); nao e regressao do conserto, e o cenario que o limiar nao cobria.
+  A linha de resumo da Fase 4 no topo do ROADMAP ainda diz \"Gap closure r4 pendente: 1
+  blocker + 7 warnings\" — ficou intocada de proposito (fora do escopo autorizado da Task 3)
+  e cabe ao coordenador atualiza-la quando fechar a fase.
+  Commits: c17eada (Info), cee8b9c (residuais), 2badae0 (ROADMAP), e247ba2 (SUMMARY).
+
+Status anterior: WR4-02 E WR4-03 FECHADOS PELO 04-33 (2026-08-05)
 
   O 04-33 e o UNICO plano da r4 com DIFF DE PRODUCAO ZERO por criterio de aceite
   (`git diff --name-only backend/src/` vazio nas DUAS tasks) — precedente: 04-26 e 04-27.

@@ -205,9 +205,27 @@ As divergências 3 e 4 são da mesma classe — **o comando literal do plano apa
 
 ## Deviations from Plan
 
-**None — plan executed exactly as written.** Nenhuma Rule 1-4 foi acionada, nenhum pacote foi instalado, nenhum arquivo de `backend/` ou `frontend/` foi tocado.
+Nenhum pacote foi instalado e nenhum arquivo de `backend/` ou `frontend/` foi tocado. **Um desvio**, durante o passo de atualização de estado (posterior às três tasks):
 
-As quatro divergências acima são de **medição**, não de escopo: em nenhuma delas o plano foi contrariado — em três, o número previsto estava errado e o medido foi registrado; na quarta, o teto de prosa foi excedido por conteúdo que o próprio plano mandatou.
+### Auto-fixed Issues
+
+**1. [Rule 1 - Bug] `roadmap.update-plan-progress` fechou a Fase 4 inteira, contra a decisão travada de que ela permanece reaberta**
+
+- **Found during:** passo de atualização de estado, depois da Task 3 e do SUMMARY
+- **Issue:** o handler `gsd-sdk query roadmap.update-plan-progress 04` fez três alterações. Uma é correta e esperada: marcar `04-34-PLAN.md` como `[x]` e a contagem como `34/34`. As outras duas **fecham a fase**: o checkbox da Fase 4 na lista de milestones virou `[x]` com o sufixo `(completed 2026-08-05)`, e a linha da tabela de rastreabilidade passou a `Complete | 2026-08-05`. Isso contradiz a decisão travada: **a fase 04 permanece REABERTA**, e quem decide fechá-la é o coordenador, depois do code review rodada 5. O handler não tem como saber disso — ele infere conclusão da fase a partir de "todos os planos têm SUMMARY".
+- **Fix:** revertidas à mão apenas as duas alterações de nível de FASE. O checkbox voltou a `[ ]`, o sufixo `(completed ...)` foi removido, e a linha da tabela voltou a `In Progress` **mantendo a contagem correta `34/34`** — os 34 planos de fato executaram, e esse é um fato de PLANO, não de FASE.
+- **Files modified:** `.planning/ROADMAP.md`
+- **Verification:** `git diff --stat .planning/ROADMAP.md` → 2 inserções / 2 remoções, sendo as duas mudanças líquidas o checkbox do `04-34-PLAN.md` e a contagem `33/34` → `34/34`. Nenhuma outra linha alterada.
+- **Committed in:** commit de metadados do plano
+
+**Nota de estado:** a linha de resumo da Fase 4 no topo do ROADMAP ainda diz "Gap closure r4 pendente: 1 blocker + 7 warnings", o que já não é verdade. Ficou **intocada de propósito**: a Task 3 autorizava alteração **apenas** dentro do bloco de Success Criteria, e reescrever a descrição da fase é justamente a decisão que o coordenador toma ao fechá-la. Registrado aqui para que não pareça esquecimento.
+
+---
+
+**Total deviations:** 1 auto-fixed (1 bug — ferramental contrariando decisão travada do usuário)
+**Impact on plan:** nenhum escopo novo. A correção **preserva** uma decisão do usuário que o ferramental teria desfeito em silêncio.
+
+As quatro divergências de medição acima **não** são desvios: em nenhuma delas o plano foi contrariado — em três, o número previsto estava errado e o medido foi registrado; na quarta, o teto de prosa foi excedido por conteúdo que o próprio plano mandatou.
 
 ## Issues Encountered
 
@@ -238,6 +256,12 @@ Nenhum. Este plano não cria código.
 ## Threat Flags
 
 Nenhuma superfície de segurança nova. As três fronteiras do threat model deste plano foram medidas: nenhum todo com prioridade do usuário foi editado (T-04-34-03), nenhuma linha de código mudou (T-04-34-02), e nenhum segredo aparece em artefato nenhum (T-04-34-04).
+
+## Self-Check: PASSED
+
+- **12 artefatos declarados, 12 encontrados em disco** (10 todos criados, ROADMAP, SUMMARY).
+- **4 commits declarados, 4 encontrados no histórico**: `c17eada`, `cee8b9c`, `2badae0`, `e247ba2`.
+- Nenhuma alegação do SUMMARY sem verificação correspondente.
 
 ---
 *Phase: 04-confiabilidade-das-integra-es*
