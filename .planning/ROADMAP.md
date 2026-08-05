@@ -124,7 +124,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] 04-21-PLAN.md — O resumo semanal individual também não lista negócio indecidível; o consolidado do admin mantém (CR3-01, caminho vizinho)
 - [x] 04-22-PLAN.md — `/users` e `/deals/:id` entram na política única de retry, e o comentário passa a enumerar as bordas (WR3-01)
 - [x] 04-23-PLAN.md — A leitura de dedup deixa de abortar a rodada quando o SQLite falha (WR3-02)
-- [ ] 04-24-PLAN.md — O canal do resultado parcial é validado no elemento, não só no contêiner (WR3-03)
+- [x] 04-24-PLAN.md — O canal do resultado parcial é validado no elemento, não só no contêiner (WR3-03)
 - [ ] 04-25-PLAN.md — Teto de páginas com falha explícita nas duas paginações sem limite (WR3-06)
 - [ ] 04-26-PLAN.md — Relógio por caso, helper único e estado neutro em `beforeEach` (WR3-04, WR3-05, WR3-07)
 - [ ] 04-27-PLAN.md — IN3-01..IN3-08 como todos pendentes e o critério do fail-safe de categoria no ROADMAP
@@ -181,7 +181,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | 1. Rede de Testes (Safety-Net) | 5/5 | Complete   | 2026-07-24 |
 | 2. Toolchain de Qualidade & CI | 4/4 | Complete   | 2026-07-29 |
 | 3. Config & Segredos por Ambiente | 7/7 | Complete   | 2026-07-30 |
-| 4. Confiabilidade das Integrações | 23/27 | In Progress|  |
+| 4. Confiabilidade das Integrações | 24/27 | In Progress|  |
 | 5. Logging & Padronização de Erros | 0/TBD | Not started | - |
 | 6. Hardening de Segurança | 0/TBD | Not started | - |
 | 7. Refatoração Incremental de Arquitetura | 0/TBD | Not started | - |
