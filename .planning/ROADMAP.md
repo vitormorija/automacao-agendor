@@ -17,7 +17,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 1: Rede de Testes (Safety-Net)** - Testes de caracterização fixam o comportamento atual da lógica crítica de notificação antes de qualquer mudança (completed 2026-07-24)
 - [x] **Phase 2: Toolchain de Qualidade & CI** - Lint, formatação, scripts npm e pipeline de CI que bloqueia PRs com falha (completed 2026-07-29)
 - [x] **Phase 3: Config & Segredos por Ambiente** - Segredos fora do código, `.env.example`, separação dev/prod e validação no boot (completed 2026-07-30)
-- [ ] **Phase 4: Confiabilidade das Integrações** - Timeouts em Agendor/SMTP, cron resiliente a falhas e cache com TTL (7 planos + gap closure 04-08..04-11 executados em 2026-08-04; **reaberta pela 2ª rodada de review** — 04-REVIEW com CR2-01 crítico: corrida do `orgCategoryCache` ainda aberta na direção escrita-após-limpeza)
+- [x] **Phase 4: Confiabilidade das Integrações** - Timeouts em Agendor/SMTP, cron resiliente a falhas e cache com TTL (7 planos + gap closure 04-08..04-11 executados em 2026-08-04; **reaberta pela 2ª rodada de review** — 04-REVIEW com CR2-01 crítico: corrida do `orgCategoryCache` ainda aberta na direção escrita-após-limpeza) (completed 2026-08-05)
 - [ ] **Phase 5: Logging & Padronização de Erros** - `console.*` residual migrado para `logger` estruturado e resposta de erro consistente
 - [ ] **Phase 6: Hardening de Segurança** - Riscos do CONCERNS.md fechados; mudanças comportamentais só com teste do novo fluxo (ou adiadas com justificativa)
 - [ ] **Phase 7: Refatoração Incremental de Arquitetura** - Extrair `getEnrichedStaleDeals` e serviço de agregação, sem alterar comportamento, protegido pelos testes
@@ -116,7 +116,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] 04-15-PLAN.md — A falha ao REGISTRAR o desfecho do envio para de abortar a rodada: gravação protegida e fail-safe `'pending'` declarado (WR2-02) · termina em C10
 - [x] 04-16-PLAN.md — O canal `err.resultadosParciais` é validado por tipo antes de ser consumido: parcial corrompido vira "nada confirmado" em vez de derrubar a rodada (WR2-04)
 - [x] 04-17-PLAN.md — O transporte recriado no retry serve o destinatário seguinte (WR2-05) · termina em C11
-- [ ] 04-18-PLAN.md — Âncoras estáveis nos comentários e registro de IN2-01..IN2-04 como todos pendentes (WR2-06)
+- [x] 04-18-PLAN.md — Âncoras estáveis nos comentários e registro de IN2-01..IN2-04 como todos pendentes (WR2-06)
 
 ### Phase 5: Logging & Padronização de Erros
 **Goal**: Logging é estruturado e consistente em todo o backend, e o tratamento/resposta de erro nas rotas segue um padrão único.
@@ -170,7 +170,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | 1. Rede de Testes (Safety-Net) | 5/5 | Complete   | 2026-07-24 |
 | 2. Toolchain de Qualidade & CI | 4/4 | Complete   | 2026-07-29 |
 | 3. Config & Segredos por Ambiente | 7/7 | Complete   | 2026-07-30 |
-| 4. Confiabilidade das Integrações | 17/18 | In Progress (gap closure r2: falta o 04-18) | - |
+| 4. Confiabilidade das Integrações | 18/18 | Complete   | 2026-08-05 |
 | 5. Logging & Padronização de Erros | 0/TBD | Not started | - |
 | 6. Hardening de Segurança | 0/TBD | Not started | - |
 | 7. Refatoração Incremental de Arquitetura | 0/TBD | Not started | - |

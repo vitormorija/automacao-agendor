@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: 04-17 COMPLETO (2026-08-05) — WR2-05 fechado, C11 APROVADO; falta so o 04-18
-stopped_at: "Completed 04-16-PLAN.md — WR2-04 fechado; o canal do resultado parcial e validado por tipo antes de ser consumido, e o produtor declara que a anexacao pode falhar em silencio. Plano autonomo, sem checkpoint. Proximo: 04-17 (WR2-05), que termina no checkpoint BLOQUEANTE C11 — auto_advance deve continuar OFF. SEC-01 permanece ABERTO por decisao C8."
-last_updated: "2026-08-05T03:20:08.305Z"
-last_activity: 2026-08-05 -- 04-17 completo (WR2-05 fechado, C11 aprovado); proximo 04-18, o ultimo da fase
+status: FASE 04 COMPLETA (2026-08-05) — 18/18 planos
+stopped_at: "Completed 04-18-PLAN.md — o ULTIMO da Fase 4. WR2-06 fechado (escopo obrigatorio 53 -> 2 referencias por numero de linha; backend/src 12 -> 0; diff dos .js com 0 linhas nao-comentario). IN2-01..IN2-04 registrados como todo pendente. DECISAO C9 aplicada ao ROADMAP e a REQUIREMENTS. FASE 04 COMPLETA (18/18), pronta para verificacao. SEC-01 permanece ABERTO por decisao C8. || anterior: Completed 04-17-PLAN.md — WR2-05 fechado; o transporte recriado no retry serve o destinatario seguinte, sem que o retorno por destinatario mude de forma. Checkpoint C11 APROVADO pelo usuario (2026-08-05), com os tres desvios de medicao aceitos e o todo rel-02b mantido em prioridade alta. Proximo: 04-18, o ULTIMO da fase (WR2-06 + todos IN2-01..IN2-04 + DECISAO C9) — quem despacha e o coordenador. SEC-01 permanece ABERTO por decisao C8."
+last_updated: "2026-08-05T03:33:14.682Z"
+last_activity: 2026-08-05 -- 04-18 completo; FASE 04 COMPLETA (18/18), pronta para verificacao
 progress:
   total_phases: 8
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 34
-  completed_plans: 33
-  percent: 38
+  completed_plans: 34
+  percent: 50
 ---
 
 # Project State
@@ -25,9 +25,62 @@ See: .planning/PROJECT.md (updated 2026-07-22)
 
 ## Current Position
 
-Phase: 04 (confiabilidade-das-integra-es) — EXECUTING
-Plan: 17 de 18 completos (04-01..04-17). Falta so o 04-18.
-Status: 04-17 COMPLETO (2026-08-05) — WR2-05 fechado, C11 APROVADO; falta so o 04-18
+Phase: 04 (confiabilidade-das-integra-es) — COMPLETA, pronta para verificacao
+Plan: 18 de 18 completos (04-01..04-18).
+Status: FASE 04 COMPLETA (2026-08-05) — 18/18 planos
+  O 04-18, ULTIMO da fase, fechou WR2-06 e registrou os 4 achados Info da rodada 2.
+  WR2-06: o review conferiu 7 referencias por numero de linha; a VARREDURA MEDIDA achou
+  53 no escopo obrigatorio — 12 em backend/src e 41 nos arquivos de teste do gap closure.
+  Todas nasceram erradas: os proprios blocos de 15 a 25 linhas empurraram o codigo para
+  baixo dentro do commit que escreveu o comentario.
+  Depois: backend/src = 0; testes do gap closure = 2. Diff de TODOS os .js verificado por
+  contagem: 0 linhas nao-comentario. Suite 148/148, lint exit 0.
+  DOIS ARQUIVOS DE PRODUCAO que a tabela do review NAO citava entraram no diff: config.js
+  ("src/index.js:1") e um SEGUNDO ponteiro em routes/deals.js ("ecosystem.config.js:20",
+  que virou "a chave error_file"). A lista de arquivos saiu da MEDICAO, nao da lista files
+  do plano (5 previstos, 12 reais).
+  AS 2 QUE FICARAM, e por que: scheduler.resilience.test.js linhas 190 e 247 — um NOME DE
+  CASO e uma MENSAGEM DE ASSERCAO, ambos STRING, nao comentario. Os dois criterios do plano
+  eram incompativeis: zerar o grep exigiria edita-las; o criterio ABSOLUTO de diff
+  exclusivamente de comentario proibe. Prevaleceu o absoluto — ele materializa a mitigacao
+  de R2-28 e T-04-18-02, e o plano so da escape ao criterio da contagem. Renomear um caso e
+  mexer num oraculo, e o nome do caso (3) e citado no 04-RESEARCH.md. Divida conhecida,
+  nomeada e localizada, NAO falso positivo do padrao.
+  RESIDUAL DELIBERADO: 48 linhas em 10 arquivos de backend/test fora das duas rodadas de gap
+  closure (scheduler.failsafe 13, notificationStatus 11, agendor.timeout 9, emailer.timeout 5,
+  notifications.resolved 5, e 5 arquivos com 1 cada). Sao oraculos estaveis das ondas 1-7;
+  edita-los para embelezar comentario e chance de mexer sem querer numa asseracao que hoje
+  protege o Core Value.
+  CONVENCAO COM DETECTOR: 2 linhas no topo de agendor.js dizendo que referencia usa ancora
+  nomeada e nunca numero de linha, mais o grep que detecta a reincidencia em menos de 1s —
+  candidato natural a step de CI. Regra escrita sem detector volta a ser violada no proximo
+  commit longo.
+  DECISAO C9 APLICADA (vinculante, usuario, 2026-08-05): o Success Criteria 4 da Fase 4 no
+  ROADMAP e o REL-04 em REQUIREMENTS deixaram de descrever o MECANISMO ("orgCategoryCache e
+  invalidado a cada execucao" / "ganha TTL/invalidacao") e passaram a descrever o
+  COMPORTAMENTO GARANTIDO: o estado de categorias e ISOLADO POR EXECUCAO e nenhuma execucao
+  pode ler, apagar, reutilizar ou contaminar o estado de outra. A remocao da limpeza por
+  execucao (04-12) esta APROVADA e NAO e regressao. Zero mudanca de codigo por causa de C9.
+  POR QUE ISSO IMPORTA para quem verificar a fase: um criterio que nomeia mecanismo
+  inexistente falha da pior forma — o verificador procura orgCategoryCache, nao encontra, e
+  o registro correto mora num SUMMARY que ele pode nao abrir.
+  4 TODOS CRIADOS em .planning/todos/pending/ (74 a 82 linhas cada, molde do in-01):
+  in2-01-fetchwithretry-sem-tentativa (baixa) — retries <= 0 devolve undefined e o sintoma e
+  um TypeError de desestruturacao que aponta para a API, nao para o argumento errado;
+  in2-02-relogio-falso-em-before (media) — relogio falso em before, nao beforeEach, com o
+  precedente MEDIDO de agendor.retry429 (30s moveram o cutoff e trouxeram os deals 102 e 104
+  para dentro do golden); in2-03-mensagem-de-erro-interpola-id (media) — a guarda de
+  getDealById interpola o valor externo recusado, hoje inalcancavel porque nada loga ali, e a
+  distancia ate explorável e UMA linha de logger.warn (regra de precaucao registrada);
+  in2-04-parcial-sent-invisivel (media, CANDIDATO A PROMOCAO por tocar o Core Value) — o
+  destinatario que faltou num parcial 'sent' nao e retentado e a UI mostra sucesso pleno;
+  tratar junto com in-01-status-pending-na-ui, mesmo ternario binario.
+  DECISOES ANTERIORES PRESERVADAS, sem editar os arquivos dos todos: in-01 mantem media (C10),
+  rel-02b mantem alta / pre-go-live (C11), SEC-01 permanece ABERTO (C8).
+  DIVIDA DISPONIVEL sem bloqueio: dedup da copia local de avancarRelogioAte em
+  emailer.timeout.test.js — o motivo de mante-la expirou com o 04-17 e este plano nao a
+  alterou (so um ponteiro do helper compartilhado foi convertido).
+
   O 04-17 fechou WR2-05: sendMailWithRetry recria o transporte SO PARA SI —
   `transporter = createTransporter()` dentro do laco de retry reatribui o PARAMETRO da
   funcao, nao a variavel do chamador. Em sendStaleNotification o `let transporter`
@@ -206,9 +259,9 @@ Status: 04-17 COMPLETO (2026-08-05) — WR2-05 fechado, C11 APROVADO; falta so o
   checkpoints bloqueantes: C9, C10, C11).
   A rodada 1 esta preservada em 04-REVIEW-r1.md (origem dos planos 04-08..04-11).
   SEC-01 permanece ABERTO como risco conscientemente aceito (decisao C8) — nao marcar resolvido.
-Last activity: 2026-08-05 -- 04-17 completo (WR2-05 fechado, C11 aprovado); proximo 04-18, o ultimo da fase
+Last activity: 2026-08-05 -- 04-18 completo; FASE 04 COMPLETA (18/18), pronta para verificacao
 
-Progress: [█████████░] 94% (17 de 18 planos da fase 04 completos; WR2-05 fechado, C11 aprovado)
+Progress: [██████████] 100% (18 de 18 planos da fase 04 completos; WR2-06 fechado, C9 aplicada)
 
 ## Performance Metrics
 
@@ -261,6 +314,7 @@ Progress: [█████████░] 94% (17 de 18 planos da fase 04 compl
 | Phase 04 P15 | 21min | 3 tasks (C10 aprovado) | 3 files |
 | Phase 04 P16 | 16min | 2 tasks | 3 files |
 | Phase 04 P17 | 22min | 3 tasks (C11 aprovado) | 2 files |
+| Phase 04 P18 | 26min | 2 tasks tasks | 16 files files |
 
 ## Accumulated Context
 
@@ -448,6 +502,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-05T02:19:33.743Z
-Stopped at: Completed 04-17-PLAN.md — WR2-05 fechado; o transporte recriado no retry serve o destinatario seguinte, sem que o retorno por destinatario mude de forma. Checkpoint C11 APROVADO pelo usuario (2026-08-05), com os tres desvios de medicao aceitos e o todo rel-02b mantido em prioridade alta. Proximo: 04-18, o ULTIMO da fase (WR2-06 + todos IN2-01..IN2-04 + DECISAO C9) — quem despacha e o coordenador. SEC-01 permanece ABERTO por decisao C8.
+Last session: 2026-08-05T03:33:14.670Z
+Stopped at: Completed 04-18-PLAN.md — o ULTIMO da Fase 4. WR2-06 fechado (escopo obrigatorio 53 -> 2 referencias por numero de linha; backend/src 12 -> 0; diff dos .js com 0 linhas nao-comentario). IN2-01..IN2-04 registrados como todo pendente. DECISAO C9 aplicada ao ROADMAP e a REQUIREMENTS. FASE 04 COMPLETA (18/18), pronta para verificacao. SEC-01 permanece ABERTO por decisao C8. || anterior: Completed 04-17-PLAN.md — WR2-05 fechado; o transporte recriado no retry serve o destinatario seguinte, sem que o retorno por destinatario mude de forma. Checkpoint C11 APROVADO pelo usuario (2026-08-05), com os tres desvios de medicao aceitos e o todo rel-02b mantido em prioridade alta. Proximo: 04-18, o ULTIMO da fase (WR2-06 + todos IN2-01..IN2-04 + DECISAO C9) — quem despacha e o coordenador. SEC-01 permanece ABERTO por decisao C8.
 Resume file: None
