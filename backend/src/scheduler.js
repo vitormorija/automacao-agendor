@@ -510,6 +510,12 @@ function getStatus() {
 // Apenas verifica negócios parados, sem enviar emails
 async function runCheckOnly() {
   const staleDays = parseInt(getConfig('stale_days')) || 15;
+  // As duas chaves que runCheck também lê. `notify_author` entra para que o e-mail do autor
+  // signifique aqui o mesmo que na rodada real — com ele desligado, o autor não é destinatário e
+  // portanto não pode contar como "existe alguém para receber".
+  const notifyAuthor = getConfig('notify_author') !== 'false';
+  const notificationsEnabled = getConfig('notifications_enabled') === 'true';
+
   const [staleDeals, users, futureTasks] = await Promise.all([
     getStaleDeals(staleDays),
     getUsers(),
@@ -517,14 +523,47 @@ async function runCheckOnly() {
   ]);
 
   // Separa os deals com tarefa futura dos que realmente precisam de notificação
+  //
+  // Esta rota responde "QUEM VAI RECEBER", e não "quais negócios estão parados" — são perguntas
+  // diferentes, e o consumidor prova que a diferença importa: o Dashboard escreve este número no
+  // RÓTULO DO BOTÃO DE DISPARO, que o operador lê imediatamente antes de decidir enviar (WR4-06).
+  // Até aqui a prévia aplicava só o filtro de tarefas futuras, enquanto o envio aplicava mais
+  // quatro guardas, então o botão prometia mais destinatários do que a rodada entregava.
+  // A lista NÃO é filtrada, e isso é deliberado: a outra metade da decisão do usuário (2026-08-05)
+  // exige o negócio suprimido VISÍVEL no painel, e o card de resultado conta o comprimento dela.
+  // Marcar é o conserto; remover mudaria o significado do total.
+  // Os predicados abaixo são os MESMOS quatro da cadeia de guardas de runCheck, e a duplicação é
+  // conhecida e deliberada: extrair um predicado compartilhado seria refatoração estrutural
+  // daquela cadeia — o caminho do Core Value —, e a constraint de processo do CLAUDE.md proíbe
+  // misturá-la a uma correção. O guarda-corpo da duplicação NÃO é este comentário: são os cenários
+  // F e G de scheduler.categoriaIndecidivel.test.js, que rodam esta função e runCheck contra a
+  // MESMA armação e exigem que o conjunto prometido seja IGUAL ao conjunto notificado. Quem fizer
+  // os dois lugares divergirem deixa os dois casos vermelhos.
+  // A configuração de notificações entra de propósito no conjunto: a pergunta que o botão faz é
+  // "quantos vão receber se eu clicar agora", e com as notificações desligadas a resposta honesta
+  // é zero. A dedup do dia é consultada UMA vez por negócio e o valor é reusado pelos dois campos —
+  // duas chamadas dobrariam as consultas do caminho de leitura do painel sem nenhum ganho.
   return staleDeals
     .filter((deal) => !futureTasks.has(deal.id))
-    .map((deal) => ({
-      ...deal,
-      ownerEmail: users[deal.ownerId]?.email || null,
-      authorEmail: users[deal.authorId]?.email || null,
-      alreadyNotifiedToday: alreadyNotifiedToday(deal.id),
-    }));
+    .map((deal) => {
+      const ownerEmail = users[deal.ownerId]?.email || null;
+      const authorEmail = notifyAuthor
+        ? users[deal.authorId]?.email || null
+        : null;
+      const jaNotificadoHoje = alreadyNotifiedToday(deal.id);
+      return {
+        ...deal,
+        ownerEmail,
+        authorEmail,
+        alreadyNotifiedToday: jaNotificadoHoje,
+        seraNotificado:
+          !deal.categoriaIndecidivel &&
+          shouldNotifyOwner(deal) &&
+          !jaNotificadoHoje &&
+          Boolean(ownerEmail || authorEmail) &&
+          notificationsEnabled,
+      };
+    });
 }
 
 // Para todos os agendamentos (usado no graceful shutdown).
