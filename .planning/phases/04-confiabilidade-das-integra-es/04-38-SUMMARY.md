@@ -203,3 +203,9 @@ cenários que exercitam o comportamento mudado nas duas últimas rodadas.
 | 1 | `23e90b5` | WR5-02..WR5-05 como todos pendentes (wr5-05 ALTA) |
 | 2 | `590de1a` | IN5-01..IN5-04 como todos pendentes (pendentes 33 → 41) |
 | 3 | `d7834f8` | Bloco `Gap closure r5` no ROADMAP e a linha `**Plans**` corrigida por medição |
+
+## Self-Check: PASSED
+
+Os oito artefatos e o SUMMARY existem no disco; os três commits de task existem no histórico
+(`23e90b5`, `590de1a`, `d7834f8`). Estado final conferido: 41 pendentes, `completed_phases: 3`,
+`percent: 38`, e o checkbox da Fase 4 no ROADMAP continua `[ ]`.
