@@ -17,9 +17,12 @@
 //
 // A rodada 2 do code review (CR2-01) achou a direção OPOSTA do mesmo entrelaçamento, que este
 // arquivo não media: não é a limpeza de B que apaga o que A escreveu, é a ESCRITA TARDIA de A
-// que contamina B. getOrgCategory engole qualquer falha e cacheia `null`, e `null` não está em
-// EXCLUDED_CATEGORIES — se a consulta de A falha DEPOIS do início de B, B lê esse `null` em
-// cache, nem consulta a API, e notifica uma organização 'Parceiro' sem ter falhado em nada.
+// que contamina B. getOrgCategory engole qualquer falha e, à época, cacheava `null`, que não
+// está em EXCLUDED_CATEGORIES — se a consulta de A falhava DEPOIS do início de B, B lia esse
+// `null` em cache, nem consultava a API, e notificava uma organização 'Parceiro' sem ter
+// falhado em nada. Desde CR3-01 o valor gravado pelo catch é a sentinela
+// CATEGORIA_INDECIDIVEL, e o negócio afetado sai marcado como indecidível — mas o que este
+// arquivo mede continua sendo a HERANÇA entre execuções, não o conteúdo do valor herdado.
 // A partir daqui o arquivo mede as DUAS direções: "a limpeza apaga a leitura futura" (casos
 // 'duas execuções SOBREPOSTAS...' e 'depois do entrelaçamento...', CR-01) e "a escrita tardia
 // contamina a execução vizinha" (caso 'escrita tardia...', CR2-01).
@@ -108,7 +111,10 @@ function respostaDoEspelho(url) {
       consultas205NoEspelho += 1;
       // Ponto de suspensão 2 do espelho — a PRIMEIRA consulta de 205 é a da execução A, e é
       // ela que vai FALHAR, em voo, depois do início de B. Um Error simples basta:
-      // getOrgCategory engole qualquer falha e cacheia `null`. Da segunda consulta em
+      // getOrgCategory engole qualquer falha e cacheia a sentinela CATEGORIA_INDECIDIVEL. E,
+      // por ser SEM `response`, este erro fica fora do ramo de 429 de fetchWithRetry
+      // (CR3-01) — a contagem `consultas205NoEspelho` continua significando exatamente o que
+      // significava antes de a borda de categorias entrar no retry. Da segunda consulta em
       // diante a API responde normalmente, e é isso que torna o contador uma prova do
       // MECANISMO: em GREEN a execução B precisa reconsultar para saber que 205 é
       // 'Parceiro'.
@@ -307,13 +313,22 @@ test('escrita tardia: a falha de UMA execução não pode decidir quem a execuç
   // módulo DEPOIS da limpeza de B.
   falhar205DaExecucaoA();
 
-  // (8) A execução que FALHOU trata a categoria como desconhecida — vale nos dois estados,
-  // e é o que dá sentido à asserção seguinte.
-  const idsA = (await execucaoA).map((d) => d.id);
+  // (8) A execução que FALHOU marca o negócio como INDECIDÍVEL: ele continua na lista dela
+  // (o painel o preserva), mas com `categoriaIndecidivel: true`, que é o que o tira do envio.
+  // Desde CR3-01 isto NÃO é mais "tratar a categoria como desconhecida" — o `null` que
+  // atravessava EXCLUDED_CATEGORIES deixou de existir neste caminho. A asserção de presença
+  // vale nos dois estados e é o que dá sentido à asserção seguinte, sobre a execução B.
+  const negociosA = await execucaoA;
+  const idsA = negociosA.map((d) => d.id);
   assert.equal(
     idsA.includes(105),
     true,
-    'caminho de erro documentado (cenário (3) de agendor.cacheInvalidation.test.js): a execução QUE FALHOU trata a categoria como desconhecida',
+    'caminho de erro documentado (cenário (3) de agendor.cacheInvalidation.test.js): a execução QUE FALHOU mantém o negócio na lista, marcado como indecidível',
+  );
+  assert.equal(
+    negociosA.find((d) => d.id === 105).categoriaIndecidivel,
+    true,
+    'quem falhou na consulta precisa marcar o negócio como indecidível — presença sem a marca seria o fail-open de CR3-01',
   );
 
   // (9) Agora B avança para a fase de organizações.

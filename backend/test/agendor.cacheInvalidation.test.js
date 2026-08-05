@@ -6,10 +6,13 @@
 //       'Parceiro' continua sendo notificada indefinidamente;
 //   (2) dentro de UMA execução cada organização única é consultada exatamente uma vez —
 //       a invalidação não pode custar uma chamada por deal;
-//   (3) o `null` que o catch de getOrgCategory grava quando a consulta falha morre com a
-//       execução que o gravou, porque o cache é DELA — antes da correção esse `null` ficava
-//       num dicionário de módulo e um erro transitório de UMA consulta apagava a categoria
-//       daquela organização para todas as rodadas do processo.
+//   (3) a sentinela CATEGORIA_INDECIDIVEL que o catch de getOrgCategory grava quando a
+//       consulta falha morre com a execução que a gravou, porque o cache é DELA — antes da
+//       correção esse valor ficava num dicionário de módulo e um erro transitório de UMA
+//       consulta apagava a categoria daquela organização para todas as rodadas do processo.
+//       Desde CR3-01 o valor gravado deixou de ser `null` (que atravessava
+//       EXCLUDED_CATEGORIES e notificava quem não devia) e passou a marcar o negócio como
+//       INDECIDÍVEL: ele continua na lista, mas com `categoriaIndecidivel: true`.
 //
 // Como REL-04 é entregue: cada execução de getStaleDeals cria o seu próprio Map de
 // categorias e o passa a getOrgCategory. Não há limpeza a fazer na entrada da função porque
@@ -83,7 +86,10 @@ const fake = installFakeAxios((url) => {
   if (url.startsWith('/organizations/')) {
     const id = Number(url.split('/').pop());
     // Erro transitório injetado por organização: é o que faz getOrgCategory cair no catch
-    // e cachear `null`. Um Error simples basta — getOrgCategory engole qualquer falha.
+    // e cachear a sentinela CATEGORIA_INDECIDIVEL. Um Error simples basta — getOrgCategory
+    // engole qualquer falha. E, por ser SEM `response`, ele fica fora do ramo de 429 de
+    // fetchWithRetry (CR3-01): a contagem de consultas deste arquivo continua sendo 1 por
+    // organização, exatamente como antes de a borda de categorias entrar no retry.
     if (id === orgQueFalha) {
       throw new Error(`Falha transitoria simulada em /organizations/${id}`);
     }
@@ -155,23 +161,38 @@ test('cenário (3): `null` cacheado por erro transitório não contamina a execu
   dealsServidos = [...dealsPage, DEAL_ORG_QUE_FALHA];
   orgQueFalha = 305;
 
-  // 1ª execução: a consulta de /organizations/305 falha. getOrgCategory engole o erro e
-  // grava `null`; `null` não está em EXCLUDED_CATEGORIES, então uma organização que É
-  // 'Parceiro' passa pelo filtro e o deal entra na lista de notificação. Isto documenta o
-  // comportamento ATUAL do caminho de erro — vale nos dois estados, antes e depois da
-  // correção, e é o que dá sentido à asserção da 2ª execução.
-  const idsComFalha = (await getStaleDeals(15)).map((d) => d.id);
-  assert.equal(idsComFalha.includes(305), true);
+  // 1ª execução: a consulta de /organizations/305 falha. Até CR3-01, getOrgCategory gravava
+  // `null` — que não está em EXCLUDED_CATEGORIES —, e uma organização que É 'Parceiro'
+  // atravessava o filtro e ERA NOTIFICADA. Este trecho chegou a asserir esse fail-open como
+  // se fosse contrato, e portanto ficava vermelho quando alguém consertasse o defeito.
+  //
+  // O contrato NOVO: o negócio continua na lista, mas COMO INDECIDÍVEL. Não é a ausência que
+  // impede o e-mail — é o campo `categoriaIndecidivel`, lido pelo consumidor. Preservá-lo na
+  // lista é decisão do usuário (2026-08-05): o painel e os relatórios continuam mostrando o
+  // negócio, para que a falha de categoria seja visível em vez de sumir em silêncio.
+  const negociosComFalha = await getStaleDeals(15);
+  const negocio305 = negociosComFalha.find((d) => d.id === 305);
+  assert.notEqual(
+    negocio305,
+    undefined,
+    'o negócio de categoria indecidível permanece no painel',
+  );
+  assert.equal(
+    negocio305.categoriaIndecidivel,
+    true,
+    'a falha da consulta precisa virar estado explícito, não um null que atravessa o filtro',
+  );
 
-  // 2ª execução: a API volta a responder normalmente. Sem invalidação, o `null` do erro
-  // continua no cache e a organização 'Parceiro' segue sendo notificada — todas as rodadas
-  // seguintes do processo, não só a próxima.
+  // 2ª execução: a API volta a responder normalmente. Sem invalidação, o valor gravado pelo
+  // erro continua no cache e a organização 'Parceiro' segue escapando da exclusão — todas as
+  // rodadas seguintes do processo, não só a próxima. É esta asserção, e não a de cima, que
+  // prova o que REL-04 garante: o estado de uma execução não atravessa para a seguinte.
   orgQueFalha = null;
   const idsAposRecuperacao = (await getStaleDeals(15)).map((d) => d.id);
   assert.equal(
     idsAposRecuperacao.includes(305),
     false,
-    'o null cacheado pelo catch de getOrgCategory sobreviveu à execução em que foi gravado',
+    'o valor cacheado pelo catch de getOrgCategory sobreviveu à execução em que foi gravado',
   );
 
   dealsServidos = dealsPage;
