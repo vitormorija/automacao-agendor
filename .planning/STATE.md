@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: "Completed 04-15-PLAN.md — WR2-02 fechado; a falha ao registrar o desfecho nao derruba mais a rodada. Checkpoint C10 APROVADO pelo usuario (reenvio preferido ao abandono da rodada). Proximo: 04-16 (WR2-04) — despacho do orquestrador. SEC-01 permanece ABERTO por decisao C8."
-last_updated: "2026-08-05T02:08:24.939Z"
-last_activity: 2026-08-05 -- 04-15 completo (WR2-02 fechado; C10 aprovado); proximo 04-16
+stopped_at: "Completed 04-16-PLAN.md — WR2-04 fechado; o canal err.resultadosParciais e validado por tipo antes de ser consumido. Plano autonomo, sem checkpoint. Proximo: 04-17 (WR2-05), que termina no checkpoint BLOQUEANTE C11 — auto_advance deve continuar OFF. SEC-01 permanece ABERTO por decisao C8."
+last_updated: "2026-08-05T02:19:33.743Z"
+last_activity: 2026-08-05 -- 04-16 completo (WR2-04 fechado); proximo 04-17 (termina em C11)
 progress:
   total_phases: 8
   completed_phases: 3
   total_plans: 34
-  completed_plans: 31
+  completed_plans: 32
   percent: 38
 ---
 
@@ -26,8 +26,41 @@ See: .planning/PROJECT.md (updated 2026-07-22)
 ## Current Position
 
 Phase: 04 (confiabilidade-das-integra-es) — EXECUTING
-Plan: 15 de 18 completos (04-01..04-15). Faltam 04-16..04-18.
-Status: 04-15 COMPLETO (2026-08-05) — WR2-02 fechado e C10 APROVADO; proximo e o 04-16 (WR2-04)
+Plan: 16 de 18 completos (04-01..04-16). Faltam 04-17..04-18.
+Status: 04-16 COMPLETO (2026-08-05) — WR2-04 fechado; proximo e o 04-17 (WR2-05), que termina em C11
+  O 04-16 fechou WR2-04: o consumidor do canal parcial fazia
+  `const parciais = err.resultadosParciais ?? []` e chamava `.some`. O `??` so protege
+  contra ausencia (null/undefined) — um valor de OUTRO TIPO fazia o `.some` lancar de
+  DENTRO do proprio catch do bloco de envio, a excecao subia para o catch externo de
+  runCheck e o `for` dos deals morria ali. A origem plausivel do valor errado foi
+  REPRODUZIDA, nao suposta: com um erro CONGELADO (Object.freeze) a anexacao do produtor
+  em emailer.js falha EM SILENCIO (sloppy mode do CommonJS, sem TypeError e sem log) e um
+  valor pre-existente com esse nome sobrevive intacto ate o consumidor.
+  RED MEDIDO pela saida literal: TypeError 'parciais.some is not a function' com stack em
+  scheduler.js:197, sobre o codigo JA COM o 04-15 aplicado — confirmando por medicao a
+  pre-condicao do plano de que as duas correcoes sao independentes.
+  A previsao do plano foi CORRIGIDA pela medicao de novo (mesmo achado estrutural do
+  04-15): r.deals.length medido e 0, nao 1, porque results.deals.push fica DEPOIS do
+  try/catch do bloco de envio.
+  Agora a leitura e validada por tipo (Array.isArray) e ausencia E corrupcao viram "nada
+  confirmado", com desfecho fail-safe: linha 'error' (que nao deduplica, retenta amanha) e
+  a rodada CONTINUA. Nenhum destinatario recebe a mais nem a menos por causa disso — o que
+  muda e que os OUTROS deals da rodada deixam de ser perdidos. Trade-off ja aprovado no C10.
+  DESVIO DE FORMA declarado: o criterio de aceite exigia 2 linhas de codigo no diff de
+  scheduler.js; sao 4. A expressao prescrita por D-WR2-04-a ocupa 98 colunas e o Biome
+  (lineWidth 80, obrigatorio pelo CLAUDE.md) a quebra em ternario de 3 linhas. E UM
+  statement removido e UM acrescentado — o intento do criterio ("nada alem do consumidor
+  mudou") esta verificado diretamente no diff.
+  emailer.js mudou SO EM COMENTARIO (contagem de linhas de codigo = 0): o produtor passa a
+  declarar que anexar o parcial pode falhar em silencio (erro congelado ou throw de
+  primitivo) e que o consumidor le a ausencia OU a corrupcao como "nada confirmado".
+  O trabalho do 04-15 e do 04-14 sobreviveu ao diff: catch (erroDeRegistro) = 1 e
+  results.notified++ = 2. Suite 144 -> 145.
+  LACUNA DECLARADA, nao fechada: o `?.` da guarda nova NAO protege contra throw null —
+  results.errors.push(err.message), primeira instrucao do catch, ja teria estourado antes.
+  Esta escrito no comentario e nao deve ser vendido como protecao.
+  ATENCAO para o 04-17: ele mexe em sendMailWithRetry, que este plano deixou INTOCADA de
+  proposito, e termina no checkpoint BLOQUEANTE C11 — auto_advance deve continuar OFF.
   O 04-15 fechou WR2-02: updateNotificationStatus e chamada de DENTRO do catch do bloco
   de envio e usa a MESMA conexao SQLite que pode ter causado a excecao original. Quando
   ela lancava, nada segurava — a falha subia para o catch externo de runCheck, abortava
@@ -132,9 +165,9 @@ Status: 04-15 COMPLETO (2026-08-05) — WR2-02 fechado e C10 APROVADO; proximo e
   checkpoints bloqueantes: C9, C10, C11).
   A rodada 1 esta preservada em 04-REVIEW-r1.md (origem dos planos 04-08..04-11).
   SEC-01 permanece ABERTO como risco conscientemente aceito (decisao C8) — nao marcar resolvido.
-Last activity: 2026-08-05 -- 04-15 completo (WR2-02 fechado; C10 aprovado); proximo 04-16
+Last activity: 2026-08-05 -- 04-16 completo (WR2-04 fechado); proximo 04-17 (termina em C11)
 
-Progress: [████████░░] 83% (15 de 18 planos da fase 04 completos; WR2-02 fechado)
+Progress: [█████████░] 89% (16 de 18 planos da fase 04 completos; WR2-04 fechado)
 
 ## Performance Metrics
 
@@ -185,6 +218,7 @@ Progress: [████████░░] 83% (15 de 18 planos da fase 04 compl
 | Phase 04 P13 | 8min | 3 tasks tasks | 3 files files |
 | Phase 04 P14 | 11min | 2 tasks | 2 files |
 | Phase 04 P15 | 21min | 3 tasks (C10 aprovado) | 3 files |
+| Phase 04 P16 | 16min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -305,6 +339,12 @@ Recent decisions affecting current work:
 - [Phase 04]: 04-15 [C10, decisao vinculante do usuario, 2026-08-05]: o TRADE-OFF DO FAIL-SAFE esta APROVADO — quando a gravacao do desfecho falha a linha fica 'pending', nao deduplica, e a rodada seguinte PODE reenviar para quem ja recebeu. Duplicata incomoda e aceitavel; deixar alguem sem notificacao nao e. Decisao do USUARIO, nao escolha do executor
 - [Phase 04]: 04-15 [C10 (2), usuario, 2026-08-05]: o todo in-01-status-pending-na-ui MANTEM prioridade media mesmo com este plano aumentando a frequencia do 'pending' na UI; o arquivo do todo nao foi editado
 - [Phase 04]: 04-15: o consumidor do canal parcial (err.resultadosParciais ?? []) NAO foi tocado (D-WR2-02-d) — o Cenario D dispara a excecao na fabrica INICIAL de sendStaleNotification, que fica FORA do try, entao o erro chega sem parcial anexado e nada do 04-16 e exercitado; e isso que preserva o rollback independente entre os dois planos
+- [Phase 04]: 04-16: o consumidor do canal parcial passou a validar o TIPO do que recebe (D-WR2-04-a) — o `??` so protege contra ausencia, e um valor de outro tipo fazia o `.some` lancar de DENTRO do catch do bloco de envio, subir para o catch externo de runCheck e abortar o `for` dos deals; ausencia E corrupcao passam a significar "nada confirmado", com desfecho fail-safe (linha 'error', que nao deduplica e retenta amanha)
+- [Phase 04]: 04-16: a origem do valor errado foi REPRODUZIDA, nao suposta — um erro CONGELADO (Object.freeze) faz a anexacao do produtor falhar EM SILENCIO em sloppy mode do CommonJS (sem TypeError, sem log), e um valor pre-existente com esse nome sobrevive intacto ate o consumidor; o teste assere isso diretamente depois da rodada, o que fecha o risco de verde falso pela raiz
+- [Phase 04]: 04-16: o produtor MANTEM a anexacao e passa a DOCUMENTAR a propria fragilidade (D-WR2-04-b) — o diff de emailer.js e exclusivamente de comentario (contagem de linhas de codigo = 0); trocar o contrato de sendStaleNotification por { results, erro } esta fora desta rodada por escopo travado do usuario
+- [Phase 04]: 04-16: DESVIO DE FORMA declarado — o criterio exigia 2 linhas de codigo no diff de scheduler.js e sao 4: a expressao prescrita ocupa 98 colunas e o Biome (lineWidth 80, obrigatorio pelo CLAUDE.md) a quebra em ternario de 3 linhas; e UM statement removido e UM acrescentado, e o intento do criterio esta verificado direto no diff
+- [Phase 04]: 04-16: LACUNA DECLARADA e nao fechada — o encadeamento opcional da guarda nova NAO protege contra throw null, porque results.errors.push(err.message) e a primeira instrucao do catch e ja teria estourado antes; esta escrito no comentario para nao ser vendido como protecao que nao e
+- [Phase 04]: 04-16: a previsao do RED foi corrigida pela medicao pela SEGUNDA vez (mesmo achado do 04-15) — r.deals.length medido e 0, nao 1, porque results.deals.push fica DEPOIS do try/catch do bloco de envio; sondado com copia descartavel do teste, removida e nunca commitada
 - [Phase 04]: 04-15: o diff de emailer.js e EXCLUSIVAMENTE de comentario (contagem de linhas de codigo = 0) — parou de citar como coberto o cenario da conexao SQLite fechada e passou a citar o cenario A, declarando o desfecho do caso nao coberto sem nomear a funcao de desligamento
 
 ### Pending Todos
@@ -358,6 +398,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-05T02:08:24.939Z
-Stopped at: Completed 04-15-PLAN.md — WR2-02 fechado; C10 aprovado pelo usuario (reenvio preferido ao abandono da rodada). Proximo: 04-16 (WR2-04), aguardando despacho do orquestrador. SEC-01 permanece ABERTO por decisao C8.
+Last session: 2026-08-05T02:19:33.743Z
+Stopped at: Completed 04-16-PLAN.md — WR2-04 fechado; o canal do resultado parcial e validado por tipo antes de ser consumido, e o produtor declara que a anexacao pode falhar em silencio. Plano autonomo, sem checkpoint. Proximo: 04-17 (WR2-05), que termina no checkpoint BLOQUEANTE C11 — auto_advance deve continuar OFF. SEC-01 permanece ABERTO por decisao C8.
 Resume file: None
