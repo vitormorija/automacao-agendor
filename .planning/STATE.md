@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: "FASE 04 REABERTA PELA 5a VEZ pelo code review rodada 5 (2026-08-05): 35/35 planos executados e suite em 192/192, mas o 04-REVIEW.md r5 achou 1 BLOCKER (CR5-01), 5 warnings e 4 info. ESCOPO DECIDIDO PELO USUARIO: corrigir SO CR5-01 + WR5-01 e reescrever o todo cr4-01b; os outros 4 warnings e 4 info viram todos pendentes. Proximo: /gsd:plan-phase 4 --gaps."
-last_updated: "2026-08-05T20:48:00.000Z"
-last_activity: 2026-08-05 -- code review r5 reabriu a fase (blocker CR5-01); escopo r5 travado em CR5-01 + WR5-01
+stopped_at: "GAP CLOSURE R5 EM ANDAMENTO: o 04-36 fechou o BLOCKER CR5-01 (a chave `skipped` significava recusa do lock E contador de pulados; o toast do disparo manual saia vermelho e vazio). Suite 192 -> 194 verdes, lint backend/frontend exit 0, build do frontend exit 0. A FASE 04 CONTINUA REABERTA: faltam o 04-37 (WR5-01 + reescrita do todo cr4-01b) e o 04-38 (WR5-02..WR5-05 e IN5-01..IN5-04). Proximo: /gsd:execute-phase 4 (plano 04-37)."
+last_updated: "2026-08-05T17:30:00.000Z"
+last_activity: 2026-08-05 -- 04-36 executado (CR5-01 fechado); fase 04 segue reaberta, faltam 04-37 e 04-38
 progress:
   total_phases: 8
   completed_phases: 3
-  total_plans: 51
-  completed_plans: 51
+  total_plans: 54
+  completed_plans: 52
   percent: 38
 ---
 
@@ -26,8 +26,52 @@ See: .planning/PROJECT.md (updated 2026-07-22)
 ## Current Position
 
 Phase: 04 (confiabilidade-das-integra-es) — REABERTA PELA 5a VEZ pelo code review rodada 5
-Plan: 35 de 35 executados (04-01..04-35). A fase NAO esta completa; falta a gap closure r5.
-Status: CODE REVIEW RODADA 5 REABRIU A FASE (2026-08-05)
+Plan: 36 de 38 executados (04-01..04-36). A fase NAO esta completa; faltam 04-37 e 04-38.
+Status: GAP CLOSURE R5 EM ANDAMENTO (2026-08-05)
+
+  O 04-36 fechou CR5-01, o BLOCKER da rodada 5 — e o unico achado da fase que estava numa
+  SUPERFICIE DE UI, nao no backend. `runCheck` usava a chave `skipped` para DUAS coisas
+  incompativeis: o contrato `{ skipped: true, reason }` do lock de concorrencia e o CONTADOR
+  `results.skipped`, que QUATRO causas incrementam. Como `POST /api/notifications/run` devolve o
+  objeto INTEIRO (`res.json(result)`, sem projecao), o unico consumidor do disparo manual
+  (`sendNow`, em Dashboard.jsx) ramificava por ela: bastava UM negocio deduplicado — clicar
+  "Enviar notificacoes" depois do cron das 8h — para uma rodada BEM-SUCEDIDA cair no ramo do erro
+  e exibir `toast.error(result.reason)` com `reason` UNDEFINED. Toast vermelho SEM TEXTO.
+  A DESAMBIGUACAO FOI FEITA NO PRODUTOR, nao no consumidor, e isso e decisao: os dois significados
+  chegam a UI como o mesmo campo truthy, entao qualquer conserto do lado da tela seria adivinhacao
+  de tipo. O guard do topo de runCheck passou a devolver `execucaoIgnorada: true` AO LADO de
+  `skipped: true` e do motivo — a chave nova e ADITIVA, e o contrato antigo fica de pe por
+  compatibilidade com consumidores nao medidos do payload.
+  O PAR QUE FECHA O ACHADO, e sem o qual o conserto seria pela metade: caso (6) de
+  scheduler.resilience.test.js (a recusa traz a chave nova E o motivo escrito E o contrato antigo,
+  as tres juntas) e cenario K de scheduler.categoriaIndecidivel.test.js (a rodada que CONCLUIU com
+  `skipped === 2` NAO traz `execucaoIgnorada` nem `reason`). O K NASCEU VERDE de proposito e isso
+  esta declarado no plano: o valor dele nao esta no vermelho, esta em impedir que a chave nova
+  fosse "padronizada" no literal de `results` — ali toda rodada viraria recusa e nenhum outro caso
+  ficaria vermelho.
+  A METADE AUDIVEL DO CR4-01 VOLTOU AO CAMINHO MANUAL: `sendNow` passou a exibir o primeiro item
+  de `results.errors` num toast de id PROPRIO (`${toastId}-alarme`), que SOMA ao resumo em vez de
+  substitui-lo. Antes o alarme do 04-28/04-35 so aparecia no bloco "Erros na ultima execucao",
+  alimentado pelo polling de 2 minutos — quem disparava a rodada nao via na hora o que ela mesma
+  produziu.
+  Suite 192 -> 194 verdes; scheduler.js em 87,72% linhas / 79,06% branches; lint backend exit 0
+  (44 warnings) e frontend exit 0 (60 warnings); `npm run build` do frontend exit 0.
+  TODOS os criterios numericos bateram, sem excecao — os 24 gates das duas tasks. `skipped` em
+  `frontend/src` foi de 1 para 0; `execucaoIgnorada` de 0 para 1; `reason` continua 1.
+  UMA DIVERGENCIA DE FERRAMENTAL, registrada e nao forcada: `npm run format` NAO existe na raiz do
+  repo (so em backend/ e frontend/), e o `biome format --write .` do backend reformata SEIS
+  arquivos de teste PREEXISTENTES alheios a este plano (divida de lineWidth 80 anterior). Eles
+  foram DEVOLVIDOS ao estado original nas duas tasks, para que o diff fique estritamente no escopo
+  — mesma classe do desvio registrado no 04-26.
+  ESCOPO QUE O 04-36 NAO FECHA, com dono nomeado: WR5-01 e a reescrita do todo `cr4-01b` -> plano
+  04-37; WR5-02..WR5-05 e IN5-01..IN5-04 -> plano 04-38. Em particular o IN5-01 (`results.error`
+  significando "a rodada MORREU" e "a rodada concluiu com alarme") foi ACHADO pela clausula (b) da
+  r5 dentro deste plano e entregue ao 04-38 com medicao: 3 ocorrencias nao-comentario, e NENHUM
+  consumidor de UI le o campo escalar. WR5-05 (asseracoes de envio afrouxadas de `=== 1` para
+  `>= 1`) tambem e do 04-38 — os cenarios NOVOS deste plano usam `=== 1` deliberadamente.
+  Commits: 7285f08 (RED), b879535 (GREEN).
+
+  --- historico da reabertura abaixo ---
 
   35/35 planos, suite 148 -> 192 verdes. Os CINCO blockers de REGRA DE NEGOCIO estao fechados
   (CR-01, CR-02, CR2-01, CR3-01, CR4-01) e o todo in3-08 — o ultimo filtro de elegibilidade

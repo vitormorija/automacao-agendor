@@ -140,6 +140,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] 04-33-PLAN.md — Comentários da suíte alinhados ao instrumento único e âncoras nomeadas no oráculo de REL-02 (WR4-02, WR4-03)
 - [x] 04-34-PLAN.md — IN4-02..IN4-06 e os cinco residuais do inventário de irmãos como todos pendentes, e o critério de observabilidade no ROADMAP
 - [x] 04-35-PLAN.md — Um funil renomeado no CRM volta a suprimir a notificação ao responsável, e um payload sem funil deixa de fazê-lo em silêncio (in3-08)
+- [x] 04-36-PLAN.md — A rodada que concluiu com negócios pulados mostra o resumo em vez de um erro em branco, e o alarme agregado chega à tela no disparo manual (CR5-01)
 
 ### Phase 5: Logging & Padronização de Erros
 **Goal**: Logging é estruturado e consistente em todo o backend, e o tratamento/resposta de erro nas rotas segue um padrão único.
