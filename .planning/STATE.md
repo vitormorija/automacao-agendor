@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: 04-24 COMPLETO — WR3-03 FECHADO (o canal parcial validado no conteiner E no elemento)
+status: 04-25 COMPLETO — WR3-06 FECHADO (teto de paginas com falha explicita nas duas paginacoes sem limite)
 stopped_at: Completed 04-24-PLAN.md
-last_updated: "2026-08-05T06:10:21.538Z"
-last_activity: "2026-08-05 -- 04-24 completo (WR3-03: o canal parcial validado no elemento, nao so no conteiner); suite 166 -> 168"
+last_updated: "2026-08-05T06:22:33.463Z"
+last_activity: "2026-08-05 -- 04-25 completo (WR3-06: teto de paginas com falha explicita nas duas paginacoes sem limite); suite 168 -> 172"
 progress:
   total_phases: 8
   completed_phases: 3
   total_plans: 43
-  completed_plans: 40
+  completed_plans: 41
   percent: 38
 ---
 
@@ -26,8 +26,70 @@ See: .planning/PROJECT.md (updated 2026-07-22)
 ## Current Position
 
 Phase: 04 (confiabilidade-das-integra-es) — gap closure r3 EM EXECUCAO
-Plan: 24 de 27 executados (04-01..04-24). Faltam 04-25..04-27 (gap closure r3).
-Status: 04-24 COMPLETO — WR3-03 FECHADO (o canal parcial validado no conteiner E no elemento)
+Plan: 25 de 27 executados (04-01..04-25). Faltam 04-26 e 04-27 (gap closure r3).
+Status: 04-25 COMPLETO — WR3-06 FECHADO (teto de paginas com falha explicita nas duas paginacoes sem limite)
+
+  O 04-25 fechou WR3-06, o unico achado da rodada 3 que era PRE-EXISTENTE e nunca fora
+  avaliado por nenhum plano da fase — apesar de a fase inteira ter sido escrita em torno
+  do modo de falha que ele produz. getStaleDeals deriva o numero de paginas de
+  meta.totalCount e e limitada POR CONSTRUCAO; as outras duas paginam por condicao de
+  parada vinda da RESPOSTA: `if (!data.links?.next) break` em getUsers e
+  `if (tasks.length < 100) break` em getDealsWithFutureTasks. Uma borda que passe a ignorar
+  o parametro `page` nunca satisfaz nenhuma das duas.
+  RED MEDIDO, e a premissa da nao-terminacao NAO divergiu: as duas chamadas nao rejeitam,
+  nao resolvem e nao erram — failureType: 'testTimeoutFailure', cada uma cancelando o
+  arquivo inteiro. O custo nao e a requisicao desperdicada: o laco vive dentro do try de
+  runCheck, entao o finally que devolve isRunning a false NUNCA executa e toda execucao
+  seguinte cai no guard do topo devolvendo { skipped: true } — para sempre, ate reiniciar
+  o processo. E o modo de falha que o cabecalho de scheduler.resilience.test.js declara
+  como o pior daqui, la coberto SO na variante por EXCECAO.
+  AGORA: MAX_PAGES = 200 (20.000 registros por borda), constante de modulo EXPORTADA e
+  compartilhada; `while (page <= MAX_PAGES)` = 2 e `page > MAX_PAGES` = 2, com o throw
+  DEPOIS do laco — nunca `break`, que trocaria nao-terminacao por resultado PARCIAL
+  silencioso (a mesma direcao de falha, mais dificil de perceber). Os breaks existentes
+  ficaram byte a byte, e as UNICAS 2 remocoes do diff sao os dois `while (true)`.
+  `while (true)` nao-comentario em agendor.js = ZERO.
+  O throw de /tasks fica FORA do try interno (D-WR3-06-d): o catch existe para logar e
+  relancar erros de borda, e esta mensagem ja e explicita. Propagar e coerente com o
+  contrato "Set completo ou falha explicita" (Q2) — a rejeicao sobe ao catch EXTERNO de
+  runCheck, cujo finally libera o lock. NENHUMA linha de scheduler.js mudou; o que muda e
+  que o finally passa a ser ALCANCAVEL.
+  OS DOIS CENARIOS SIMETRICOS EXIGIDOS PELA RODADA EXISTEM E ESTAO NOMEADOS, e sao
+  obrigatorios por motivos DIFERENTES em cada borda: caso (2) — /users com 2 paginas
+  legitimas conclui (um teto que truncasse faria responsaveis sumirem do dicionario e com
+  eles o e-mail de quem deveria ser notificado); caso (4) — /tasks com 2 paginas legitimas
+  devolve o Set completo (aqui o custo e pior: o Set decide quem NAO recebe, entao tarefa
+  futura perdida vira notificacao INDEVIDA). Os dois verificam por VALOR, nao por tamanho.
+  DUAS DIVERGENCIAS MEDIDAS, nenhuma de comportamento:
+  (1) A FORMA do RED. O plano previa uma execucao unica com (1) e (3) vermelhos e (2) e (4)
+  verdes. Nao e observavel: `node --test` trata o ARQUIVO como um subteste, entao a primeira
+  nao-terminacao CANCELA o arquivo e os tres casos seguintes nunca sao executados nem
+  reportados (# cancelled 1, # tests 1). Os quatro desfechos foram medidos separadamente,
+  por --test-name-pattern.
+  (2) O stub PRECISOU ceder ao event loop (setImmediate), e isso e o proprio R3-30: um laco
+  nao terminante que so consome MICROtarefas starva o event loop, nenhum timer roda, e o
+  --test-timeout do runner NUNCA dispara — a mitigacao prescrita nao funciona sozinha. Ceder
+  tambem e mais fiel ao original (resposta HTTP real chega por I/O) e custa nada: 4 casos em
+  79ms. O motivo esta escrito NO ARQUIVO DE TESTE, para que ninguem "simplifique" o stub e
+  ressuscite o travamento da suite.
+  TODOS os criterios numericos bateram. Contrato do 04-22 preservado e medido:
+  `await api.get(` = 0, `fetchWithRetry(` = 6, `api.get(` = 5. Diff de agendor.js com 16
+  linhas nao-comentario (as 3 mudancas prescritas) e 2 remocoes. `\b200\b` no arquivo de
+  teste = 0 (o numero e DERIVADO do modulo). Suite 168 -> 172, cobertura de agendor.js em
+  90,69% linhas / 88,42% branches, lint exit 0 (44 warnings). Os 9 arquivos vizinhos verdes
+  SEM edicao (47 casos); git diff --name-only -- backend/src/ na Task 1 saiu VAZIO e
+  -- backend/test/ na Task 2 tambem. ZERO DESVIOS: nenhuma Rule 1-4 acionada, nenhum pacote
+  instalado.
+  ESCOPO QUE O 04-25 NAO FECHA: getStaleDeals NAO recebeu teto, e a justificativa esta
+  ESCRITA NO CODIGO (D-WR3-06-e) — deriva totalPages de meta.totalCount e percorre um for
+  sobre array finito, entao nao existe condicao de parada vinda da resposta a ser frustrada.
+  Sem essa frase o proximo leitor suspeitaria de esquecimento. fetchWithRetry, getOrgCategory,
+  getStaleDeals, getDealById, shouldNotifyOwner, isExcludedStage e getDealType ficaram byte a
+  byte; o arquivo nao foi reordenado. O console.log legado continua la (LOG-01, Fase 5).
+  ATENCAO para quem seguir: agendor.paginacao.test.js e o oraculo da TERMINACAO das
+  paginacoes do modulo — uma terceira paginacao que encerre por condicao vinda da resposta
+  entra ali, com o seu par (achado + simetrico), e herda MAX_PAGES do modulo.
+  O proximo e o 04-26 (WR3-04 + WR3-05 + WR3-07).
 
   O 04-24 fechou WR3-03, o vizinho de WR2-04 um NIVEL MAIS FUNDO. O 04-16 endureceu a
   leitura do canal parcial com Array.isArray(err?.resultadosParciais) e escreveu no
@@ -627,9 +689,9 @@ Origem: CODE REVIEW RODADA 3 (2026-08-05)
   checkpoints bloqueantes: C9, C10, C11).
   A rodada 1 esta preservada em 04-REVIEW-r1.md (origem dos planos 04-08..04-11).
   SEC-01 permanece ABERTO como risco conscientemente aceito (decisao C8) — nao marcar resolvido.
-Last activity: 2026-08-05 -- 04-23 completo (WR3-02: a leitura de dedup deixa de abortar a rodada); suite 164 -> 166
+Last activity: 2026-08-05 -- 04-25 completo (WR3-06: teto de paginas com falha explicita nas duas paginacoes sem limite); suite 168 -> 172
 
-Progress: [█████████░] 93%
+Progress: [██████████] 95%
 
 ## Performance Metrics
 
@@ -689,6 +751,7 @@ Progress: [█████████░] 93%
 | Phase 04 P22 | 14min | 2 tasks | 2 files |
 | Phase 04 P23 | 12 | 2 tasks | 2 files |
 | Phase 04 P24 | 14min | 2 tasks | 3 files |
+| Phase 04 P25 | 16min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -832,6 +895,7 @@ Recent decisions affecting current work:
 - [Phase ?]: 04-22: a guarda de tipo do id (WR-03) fica FORA do callback do retry — o helper da retentativa, nao permissao; caso (8) assere 0 requisicoes para '../users'
 - [Phase ?]: 04-23 (WR3-02): a leitura de dedup vive num try/catch proprio com a variavel em false — falhar a leitura significa NOTIFICAR (direcao do fail-safe decidida em C10); a magnitude que C10 nao cobria (a rodada inteira, nao uma linha) esta registrada no comentario do codigo
 - [Phase ?]: 04-23 (D-WR3-02-d): runCheckOnly NAO entra no escopo — e a previa somente-leitura do painel e uma falha la vira erro HTTP visivel, nao silencio; por isso o total nao-comentario de alreadyNotifiedToday(deal.id) continua 2
+- [Phase ?]: 04-25 (WR3-06): MAX_PAGES = 200 exportada e compartilhada pelas duas paginacoes que encerram por condicao vinda da resposta; teto com throw DEPOIS do laco (nunca break, que trocaria nao-terminacao por resultado parcial silencioso); getStaleDeals NAO recebe teto, com a justificativa escrita no codigo
 
 ### Pending Todos
 
