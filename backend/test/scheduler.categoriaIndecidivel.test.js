@@ -28,6 +28,22 @@
 //   I  FORMA DO PAYLOAD: os DOIS sem funil               -> os dois recebem, e a rodada AVISA
 //   J  SIMÉTRICO DE CAUSA: funil presente e não-Beefor   -> os dois recebem, e a rodada CALA
 //   K  rodada CONCLUÍDA com negócios pulados             -> não é uma recusa do lock
+//   L  RODADA MISTA: apagão + um negócio DEDUPLICADO     -> ninguém recebe, e a rodada AVISA
+//   M  SIMÉTRICO: deduplicado ao lado de um notificável   -> o outro recebe, e a rodada CALA
+//
+// Por que L e M existem (WR5-01). O contador que o alarme de categoria comparava com o
+// denominador incrementava DENTRO da guarda de categoria, que é a SEGUNDA do laço de runCheck: a
+// guarda de dedup do dia vem antes e faz `continue`, então todo negócio já notificado hoje
+// subtraía do numerador sem subtrair do denominador `results.stale`, e a condição de supressão
+// TOTAL ficava inalcançável. Nenhum caso desta suíte armava uma rodada com dedup — por isso o
+// modo de falha atravessou quatro rodadas de review sem nenhum vermelho. L prova que o alarme
+// sobrevive a um `continue` anterior: apagão total da borda de organizações com um dos negócios
+// já notificado hoje continua sendo audível. M prova que ele continua discriminando a CAUSA e
+// não a quantidade: o mesmo negócio deduplicado, ao lado de um notificável com sucesso e com a
+// borda sã, mantém a rodada SILENCIOSA. Sem o M, um conserto que ligasse o alarme por quantidade
+// (`notified === 0`, `skipped > 0`, ou sempre) passaria por L e o operador receberia um erro em
+// todo dia em que alguém já tivesse sido notificado às 8h — o conserto teria trocado mudez por
+// ruído diário, que é o desfecho que o par D/E já existe para impedir pela outra causa.
 //
 // Por que K existe (CR5-01). `runCheck` usava a chave `skipped` para duas coisas incompatíveis —
 // o `{ skipped: true, reason }` do guard de concorrência e o CONTADOR `results.skipped` —, e o
@@ -332,6 +348,29 @@ function linhasDoDeal(dealId) {
 
 function envios(destinatario) {
   return enviosPorDestinatario[destinatario] || 0;
+}
+
+// Arma a DEDUP DO DIA para um negócio: grava uma linha 'sent' no notification_log real, no molde
+// do caso `alreadyNotifiedToday: deal notificado hoje (status "sent") -> true` de db.dedup.test.js.
+//
+// Por que esta armação não existia (WR5-01): nenhum caso desta suíte exercitava uma rodada com
+// dedup, e é exatamente o `continue` da guarda de dedup — a PRIMEIRA do laço de runCheck — que
+// desarmava o alarme de supressão total. O modo de falha não precisa de dado faltando no CRM:
+// basta o operador disparar o envio manual depois do cron das 8h.
+//
+// O relógio do beforeEach está fixo em FIXED_NOW e `Date` está mockado, então o `sent_at` que
+// logNotification grava cai no MESMO dia que alreadyNotifiedToday consulta — a armação e o SUT
+// concordam sobre que dia é hoje sem nenhum acordo implícito.
+function marcarComoNotificadoHoje(dealId) {
+  db.logNotification({
+    deal_id: dealId,
+    deal_title: `Negócio sintético ${dealId}`,
+    owner_name: 'Ana Vendas',
+    owner_email: DONO_1,
+    admin_email: AUTOR_1,
+    days_stale: 20,
+    status: 'sent',
+  });
 }
 
 // ── O oráculo dos cenários F e G: prévia x envio ──────────────────────────────
@@ -1096,5 +1135,197 @@ test('K: a rodada que CONCLUIU com negócios pulados NÃO é uma recusa do lock'
     r.reason,
     undefined,
     '`reason` é o motivo da RECUSA: numa rodada concluída ele não existe',
+  );
+});
+
+// ── L — RODADA MISTA por DEDUP: o apagão volta a ser audível ──────────────────
+//
+// O cenário D mede o apagão PURO: os dois negócios chegam à guarda de categoria e o alarme
+// dispara. Aqui a borda está igualmente fora, mas um dos negócios já foi notificado hoje e é
+// interceptado ANTES, pela guarda de dedup — que faz `continue`. Era esse `continue` que
+// desarmava o alarme: o contador da guarda de categoria via UM, o denominador continuava valendo
+// DOIS, e a rodada ficava indistinguível de um dia calmo. Zero e-mails, campo de erro vazio,
+// array de erros vazio — literalmente o enunciado de CR4-01, por um caminho que nenhum plano
+// nomeou.
+//
+// A ordem das asserções é instrumento, não estilo: a pré-condição da armação vem primeiro, depois
+// TODAS as de COMPORTAMENTO (símbolos que já existiam), e só então as de INSTRUMENTO. Assim o
+// vermelho distingue "a armação de dedup não produziu a linha" de "o comportamento por negócio
+// regrediu" de "o alarme continua calado".
+test('L: RODADA MISTA — apagão da borda com um negócio já notificado hoje continua disparando o alarme de supressão total', async () => {
+  const primeiro = 2411;
+  const segundo = 2412;
+  servirDeals(primeiro, segundo);
+  // Apagão TOTAL, como em D: as organizações dos DOIS negócios respondem 429 persistente.
+  orgsQueFalham = new Set([organizacaoDe(primeiro), organizacaoDe(segundo)]);
+  // E o primeiro já recebeu hoje — a rodada do cron das 8h, ou um disparo manual anterior.
+  marcarComoNotificadoHoje(primeiro);
+
+  // (a) pré-condição da ARMAÇÃO: sem ela, uma falha silenciosa da dedup faria o caso medir o
+  // cenário D com outro nome.
+  assert.equal(
+    db.alreadyNotifiedToday(primeiro),
+    true,
+    'pré-condição: o primeiro negócio precisa constar como já notificado hoje',
+  );
+
+  const r = await avancarRelogioAte(runCheck());
+
+  // ── COMPORTAMENTO — símbolos que já existem; estas asserções NÃO podem ficar vermelhas ──
+  // (b) os dois negócios entraram na rodada: o denominador vale DOIS.
+  assert.equal(r.stale, 2, 'pré-condição: os dois negócios entraram na rodada');
+
+  // (c) e nenhum foi notificado.
+  assert.equal(r.notified, 0, 'nenhuma notificação saiu nesta rodada');
+
+  // (d) o efeito irreversível, por IGUALDADE EXATA e nunca por `>= 0`: zero e-mails é o fato que
+  // este caso existe para medir, e uma forma frouxa não distinguiria zero de qualquer número.
+  assert.equal(envios(DONO_1), 0, 'o dono do negócio deduplicado não recebe');
+  assert.equal(envios(AUTOR_1), 0, 'o autor do negócio deduplicado não recebe');
+  assert.equal(envios(DONO_2), 0, 'o dono do negócio indecidível não recebe');
+  assert.equal(envios(AUTOR_2), 0, 'o autor do negócio indecidível não recebe');
+
+  // (e) nenhuma linha NOVA no notification_log: a do primeiro é a da armação, e o segundo nem
+  // chega ao bloco de envio (T-04-20-03).
+  assert.equal(
+    linhasDoDeal(primeiro).length,
+    1,
+    'só a linha da armação: a rodada não grava um segundo envio para quem já recebeu hoje',
+  );
+  assert.equal(
+    linhasDoDeal(segundo).length,
+    0,
+    'nenhuma linha para o negócio que a guarda de categoria nem deixa chegar ao envio',
+  );
+
+  // (f) A MEDIÇÃO QUE TORNA O ACHADO CONFERÍVEL. Os dois contadores valem números DIFERENTES na
+  // MESMA rodada: `skippedCategoriaIndecidivel` responde "quantos a GUARDA suprimiu" e vale UM,
+  // porque o `continue` da dedup veio antes; o denominador continua valendo DOIS. É essa
+  // diferença que o conserto precisa preservar — a contagem da guarda não é o numerador do
+  // alarme, e nunca deveria ter sido.
+  assert.equal(
+    r.skipped,
+    2,
+    'os dois negócios foram pulados — um pela dedup, outro pela categoria',
+  );
+  assert.equal(
+    r.skippedCategoriaIndecidivel,
+    1,
+    'a guarda de categoria vê UM: o outro foi interceptado antes, pela dedup do dia',
+  );
+
+  // ── INSTRUMENTO — é aqui que o RED precisa parar ──
+  // (g) O ACHADO. Antes do conserto isto vale ZERO: o alarme fica calado num apagão total.
+  assert.equal(
+    r.errors.length,
+    1,
+    'UM alarme por rodada no array que a UI renderiza — um `continue` anterior não pode calá-lo',
+  );
+
+  // (h) o numerador novo, que percorre o MESMO conjunto do denominador.
+  assert.equal(
+    r.categoriaIndecidivelNaRodada,
+    2,
+    'o numerador do alarme conta os negócios marcados na borda, antes de qualquer guarda',
+  );
+
+  // (i) a superfície escalar que a decisão do usuário nomeia.
+  assert.equal(
+    typeof r.error === 'string' && r.error.length > 0,
+    true,
+    'a rodada totalmente suprimida preenche o campo de erro também na rodada MISTA',
+  );
+
+  // (j) A REDAÇÃO. Com o numerador no topo do laço a condição passa a valer numa rodada COMPOSTA,
+  // em que um dos negócios contados JÁ HAVIA SIDO NOTIFICADO hoje — e ali a frase larga ("nenhum
+  // negócio parado DO DIA foi notificado") é factualmente FALSA. Uma mitigação que mente em parte
+  // dos casos treina o operador a ignorá-la, e o operador que conclui ter perdido envios redispara
+  // e gera DUPLICATAS. É a mesma armadilha que o alarme de FORMA do funil evitou por redação; a
+  // diferença é que aqui ela está pinada por asserção, para que a mensagem não seja "melhorada"
+  // de volta.
+  assert.equal(
+    r.error.includes('desta rodada'),
+    true,
+    'a mensagem afirma sobre a RODADA — é só isso que o contador garante',
+  );
+  assert.equal(
+    r.error.includes('do dia foi notificado'),
+    false,
+    'a redação larga é PROIBIDA: numa rodada composta ela mente sobre quem já recebeu às 8h',
+  );
+});
+
+// ── M — SIMÉTRICO: deduplicado ao lado de um notificável, e a rodada CALA ─────
+//
+// Construção IDÊNTICA à de L, mudando EXCLUSIVAMENTE a saúde da borda de organizações — é essa
+// igualdade que faz o par medir a CAUSA e não a quantidade. Sem este caso, um conserto que ligasse
+// o alarme por quantidade (`notified === 0`, `skipped > 0`, ou sempre) passaria por L, e o
+// operador receberia um erro em TODO dia em que alguém já tivesse sido notificado às 8h: o
+// conserto teria trocado mudez por ruído diário.
+test('M: SIMÉTRICO — um negócio deduplicado ao lado de um notificável com sucesso não dispara alarme nenhum', async () => {
+  const primeiro = 2421;
+  const segundo = 2422;
+  servirDeals(primeiro, segundo);
+  // `orgsQueFalham` VAZIA: a borda está sã. É a ÚNICA diferença em relação ao cenário L.
+  marcarComoNotificadoHoje(primeiro);
+
+  // (a) pré-condição da ARMAÇÃO, a mesma de L.
+  assert.equal(
+    db.alreadyNotifiedToday(primeiro),
+    true,
+    'pré-condição: o primeiro negócio precisa constar como já notificado hoje',
+  );
+
+  const r = await avancarRelogioAte(runCheck());
+
+  // (b) o comportamento por negócio: um pulado pela dedup, um notificado.
+  assert.equal(r.stale, 2, 'pré-condição: os dois negócios entraram na rodada');
+  assert.equal(r.skipped, 1, 'só o deduplicado foi pulado');
+  assert.equal(r.notified, 1, 'e o outro foi notificado de verdade');
+
+  // (c) o negócio deduplicado NÃO recebe de novo — a proteção contra DUPLICATA, a outra metade do
+  // Core Value.
+  assert.equal(
+    envios(DONO_1),
+    0,
+    'o dono do negócio já notificado hoje não recebe de novo',
+  );
+  assert.equal(
+    envios(AUTOR_1),
+    0,
+    'o autor do negócio já notificado hoje não recebe de novo',
+  );
+
+  // (d) e o elegível recebe EXATAMENTE uma vez, por destinatário. A igualdade exata é deliberada:
+  // a forma frouxa — comparar por maior-ou-igual a um em vez de por igualdade — detecta o envio a
+  // MENOS e NÃO detecta o e-mail DUPLICADO, que é justamente o dano que a dedup existe para
+  // impedir. É o afrouxamento que a rodada 5 encontrou nos cenários mais novos deste mesmo
+  // arquivo (WR5-05, com dono no plano 04-38); os cenários novos não repetem essa forma. O
+  // comentário evita reproduzir o operador literal, para que o gate que o proíbe no diff não
+  // acuse a própria justificativa.
+  assert.equal(envios(DONO_2), 1, 'o dono do negócio elegível recebe uma vez');
+  assert.equal(
+    envios(AUTOR_2),
+    1,
+    'o autor do negócio elegível recebe uma vez',
+  );
+
+  // (e) o numerador do alarme discrimina a CAUSA: borda sã, nenhum negócio indecidível.
+  assert.equal(
+    r.categoriaIndecidivelNaRodada,
+    0,
+    'nenhum negócio ficou com a categoria indecidível numa rodada de borda sã',
+  );
+
+  // (f) e (g) as DUAS superfícies do resultado continuam limpas.
+  assert.equal(
+    r.error,
+    undefined,
+    'uma rodada com dedup ao lado de um envio bem-sucedido não preenche o campo de erro',
+  );
+  assert.equal(
+    r.errors.length,
+    0,
+    'nem entra no array de erros que a UI renderiza — o alarme não é ruído diário',
   );
 });
