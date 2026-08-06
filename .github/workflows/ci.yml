@@ -29,6 +29,13 @@ jobs:
       - run: npm ci
       - run: npm run lint # biome lint . (warn-tolerante, D-06 — warnings não falham)
       - run: npm run test:coverage # node --test sob c8 (gate WR-03 via .c8rc.json)
+      # Gate de vulnerabilidade em dependência de PRODUÇÃO. Antes disso, o `npm audit`
+      # dependia de alguém lembrar de rodá-lo à mão — e o resultado foi um parecer externo
+      # apontando 11 alertas que ninguém tinha visto. --omit=dev de propósito: uma falha em
+      # ferramenta de build não vai para o servidor e não deve travar um merge de correção.
+      # --audit-level=high é o piso que a condição de aceite de produção exige; os moderados
+      # aparecem no log sem reprovar, para que a decisão de tratá-los continue sendo humana.
+      - run: npm audit --omit=dev --audit-level=high
 
   # id do job = contexto do required status check (Pitfall 3) — NÃO adicionar name: custom.
   frontend:
@@ -46,6 +53,7 @@ jobs:
       - run: npm ci
       - run: npm run lint # biome lint . (warn-tolerante)
       - run: npm run build # vite build (gate do frontend — sem testes nesta fase)
+      - run: npm audit --omit=dev --audit-level=high # mesmo gate do backend
 
   # id do job = contexto do required status check (Pitfall 3) — NÃO adicionar name: custom.
   # Gate de segredos (CFG-01, D-08/D-09). Escaneia APENAS o range de commits do PR/push:
