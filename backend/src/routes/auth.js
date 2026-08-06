@@ -20,11 +20,35 @@ const { sendResetPasswordEmail } = require('../emailer');
 const { JWT_SECRET } = require('../secret');
 const logger = require('../logger');
 
-// Sessão de 4h. Era 8h: com o token exposto a leitura por JavaScript no localStorage, a
-// janela de uso de um token roubado era o dia inteiro de trabalho. Encurtar é a metade
-// barata da mitigação — a outra metade é tirá-lo do alcance do script.
+// Sessão de 4h. Era 8h: encurtar é a metade barata da mitigação — a outra metade é tirar o
+// token do alcance do script, que é o que o cookie HttpOnly faz.
 const TOKEN_EXPIRY = '4h';
+const TOKEN_EXPIRY_MS = 4 * 60 * 60 * 1000;
 const BCRYPT_ROUNDS = 10;
+
+const { lerToken, COOKIE_SESSAO } = require('../middleware/auth');
+
+// Atributos do cookie de sessão, num lugar só — login e logout precisam concordar, e um
+// logout que não repita `sameSite`/`path` não apaga o cookie que o login criou.
+//
+//   httpOnly  o ponto da mudança: JavaScript da página não lê o token, nem o nosso nem um
+//             injetado por XSS.
+//   sameSite  'strict' é a defesa de CSRF deste desenho: o navegador simplesmente não
+//             envia o cookie em requisição originada de outro site, então um formulário
+//             hostil não consegue disparar PUT /api/config em nome de quem está logado.
+//             Não custa usabilidade aqui porque o painel é aberto direto, e não por link
+//             de terceiro; e o único link que mandamos por e-mail (redefinição de senha)
+//             aponta para uma rota pública, que não depende do cookie.
+//   secure    só em produção — em desenvolvimento o painel roda em http://localhost e um
+//             cookie `secure` simplesmente não seria gravado.
+function opcoesDoCookie() {
+  return {
+    httpOnly: true,
+    sameSite: 'strict',
+    secure: process.env.NODE_ENV === 'production',
+    path: '/',
+  };
+}
 
 // requireAdmin saiu daqui para middleware/requireAdmin.js. O motivo está escrito no
 // cabeçalho de lá: além de falhar aberto, ele protegia a superfície errada — gestão de
@@ -171,19 +195,30 @@ router.post('/login', async (req, res) => {
   }
 
   const token = jwt.sign({ username }, JWT_SECRET, { expiresIn: TOKEN_EXPIRY });
+
+  // O token vai no cookie e NÃO no corpo da resposta. Devolvê-lo também no JSON manteria
+  // viva a via que esta mudança fecha: o painel voltaria a poder guardá-lo no localStorage,
+  // e o HttpOnly do cookie deixaria de significar coisa alguma.
+  res.cookie(COOKIE_SESSAO, token, {
+    ...opcoesDoCookie(),
+    maxAge: TOKEN_EXPIRY_MS,
+  });
+
   // `isAdmin` viaja FORA do token, e é recalculado a cada /verify. Assar o papel dentro do
   // JWT faria uma remoção de ADMIN_USERS só valer quando a sessão expirasse — até lá o
   // portador continuaria carregando a afirmação de que é admin. Aqui é só exibição: o
   // servidor decide o acesso por requisição, em requireAdmin.
-  return res.json({ ok: true, token, username, isAdmin: isAdmin(username) });
+  return res.json({ ok: true, username, isAdmin: isAdmin(username) });
 });
 
 // ── POST /api/auth/verify ────────────────────────────────────────
+// É esta rota que o painel usa para descobrir, ao carregar, se há sessão — o token não
+// está mais visível ao JavaScript, então perguntar ao servidor é o único caminho.
 router.post('/verify', (req, res) => {
-  const auth = req.headers.authorization;
-  if (!auth?.startsWith('Bearer ')) return res.status(401).json({ ok: false });
+  const token = lerToken(req);
+  if (!token) return res.status(401).json({ ok: false });
   try {
-    const decoded = jwt.verify(auth.slice(7), JWT_SECRET);
+    const decoded = jwt.verify(token, JWT_SECRET);
     res.json({
       ok: true,
       username: decoded.username,
@@ -194,15 +229,29 @@ router.post('/verify', (req, res) => {
   }
 });
 
+// ── POST /api/auth/logout ────────────────────────────────────────
+// Precisa existir no servidor: o cookie é HttpOnly, então o painel não tem como apagá-lo
+// sozinho — era isso que o `localStorage.removeItem` fazia antes.
+//
+// É rota PÚBLICA de propósito. Sair não é uma operação privilegiada, e exigir sessão válida
+// para encerrá-la deixaria quem está com o token expirado sem como limpar o próprio estado.
+// A resposta é sempre 200, com ou sem cookie: não há nada a revelar aqui.
+router.post('/logout', (req, res) => {
+  // Os atributos precisam ser os MESMOS do login. Um clearCookie sem `path`/`sameSite`
+  // iguais mira um cookie diferente do que existe, responde 200 e não apaga nada.
+  res.clearCookie(COOKIE_SESSAO, opcoesDoCookie());
+  res.json({ ok: true });
+});
+
 // ── POST /api/auth/change-password (usuário logado) ─────────────
 router.post('/change-password', async (req, res) => {
-  const auth = req.headers.authorization;
-  if (!auth?.startsWith('Bearer '))
+  const token = lerToken(req);
+  if (!token)
     return res.status(401).json({ ok: false, message: 'Não autenticado.' });
 
   let username;
   try {
-    const decoded = jwt.verify(auth.slice(7), JWT_SECRET);
+    const decoded = jwt.verify(token, JWT_SECRET);
     username = decoded.username;
   } catch {
     return res.status(401).json({ ok: false, message: 'Sessão expirada.' });

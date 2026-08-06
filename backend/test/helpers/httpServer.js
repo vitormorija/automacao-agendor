@@ -38,7 +38,15 @@ async function startServer() {
     const body = semCorpo ? undefined : options.body;
 
     const headers = { ...(options.headers || {}) };
-    if (token) headers.Authorization = `Bearer ${token}`;
+    // A sessão viaja em cookie HttpOnly, não no cabeçalho Authorization. Os testes precisam
+    // usar o MESMO canal do painel: mandar um Bearer aqui mediria uma via que o backend não
+    // aceita mais, e a matriz de papel ficaria verde sem provar nada.
+    if (token) {
+      const { COOKIE_SESSAO } = require('../../src/middleware/auth');
+      headers.Cookie = [headers.Cookie, `${COOKIE_SESSAO}=${token}`]
+        .filter(Boolean)
+        .join('; ');
+    }
     if (body !== undefined) headers['Content-Type'] = 'application/json';
 
     const res = await fetch(`http://127.0.0.1:${port}${routePath}`, {

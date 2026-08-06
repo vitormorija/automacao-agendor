@@ -37,6 +37,7 @@ function passouPeloPortao(res) {
 // exercitá-las aqui é seguro.
 const PUBLICAS = [
   { path: '/api/auth/login', method: 'POST' },
+  { path: '/api/auth/logout', method: 'POST' },
   { path: '/api/auth/verify', method: 'POST' },
   { path: '/api/auth/forgot-password', method: 'POST' },
   { path: '/api/auth/reset-password', method: 'POST' },
@@ -102,8 +103,8 @@ test('portão de autenticação: matriz sem credencial', async (t) => {
   // Guarda anti-regressão da própria matriz: se alguém acrescentar uma rota e esquecer de
   // listá-la, este arquivo continuaria verde medindo um conjunto menor. O total é conferido
   // contra a soma das duas listas, que é o inventário completo da superfície HTTP.
-  await t.test('a matriz cobre as 26 entradas da superfície HTTP', () => {
-    assert.equal(PUBLICAS.length + PROTEGIDAS.length, 26);
+  await t.test('a matriz cobre as 27 entradas da superfície HTTP', () => {
+    assert.equal(PUBLICAS.length + PROTEGIDAS.length, 27);
   });
 
   // Guarda do lado de dentro: a lista de públicas do middleware e a deste arquivo têm de

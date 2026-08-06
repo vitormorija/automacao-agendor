@@ -58,9 +58,42 @@ const app = express();
 app.set('trust proxy', 'loopback');
 
 // ── Segurança: cabeçalhos HTTP ───────────────────────────────────
+//
+// A CSP estava DESLIGADA com a justificativa "o frontend usa CDN/inline". Medi: é falso
+// hoje. Não há nenhuma referência a CDN em frontend/, nenhum <script> inline no index.html,
+// nenhum dangerouslySetInnerHTML, e apenas dois `style={{}}` no projeto inteiro. O Vite
+// emite JS e CSS como arquivos próprios servidos da mesma origem. A justificativa
+// provavelmente descrevia uma versão anterior do painel e sobreviveu à mudança que a tornou
+// falsa — que é o motivo de ela estar registrada aqui com a medição junto.
+//
+// A política é a mais fechada que o painel atual comporta:
+//   script-src 'self'   nenhum script inline e nenhuma origem externa. É esta diretiva que
+//                       transforma uma futura falha de XSS em script bloqueado, e é ela que
+//                       faz par com o cookie HttpOnly: um não substitui o outro.
+//   style-src  'unsafe-inline'  necessário pelos dois style={{}} restantes, que o React
+//                       emite como atributo `style`. Removê-los permite apertar esta linha —
+//                       é a única concessão da política.
+//   img-src    data:    o favicon do index.html é um SVG embutido como data: URI.
+//   connect-src 'self'  o painel só fala com o próprio backend; bloqueia exfiltração para
+//                       um domínio de terceiro caso algum script chegue a executar.
+//   frame-ancestors 'none'  o painel não é para ser embutido em iframe (clickjacking).
 app.use(
   helmet({
-    contentSecurityPolicy: false, // desativado pois o frontend usa CDN/inline
+    contentSecurityPolicy: {
+      useDefaults: false,
+      directives: {
+        'default-src': ["'self'"],
+        'script-src': ["'self'"],
+        'style-src': ["'self'", "'unsafe-inline'"],
+        'img-src': ["'self'", 'data:'],
+        'font-src': ["'self'", 'data:'],
+        'connect-src': ["'self'"],
+        'frame-ancestors': ["'none'"],
+        'base-uri': ["'self'"],
+        'form-action': ["'self'"],
+        'object-src': ["'none'"],
+      },
+    },
     crossOriginEmbedderPolicy: false,
   }),
 );

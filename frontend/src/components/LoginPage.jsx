@@ -295,12 +295,12 @@ export default function LoginPage({ onLogin }) {
         setLoading(false);
         return;
       }
-      if (data.ok && data.token) {
-        localStorage.setItem('auth_token', data.token);
-        localStorage.setItem('auth_user', data.username);
-        localStorage.setItem('auth_is_admin', String(data.isAdmin === true));
+      // Não há mais `data.token` a guardar: o servidor devolve a sessão num cookie
+      // HttpOnly, que o navegador anexa sozinho às próximas chamadas. Guardar qualquer
+      // cópia dele aqui recolocaria no localStorage exatamente o que a mudança tirou de lá.
+      if (data.ok) {
         toast.success(`Bem-vindo!`);
-        onLogin(data.token, data.username, data.isAdmin === true);
+        onLogin(data.username, data.isAdmin === true);
       } else {
         toast.error(data.message || 'Usuário ou senha incorretos.');
       }

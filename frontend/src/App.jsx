@@ -28,75 +28,90 @@ const TABS = [
   { id: 'config', label: 'Configurações', icon: Settings, adminOnly: true },
 ];
 
-// Intercepta todos os fetch para incluir o token automaticamente
-const originalFetch = window.fetch;
-window.fetch = function (url, options = {}) {
-  const token = localStorage.getItem('auth_token');
-  if (token && typeof url === 'string' && url.startsWith('/api/')) {
-    options.headers = {
-      ...options.headers,
-      Authorization: `Bearer ${token}`,
-    };
-  }
-  return originalFetch(url, options);
-};
+// O monkey-patch de window.fetch que injetava `Authorization: Bearer` em toda chamada saiu
+// daqui junto com o token do localStorage. Não há substituto e não é preciso: a sessão vive
+// num cookie HttpOnly, que o navegador anexa sozinho a cada requisição de mesma origem — e
+// mesma origem é o caso tanto em produção (o backend serve o dist) quanto em
+// desenvolvimento (o Vite faz proxy de /api). Nenhuma chamada existente precisou mudar.
+
+// Chaves de dado de NEGÓCIO no localStorage. A credencial não está mais entre elas: o que
+// resta é cache de tela, e ele é limpo no logout porque guarda nome e e-mail de
+// responsáveis vindos do CRM — num computador compartilhado, deixá-los para trás entrega ao
+// próximo usuário exatamente o que sair deveria ter tirado.
+const CACHES_LOCAIS = [
+  'deals_cache',
+  'deals_cache_time',
+  'report_cache',
+  'report_cache_time',
+  'resolved_cache',
+  'dashboard_check_cache',
+];
 
 export default function App() {
   const [tab, setTab] = useState('dashboard');
-  const [token, setToken] = useState(() => localStorage.getItem('auth_token'));
-  const [username, setUsername] = useState(
-    () => localStorage.getItem('auth_user') || '',
-  );
-  // Semeado pelo login e RECONFIRMADO pelo /verify a cada carga. O papel não viaja dentro
-  // do token de propósito: assim, tirar alguém do ADMIN_USERS passa a valer no próximo
-  // carregamento, em vez de só quando a sessão expirasse.
-  const [isAdmin, setIsAdmin] = useState(
-    () => localStorage.getItem('auth_is_admin') === 'true',
-  );
+  // Três estados, e não dois: com o token invisível ao JavaScript, a única forma de saber se
+  // há sessão é PERGUNTAR ao servidor. 'verificando' é o intervalo entre a montagem e a
+  // resposta do /verify — sem ele, a tela de login pisca para quem já está logado.
+  const [sessao, setSessao] = useState({
+    estado: 'verificando',
+    username: '',
+    isAdmin: false,
+  });
   const [showChangePass, setShowChangePass] = useState(false);
 
-  // Verifica se o token ainda é válido ao carregar
+  const autenticado = sessao.estado === 'autenticado';
+  const { username, isAdmin } = sessao;
+
   useEffect(() => {
-    if (!token) return;
     fetch('/api/auth/verify', { method: 'POST' })
       .then((r) => r.json())
       .then((d) => {
-        if (!d.ok) return handleLogout();
-        setIsAdmin(d.isAdmin === true);
-        localStorage.setItem('auth_is_admin', String(d.isAdmin === true));
+        if (!d.ok)
+          return setSessao({ estado: 'anonimo', username: '', isAdmin: false });
+        setSessao({
+          estado: 'autenticado',
+          username: d.username || '',
+          isAdmin: d.isAdmin === true,
+        });
       })
-      .catch(() => handleLogout());
+      .catch(() =>
+        setSessao({ estado: 'anonimo', username: '', isAdmin: false }),
+      );
   }, []);
 
-  function handleLogin(newToken, newUsername, newIsAdmin) {
-    setToken(newToken);
-    setUsername(newUsername);
-    setIsAdmin(newIsAdmin === true);
+  function handleLogin(newUsername, newIsAdmin) {
+    setSessao({
+      estado: 'autenticado',
+      username: newUsername || '',
+      isAdmin: newIsAdmin === true,
+    });
   }
 
-  function handleLogout() {
-    // Sair precisa levar TODO o dado de negócio junto, e não só a credencial. Os caches
-    // abaixo guardam nome e e-mail de responsáveis do CRM; num computador compartilhado,
-    // deixá-los para trás entrega ao próximo usuário exatamente o que o logout promete tirar.
-    for (const chave of [
-      'auth_token',
-      'auth_user',
-      'auth_is_admin',
-      'deals_cache',
-      'deals_cache_time',
-      'report_cache',
-      'report_cache_time',
-      'resolved_cache',
-      'dashboard_check_cache',
-    ]) {
-      localStorage.removeItem(chave);
+  async function handleLogout() {
+    // Quem apaga a credencial agora é o SERVIDOR: o cookie é HttpOnly e não existe
+    // `removeItem` que o alcance. O estado local só é derrubado depois, e mesmo que a
+    // chamada falhe — uma sessão que não pôde ser encerrada no servidor não é motivo para
+    // manter a tela aberta na máquina de quem pediu para sair.
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' });
+    } catch {
+      /* rede indisponível — o estado local vai embora do mesmo jeito */
     }
-    setToken(null);
-    setUsername('');
-    setIsAdmin(false);
+    for (const chave of CACHES_LOCAIS) localStorage.removeItem(chave);
+    setSessao({ estado: 'anonimo', username: '', isAdmin: false });
   }
 
-  if (!token) {
+  // Enquanto o /verify não responde não dá para saber qual das duas telas é a certa. Um
+  // retângulo neutro evita que quem já está logado veja a tela de login piscar a cada carga.
+  if (sessao.estado === 'verificando') {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <p className="text-sm text-gray-400">Carregando…</p>
+      </div>
+    );
+  }
+
+  if (!autenticado) {
     return (
       <>
         <Toaster position="top-right" toastOptions={{ duration: 4000 }} />
