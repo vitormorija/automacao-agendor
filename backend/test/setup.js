@@ -23,6 +23,17 @@ if (!process.env.AGENDOR_TOKEN) {
   process.env.AGENDOR_TOKEN = 'test';
 }
 
+// Mesmo motivo e mesmo padrão de DB_PATH, para o outro efeito de import que passou a
+// existir quando a montagem do Express saiu de index.js para app.js: `require('../src/app')`
+// abre dois streams de escrita (morgan + erro) no diretório de logs. Sem este desvio, cada
+// requisição de teste gravaria uma linha no logs/access.log real do repositório.
+if (!process.env.LOG_DIR) {
+  process.env.LOG_DIR = require('node:path').join(
+    require('node:os').tmpdir(),
+    'agendor-test-logs',
+  );
+}
+
 // DIFERENTEMENTE dos presets guardados acima, estas duas variáveis são SEMPRE
 // sobrescritas (sem guarda). Nenhum teste precisa de valores reais de SMTP_PASS
 // ou ADMIN_EMAIL, e um segredo exportado no shell/CI jamais deve vazar para o

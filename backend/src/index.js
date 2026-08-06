@@ -1,119 +1,14 @@
-// Caminho explícito: o .env mora ao lado do package.json do backend. Sem isto o
-// carregamento depende do cwd — e sob PM2 (ecosystem.config.js: cwd '/opt/agendor')
-// o dotenv procuraria /opt/agendor/.env, que não existe, e falharia em SILÊNCIO (D-13).
-require('dotenv').config({ path: require('path').join(__dirname, '../.env') });
-// Fail-fast de configuração (CFG-04, D-04/D-05): valida as 5 obrigatórias no require.
-// Vem AQUI, e não depois, por duas razões:
-// (1) antes de './routes/auth', que puxa db.js — o db.js abre o SQLite e semeia a tabela
-//     `config` no load; um boot mal configurado não pode deixar efeito colateral antes de
-//     morrer (é a definição de fail-fast);
-// (2) antes de './middleware/auth', que puxa secret.js — validando primeiro, o operador
-//     recebe a lista COMPLETA do que falta num único boot, em vez de descobrir uma
-//     variável por vez. O secret.js continua valendo: só ele exige os 16 caracteres
-//     mínimos do JWT_SECRET.
-// Em produção a ausência derruba o processo; fora dela, vira aviso no log (D-05).
-require('./config');
-const express = require('express');
-const cors = require('cors');
-const helmet = require('helmet');
-const morgan = require('morgan');
-const fs = require('fs');
-const path = require('path');
+// Ciclo de vida do processo: escutar porta, agendar o cron, desligar com segurança.
+//
+// A MONTAGEM do app (middlewares, rotas, tratamento de erro) mora em ./app.js e é
+// exercitada por HTTP nos testes. A separação existe porque enquanto o listen morava
+// junto da montagem nenhum teste conseguia exercitar a cadeia de middlewares — ver o
+// comentário de cabeçalho de app.js para o defeito concreto que isso escondeu.
+//
+// O require de ./app precisa vir PRIMEIRO: é ele que carrega o dotenv e o fail-fast
+// de configuração, na ordem que o comentário de app.js documenta.
+const app = require('./app');
 const logger = require('./logger');
-
-const app = express();
-
-// ── Segurança: cabeçalhos HTTP ───────────────────────────────────
-app.use(
-  helmet({
-    contentSecurityPolicy: false, // desativado pois o frontend usa CDN/inline
-    crossOriginEmbedderPolicy: false,
-  }),
-);
-
-// ── CORS: em produção, aceita só a origin do servidor ───────────
-const allowedOrigins = process.env.ALLOWED_ORIGINS
-  ? process.env.ALLOWED_ORIGINS.split(',').map((o) => o.trim())
-  : ['http://localhost:5173', 'http://localhost:3001'];
-
-app.use(
-  cors({
-    origin: (origin, cb) => {
-      // Permite requisições sem origin (curl, Postman, mesmo servidor)
-      if (!origin || allowedOrigins.includes(origin)) return cb(null, true);
-      cb(new Error(`CORS bloqueado: ${origin}`));
-    },
-    credentials: true,
-  }),
-);
-
-app.use(express.json());
-
-// ── Logs de acesso ───────────────────────────────────────────────
-const logDir = path.join(__dirname, '../../logs');
-if (!fs.existsSync(logDir)) fs.mkdirSync(logDir, { recursive: true });
-
-// Log em arquivo (produção) + console (desenvolvimento)
-// Streams abertos UMA vez (evita leak de file descriptors sob carga).
-const accessLogStream = fs.createWriteStream(path.join(logDir, 'access.log'), {
-  flags: 'a',
-});
-const errorLogStream = fs.createWriteStream(path.join(logDir, 'error.log'), {
-  flags: 'a',
-});
-app.use(morgan('combined', { stream: accessLogStream }));
-if (process.env.NODE_ENV !== 'production') {
-  app.use(morgan('dev'));
-}
-
-// ── Autenticação ─────────────────────────────────────────────────
-const authMiddleware = require('./middleware/auth');
-app.use(authMiddleware);
-
-// ── Rotas públicas ───────────────────────────────────────────────
-app.use('/api/auth', require('./routes/auth'));
-app.use('/api/track', require('./routes/track'));
-
-// ── Health check ─────────────────────────────────────────────────
-app.get('/api/health', (req, res) => {
-  res.json({
-    ok: true,
-    time: new Date().toISOString(),
-    env: process.env.NODE_ENV || 'development',
-  });
-});
-
-// ── Rotas protegidas ─────────────────────────────────────────────
-app.use('/api/deals', require('./routes/deals'));
-app.use('/api/notifications', require('./routes/notifications'));
-app.use('/api/config', require('./routes/config'));
-app.use('/api/reports', require('./routes/reports'));
-
-// ── Serve o frontend buildado em produção ────────────────────────
-const frontendDist = path.join(__dirname, '../../frontend/dist');
-if (process.env.NODE_ENV === 'production' && fs.existsSync(frontendDist)) {
-  app.use(express.static(frontendDist));
-  // SPA: qualquer rota não-API serve o index.html
-  app.get('*', (req, res) => {
-    res.sendFile(path.join(frontendDist, 'index.html'));
-  });
-  logger.info('Servindo frontend de:', frontendDist);
-}
-
-// ── Tratamento de erros global ───────────────────────────────────
-app.use((err, req, res, next) => {
-  const msg = `[${new Date().toISOString()}] ${req.method} ${req.path} — ${err.message}\n${err.stack}\n`;
-  errorLogStream.write(msg);
-  if (process.env.NODE_ENV !== 'production') console.error(err);
-
-  // Em produção não vaza detalhes internos (stack/mensagem) ao cliente.
-  const status = err.status || 500;
-  const clientMessage =
-    process.env.NODE_ENV === 'production'
-      ? 'Erro interno do servidor.'
-      : err.message || 'Erro interno do servidor.';
-  res.status(status).json({ error: clientMessage });
-});
 
 // ── Validação de BASE_URL para links de email ───────────────────
 function checkBaseUrl() {
