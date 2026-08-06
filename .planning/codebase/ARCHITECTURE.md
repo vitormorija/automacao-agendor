@@ -13,7 +13,7 @@
 │  Dashboard        │  DealsList        │  ConfigPanel/Report   │
 │ `components/`     │ `components/`     │ `components/`         │
 └────────┬──────────┴────────┬──────────┴──────────┬────────────┘
-         │ fetch('/api/...', { Authorization: Bearer <jwt> })
+         │ fetch('/api/...')  — sessão em cookie HttpOnly, anexado pelo navegador
          ▼
 ┌───────────────────────────────────────────────────────────────┐
 │              Express API Layer (backend/src/index.js)          │
@@ -68,7 +68,7 @@ db.js at :memory: or a temp file — no separate test-only architecture layer.
 | DB layer | Single SQLite connection, schema creation/migrations, all data-access functions (config, notification_log, weekly_snapshots, app_users, reset_tokens, login_logs) | `backend/src/db.js` |
 | Logger | Minimal structured logger (JSON in prod, readable text in dev) | `backend/src/logger.js` |
 | Secret loader | Fails fast at boot if `JWT_SECRET` missing/weak | `backend/src/secret.js` |
-| React shell | Tab navigation, auth state (localStorage token), global fetch interceptor that injects `Authorization` header | `frontend/src/App.jsx` |
+| React shell | Tab navigation, session state resolved by `POST /api/auth/verify` on mount (the JWT lives in an HttpOnly cookie and is unreadable from JS), admin-only tab gating | `frontend/src/App.jsx` |
 | React components | One component per tab/feature area, each doing its own `fetch()` calls directly (no shared API client module) | `frontend/src/components/*.jsx` |
 | Test suite | `node:test`-based tests on pure business filters, dedup, and auth rate-limiting/password logic; native runner + `c8` coverage, no separate test framework | `backend/test/*.test.js`, `backend/test/helpers/*.js` |
 
@@ -134,7 +134,7 @@ db.js at :memory: or a temp file — no separate test-only architecture layer.
 ### Primary Request Path (Manual "Run Check Now")
 
 1. User clicks "Executar agora" in `frontend/src/components/Dashboard.jsx` → `fetch('/api/notifications/run', { method: 'POST' })`
-2. Global fetch interceptor in `frontend/src/App.jsx:29-39` injects `Authorization: Bearer <token>`
+2. The browser attaches the `auth_token` HttpOnly cookie automatically (same-origin); there is no fetch interceptor
 3. Request hits Express chain: helmet → cors → morgan → `authMiddleware` (`backend/src/middleware/auth.js:12`) → `backend/src/routes/notifications.js:45` (`POST /run`)
 4. Route calls `runCheck()` in `backend/src/scheduler.js:26`
 5. `runCheck` reads config (`getConfig('stale_days')`, `admin_email`, `notify_author`, `notifications_enabled`) then fetches `getStaleDeals`, `getUsers`, `getDealsWithFutureTasks` in parallel from `backend/src/agendor.js`
@@ -157,7 +157,7 @@ db.js at :memory: or a temp file — no separate test-only architecture layer.
 
 **State Management:**
 - Backend: no in-memory session state beyond a `Map` of login rate-limit attempts (`routes/auth.js: loginAttempts`) and scheduler run-lock flags (`scheduler.js: isRunning`, `currentTask`, `weeklyTask`, `lastRunResult`) — all reset on process restart
-- Frontend: component-local `useState`/`useEffect` only; auth token and username persisted in `localStorage` (`auth_token`, `auth_user`)
+- Frontend: component-local `useState`/`useEffect` only. The session token is NOT reachable from JS — it lives in an HttpOnly cookie, and `App.jsx` learns the session by calling `/api/auth/verify`. `localStorage` holds only screen caches (`deals_cache`, `report_cache`, `resolved_cache`, `dashboard_check_cache`), all cleared on logout
 
 ## Key Abstractions
 
