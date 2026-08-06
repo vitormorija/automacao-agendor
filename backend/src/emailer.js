@@ -36,6 +36,80 @@ function createTransporter() {
   });
 }
 
+// ── Neutralização do conteúdo vindo do CRM ───────────────────────
+//
+// Todo texto interpolado nos templates abaixo — título do negócio, empresa, funil, etapa,
+// nome do responsável — é digitado por pessoas no Agendor e chega aqui SEM passar por
+// nenhuma validação nossa. Antes ia cru para dentro do HTML, o que permitia que um título
+// de negócio contendo marcação alterasse a mensagem que a equipe recebe (um botão falso, um
+// link para outro lugar). Quem edita o CRM não é necessariamente quem deveria poder
+// escrever no corpo de um e-mail institucional.
+//
+// A neutralização é feita UMA VEZ, na entrada de cada função que monta HTML, e não em cada
+// ponto de interpolação: são mais de vinte pontos, e o modo de falhar de escapar
+// caso-a-caso é esquecer um — inclusive um acrescentado depois, por outra pessoa.
+function escapeHtml(valor) {
+  return String(valor)
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
+}
+
+// Mesma regra de destino de isSafeRedirect, em routes/track.js: só o Agendor.
+const LINK_PADRAO = 'https://web.agendor.com.br';
+
+// `webUrl` é o único campo do CRM que vai para dentro de um href, e escapar não basta:
+// `javascript:` continuaria sendo `javascript:` depois de escapado, e viraria execução ao
+// clique dentro do cliente de e-mail. Aqui o valor é VALIDADO — protocolo e domínio — em vez
+// de neutralizado. O construtor URL já normaliza aspas e sinais de menor/maior para
+// percent-encoding, então o retorno é seguro dentro do atributo.
+function linkSeguro(url) {
+  try {
+    const u = new URL(String(url));
+    if (u.protocol !== 'https:' && u.protocol !== 'http:') return LINK_PADRAO;
+    const host = u.hostname.toLowerCase();
+    if (host !== 'agendor.com.br' && !host.endsWith('.agendor.com.br')) {
+      return LINK_PADRAO;
+    }
+    return u.href;
+  } catch (_) {
+    return LINK_PADRAO;
+  }
+}
+
+// Cópia do negócio pronta para ir ao template. Percorre TODAS as chaves em vez de uma lista
+// de campos conhecidos: uma lista precisaria ser atualizada junto com o payload da Agendor,
+// e o dia em que não fosse, o campo novo entraria cru sem ninguém notar.
+function negocioSeguro(deal) {
+  if (!deal || typeof deal !== 'object') return deal;
+  const seguro = {};
+  for (const [chave, valor] of Object.entries(deal)) {
+    seguro[chave] = typeof valor === 'string' ? escapeHtml(valor) : valor;
+  }
+  seguro.webUrl = linkSeguro(deal.webUrl);
+  return seguro;
+}
+
+// O assunto NÃO é HTML: escapá-lo faria a caixa de entrada exibir `&amp;` no lugar de `&`.
+// O risco aqui é outro — quebra de linha vira injeção de cabeçalho SMTP — e some ao
+// colapsar os controles em espaço. O corte de tamanho evita um assunto truncado pelo
+// servidor no meio de um caractere multibyte.
+function assuntoSeguro(texto) {
+  // A substituicao abaixo mira caracteres de CONTROLE de proposito: e o \r\n dentro do
+  // assunto que vira injecao de cabecalho SMTP. A regra do Biome existe para pegar quem
+  // os coloca num padrao sem perceber — aqui a intencao e exatamente essa, e por isso a
+  // supressao vem com motivo escrito em vez de a regra ser rebaixada no biome.json.
+  return (
+    String(texto ?? '')
+      // biome-ignore lint/suspicious/noControlCharactersInRegex: alvo deliberado
+      .replace(/[\u0000-\u001F\u007F]+/g, ' ')
+      .trim()
+      .slice(0, 200)
+  );
+}
+
 function urgencyColor(days) {
   if (days >= 45) return '#dc2626';
   if (days >= 30) return '#d97706';
@@ -66,6 +140,10 @@ function getPublicBaseUrl() {
 }
 
 function dealEmailHtml({ deal, ownerName, role, logId }) {
+  // Ponto único de neutralização deste template. A partir daqui `deal` é a cópia segura:
+  // qualquer campo novo que alguém interpole abaixo já nasce escapado.
+  deal = negocioSeguro(deal);
+  ownerName = escapeHtml(ownerName ?? '');
   const publicBase = getPublicBaseUrl();
   // Usa tracking apenas quando temos BASE_URL pública E logId — caso contrário,
   // link direto para o card no Agendor (garante que sempre abre, sem depender do nosso servidor).
@@ -240,7 +318,9 @@ async function sendStaleNotification({ deal, ownerEmail, authorEmail, logId }) {
   let transporter = createTransporter();
   const from = getConfig('smtp_from') || getConfig('smtp_user');
   const tipoSubject = deal.dealType === 'Lead' ? 'Lead' : 'Negócio';
-  const subject = `⚠️ ${tipoSubject} parado há ${deal.daysSinceUpdate} dias: ${deal.title}`;
+  const subject = assuntoSeguro(
+    `⚠️ ${tipoSubject} parado há ${deal.daysSinceUpdate} dias: ${deal.title}`,
+  );
   const results = [];
 
   // Por que este try existe (WR-01) — e por que ele NÃO engole a exceção:
@@ -340,6 +420,9 @@ async function sendStaleNotification({ deal, ownerEmail, authorEmail, logId }) {
 }
 
 function buildOwnerBlocks(deals) {
+  // Antes do agrupamento, e não depois: a chave do agrupamento É o nome do responsável, e
+  // ela vai para dentro de <strong> logo abaixo.
+  deals = deals.map(negocioSeguro);
   const byOwner = {};
   for (const d of deals) {
     const name = d.ownerName || 'Sem responsável';
@@ -556,6 +639,8 @@ async function sendResetPasswordEmail({ to, resetUrl }) {
 // ─── Relatório semanal personalizado por comercial ───────────────
 
 function ownerWeeklyHtml({ ownerName, deals, weekLabel, staleDays }) {
+  deals = deals.map(negocioSeguro);
+  ownerName = escapeHtml(ownerName ?? '');
   const leads = deals.filter((d) => d.dealType === 'Lead');
   const negocios = deals.filter((d) => d.dealType !== 'Lead');
   const total = deals.length;
@@ -878,4 +963,19 @@ module.exports = {
   sendOwnerWeeklySummary,
   verifySmtp,
   sendResetPasswordEmail,
+};
+
+// ── Seams de teste (helpers internos, não fazem parte da API pública) ──
+// Expostos para que o teste de neutralização meça o HTML GERADO, e não a existência das
+// funções: montar o template é o que prova que o campo do CRM saiu escapado. As três
+// funções de template não têm efeito nenhum — não abrem SMTP, não leem rede — então podem
+// ser chamadas diretamente.
+module.exports._interno = {
+  escapeHtml,
+  linkSeguro,
+  negocioSeguro,
+  assuntoSeguro,
+  dealEmailHtml,
+  buildOwnerBlocks,
+  ownerWeeklyHtml,
 };
