@@ -1,5 +1,6 @@
 const Database = require('better-sqlite3');
 const path = require('path');
+const crypto = require('crypto');
 const logger = require('./logger');
 
 const dbPath = process.env.DB_PATH || path.join(__dirname, '..', 'agendor.db');
@@ -154,6 +155,30 @@ try {
   }
 } catch (_) {
   /* banco recém-criado ou chave inexistente — nada a migrar */
+}
+
+// ── Migração: tokens de redefinição passam a ser gravados como hash ──
+//
+// As linhas gravadas pelo esquema anterior guardam o token CRU e nunca mais casariam com a
+// busca por hash — ficariam ali, ilegíveis para o código e legíveis para quem abrisse o
+// arquivo. São apagadas de uma vez.
+//
+// Roda UMA ÚNICA VEZ, marcada na própria tabela `config`, e a guarda importa: sem ela, todo
+// restart do PM2 invalidaria os links de redefinição pendentes daquele momento. Como o
+// token cru e o hash têm os mesmos 64 caracteres hexadecimais, não há como distingui-los
+// pelo formato — por isso a marca, e não uma heurística.
+try {
+  if (getConfig('reset_tokens_hashed') !== '1') {
+    const { changes } = db.prepare('DELETE FROM reset_tokens').run();
+    setConfig('reset_tokens_hashed', '1');
+    if (changes > 0) {
+      logger.info(
+        `[DB] ${changes} token(s) de redefinição em claro removido(s) — a coluna passa a guardar hash. Quem tinha link pendente precisa solicitar outro.`,
+      );
+    }
+  }
+} catch (_) {
+  /* banco recém-criado — a tabela nasce já no formato novo */
 }
 
 function getConfig(key) {
@@ -383,6 +408,21 @@ function updateUserPassword(username, hashedPassword) {
 }
 
 // ── Reset de senha ───────────────────────────────────────────────
+//
+// A COLUNA `token` GUARDA O HASH, NUNCA O VALOR DO LINK. Antes guardava o token cru, e o
+// efeito era que qualquer leitura do banco — o próprio arquivo, ou uma das até 30 cópias que
+// deploy/backup.sh mantém em disco — entregava links de redefinição ainda válidos, prontos
+// para uso. É o mesmo raciocínio que tirou a senha SMTP da tabela `config` (D-01): o que
+// não pode ser lido de um backup não deve ser gravado em claro.
+//
+// O hash mora AQUI, e não na rota, para que a garantia seja do módulo de persistência: quem
+// chama continua passando o token cru e não tem como gravá-lo por engano. SHA-256 sem sal
+// é o correto neste caso, ao contrário de senha — o token tem 256 bits de entropia vinda de
+// crypto.randomBytes, então não há dicionário a pré-computar, e a busca precisa ser
+// determinística para achar a linha.
+function hashResetToken(token) {
+  return crypto.createHash('sha256').update(String(token)).digest('hex');
+}
 
 function saveResetToken(username, token, expiresAt) {
   // Limpa tokens anteriores deste usuário
@@ -391,19 +431,19 @@ function saveResetToken(username, token, expiresAt) {
     .prepare(
       'INSERT INTO reset_tokens (username, token, expires_at) VALUES (?, ?, ?)',
     )
-    .run(username, token, expiresAt);
+    .run(username, hashResetToken(token), expiresAt);
 }
 
 function getResetToken(token) {
   return db
     .prepare('SELECT * FROM reset_tokens WHERE token = ? AND used = 0')
-    .get(token);
+    .get(hashResetToken(token));
 }
 
 function markTokenUsed(token) {
   return db
     .prepare('UPDATE reset_tokens SET used = 1 WHERE token = ?')
-    .run(token);
+    .run(hashResetToken(token));
 }
 
 // ── Log de acessos ───────────────────────────────────────────────

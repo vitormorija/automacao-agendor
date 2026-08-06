@@ -38,6 +38,25 @@ const logger = require('./logger');
 
 const app = express();
 
+// ── Identidade do cliente atrás do proxy ─────────────────────────
+//
+// SEM ISTO, `req.ip` É O IP DO PROXY PARA TODA REQUISIÇÃO. O backend escuta em
+// localhost:3001 e quem fala com a internet é o nginx (deploy/nginx.conf) — que repassa o
+// endereço real em X-Forwarded-For, mas o Express ignora esse cabeçalho por padrão. O
+// efeito é que tudo que é decidido "por IP" passa a ser decidido por UM único IP:
+//   - o bloqueio de login vira global — cinco senhas erradas de qualquer pessoa trancam a
+//     equipe inteira por 15 minutos, que é uma negação de serviço trivial de disparar;
+//   - a cota de recuperação de senha, idem;
+//   - a coluna `ip` de login_logs grava 127.0.0.1 em todas as linhas, e a trilha de
+//     auditoria que o parecer de segurança pediu não identifica ninguém.
+//
+// 'loopback' e não `true`: confiar em qualquer proxy deixaria um cliente que alcance a
+// porta diretamente forjar o próprio X-Forwarded-For e escapar da cota. Aqui só o
+// intermediário em 127.0.0.1/::1 é considerado confiável, que é a topologia real hoje
+// (nginx no mesmo host) e a prevista para a AWS (Caddy na mesma EC2). Um balanceador
+// externo, se um dia entrar, muda este valor — e só ele.
+app.set('trust proxy', 'loopback');
+
 // ── Segurança: cabeçalhos HTTP ───────────────────────────────────
 app.use(
   helmet({

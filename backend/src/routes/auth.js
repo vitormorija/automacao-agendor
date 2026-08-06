@@ -31,41 +31,37 @@ const BCRYPT_ROUNDS = 10;
 // usuário exigia papel enquanto mudar SMTP e disparar e-mail em massa não exigiam nada.
 const { requireAdmin, isAdmin } = require('../middleware/requireAdmin');
 
-// ── Rate limiting (bloqueio por IP após 5 tentativas) ────────────
-const loginAttempts = new Map(); // ip → { count, blockedUntil }
+// ── Rate limiting ────────────────────────────────────────────────
+// A regra saiu daqui para src/rateLimit.js quando passou a ter DOIS consumidores. Os
+// parâmetros do login são preservados exatamente — 5 tentativas, 15 minutos —, e os nomes
+// abaixo continuam existindo porque test/auth.test.js os exercita diretamente.
+const { criarLimitador } = require('../rateLimit');
+
 const MAX_ATTEMPTS = 5;
 const BLOCK_MINUTES = 15;
+const limitadorLogin = criarLimitador({
+  maxTentativas: MAX_ATTEMPTS,
+  minutosBloqueio: BLOCK_MINUTES,
+});
+const checkRateLimit = limitadorLogin.check;
+const recordFailedAttempt = limitadorLogin.record;
+const clearAttempts = limitadorLogin.clear;
 
-function checkRateLimit(ip) {
-  const now = Date.now();
-  const entry = loginAttempts.get(ip);
-  if (!entry) return { blocked: false };
-  if (entry.blockedUntil && now < entry.blockedUntil) {
-    const minutesLeft = Math.ceil((entry.blockedUntil - now) / 60000);
-    return { blocked: true, minutesLeft };
-  }
-  if (entry.blockedUntil && now >= entry.blockedUntil) {
-    loginAttempts.delete(ip);
-  }
-  return { blocked: false };
-}
+// Balde PRÓPRIO para "esqueci minha senha", com cota menor. O recurso protegido aqui é
+// outro: cada requisição bem-sucedida faz o servidor ENVIAR um e-mail usando a credencial
+// SMTP da empresa, e o endereço de destino vem do corpo da requisição. Sem cota, a rota
+// pública é um canal de envio aberto — que é justamente o motivo de ela ter cota ANTES de
+// virar pública, e não depois.
+const MAX_RECUPERACOES = 3;
+const limitadorRecuperacao = criarLimitador({
+  maxTentativas: MAX_RECUPERACOES,
+  minutosBloqueio: BLOCK_MINUTES,
+});
 
-function recordFailedAttempt(ip) {
-  const entry = loginAttempts.get(ip) || { count: 0 };
-  entry.count += 1;
-  if (entry.count >= MAX_ATTEMPTS) {
-    entry.blockedUntil = Date.now() + BLOCK_MINUTES * 60 * 1000;
-    entry.count = 0;
-    loginAttempts.set(ip, entry);
-    return { nowBlocked: true };
-  }
-  loginAttempts.set(ip, entry);
-  return { nowBlocked: false, remaining: MAX_ATTEMPTS - entry.count };
-}
-
-function clearAttempts(ip) {
-  loginAttempts.delete(ip);
-}
+// Piso de tamanho da senha. Eram 6 — o parecer de segurança pediu 12, e o número precisa
+// valer nos DOIS caminhos que gravam senha nova: a redefinição por link e a troca pelo
+// usuário logado. Aplicar só num deles deixaria o outro como a porta larga.
+const MIN_SENHA = 12;
 
 // ── Verificação de senha (bcrypt + texto puro legado) ────────────
 // Fator comum extraído do login e do change-password: suporta hash bcrypt
@@ -218,10 +214,10 @@ router.post('/change-password', async (req, res) => {
       .status(400)
       .json({ ok: false, message: 'Preencha todos os campos.' });
   }
-  if (newPassword.length < 6) {
+  if (newPassword.length < MIN_SENHA) {
     return res.status(400).json({
       ok: false,
-      message: 'A nova senha deve ter pelo menos 6 caracteres.',
+      message: `A nova senha deve ter pelo menos ${MIN_SENHA} caracteres.`,
     });
   }
 
@@ -249,6 +245,20 @@ router.post('/forgot-password', async (req, res) => {
   const { username } = req.body;
   if (!username)
     return res.status(400).json({ ok: false, message: 'Informe o e-mail.' });
+
+  // Cota por IP. Note que ela é consumida a CADA requisição, e não só nas que falham como
+  // no login: aqui o recurso escasso é o envio de e-mail, e uma requisição bem-sucedida é
+  // exatamente a que consome. Recusar com 429 não revela nada sobre a existência da conta —
+  // o bloqueio é do IP, e chega igual para e-mail cadastrado e não cadastrado.
+  const ip = req.ip || req.connection.remoteAddress;
+  const cota = limitadorRecuperacao.check(ip);
+  if (cota.blocked) {
+    return res.status(429).json({
+      ok: false,
+      message: `Muitas solicitações. Tente novamente em ${cota.minutesLeft} minuto(s).`,
+    });
+  }
+  limitadorRecuperacao.record(ip);
 
   // Sempre retorna sucesso (não revela se o usuário existe)
   const user = getUser(username);
@@ -283,10 +293,10 @@ router.post('/reset-password', async (req, res) => {
       .status(400)
       .json({ ok: false, message: 'Token e nova senha são obrigatórios.' });
   }
-  if (newPassword.length < 6) {
+  if (newPassword.length < MIN_SENHA) {
     return res.status(400).json({
       ok: false,
-      message: 'A senha deve ter pelo menos 6 caracteres.',
+      message: `A senha deve ter pelo menos ${MIN_SENHA} caracteres.`,
     });
   }
 
@@ -364,4 +374,7 @@ module.exports.checkRateLimit = checkRateLimit;
 module.exports.recordFailedAttempt = recordFailedAttempt;
 module.exports.clearAttempts = clearAttempts;
 module.exports.verifyPassword = verifyPassword;
-module.exports._loginAttempts = loginAttempts;
+module.exports._loginAttempts = limitadorLogin.mapa;
+module.exports._recuperacaoAttempts = limitadorRecuperacao.mapa;
+module.exports.MIN_SENHA = MIN_SENHA;
+module.exports.MAX_RECUPERACOES = MAX_RECUPERACOES;
