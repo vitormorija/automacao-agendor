@@ -298,8 +298,9 @@ export default function LoginPage({ onLogin }) {
       if (data.ok && data.token) {
         localStorage.setItem('auth_token', data.token);
         localStorage.setItem('auth_user', data.username);
+        localStorage.setItem('auth_is_admin', String(data.isAdmin === true));
         toast.success(`Bem-vindo!`);
-        onLogin(data.token, data.username);
+        onLogin(data.token, data.username, data.isAdmin === true);
       } else {
         toast.error(data.message || 'Usuário ou senha incorretos.');
       }

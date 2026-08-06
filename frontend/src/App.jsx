@@ -17,12 +17,15 @@ import ReportPanel from './components/ReportPanel';
 import LoginPage from './components/LoginPage';
 import ChangePasswordModal from './components/ChangePasswordModal';
 
+// `adminOnly` esconde a aba de quem não é administrador. É ESCONDER, não proteger: quem
+// decide o acesso é o servidor, em requireAdmin, a cada requisição. Sem isto o usuário
+// comum veria o formulário de configuração e só descobriria a recusa ao clicar em salvar.
 const TABS = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { id: 'deals', label: 'Negócios parados', icon: AlertTriangle },
   { id: 'report', label: 'Relatório', icon: BarChart2 },
   { id: 'history', label: 'Histórico', icon: Bell },
-  { id: 'config', label: 'Configurações', icon: Settings },
+  { id: 'config', label: 'Configurações', icon: Settings, adminOnly: true },
 ];
 
 // Intercepta todos os fetch para incluir o token automaticamente
@@ -44,6 +47,12 @@ export default function App() {
   const [username, setUsername] = useState(
     () => localStorage.getItem('auth_user') || '',
   );
+  // Semeado pelo login e RECONFIRMADO pelo /verify a cada carga. O papel não viaja dentro
+  // do token de propósito: assim, tirar alguém do ADMIN_USERS passa a valer no próximo
+  // carregamento, em vez de só quando a sessão expirasse.
+  const [isAdmin, setIsAdmin] = useState(
+    () => localStorage.getItem('auth_is_admin') === 'true',
+  );
   const [showChangePass, setShowChangePass] = useState(false);
 
   // Verifica se o token ainda é válido ao carregar
@@ -52,21 +61,39 @@ export default function App() {
     fetch('/api/auth/verify', { method: 'POST' })
       .then((r) => r.json())
       .then((d) => {
-        if (!d.ok) handleLogout();
+        if (!d.ok) return handleLogout();
+        setIsAdmin(d.isAdmin === true);
+        localStorage.setItem('auth_is_admin', String(d.isAdmin === true));
       })
       .catch(() => handleLogout());
   }, []);
 
-  function handleLogin(newToken, newUsername) {
+  function handleLogin(newToken, newUsername, newIsAdmin) {
     setToken(newToken);
     setUsername(newUsername);
+    setIsAdmin(newIsAdmin === true);
   }
 
   function handleLogout() {
-    localStorage.removeItem('auth_token');
-    localStorage.removeItem('auth_user');
+    // Sair precisa levar TODO o dado de negócio junto, e não só a credencial. Os caches
+    // abaixo guardam nome e e-mail de responsáveis do CRM; num computador compartilhado,
+    // deixá-los para trás entrega ao próximo usuário exatamente o que o logout promete tirar.
+    for (const chave of [
+      'auth_token',
+      'auth_user',
+      'auth_is_admin',
+      'deals_cache',
+      'deals_cache_time',
+      'report_cache',
+      'report_cache_time',
+      'resolved_cache',
+      'dashboard_check_cache',
+    ]) {
+      localStorage.removeItem(chave);
+    }
     setToken(null);
     setUsername('');
+    setIsAdmin(false);
   }
 
   if (!token) {
@@ -131,20 +158,22 @@ export default function App() {
       <div className="bg-white border-b border-gray-200">
         <div className="max-w-6xl mx-auto px-4 sm:px-6">
           <nav className="flex gap-1 overflow-x-auto">
-            {TABS.map(({ id, label, icon: Icon }) => (
-              <button
-                key={id}
-                onClick={() => setTab(id)}
-                className={`flex items-center gap-1.5 px-4 py-3 text-sm font-medium border-b-2 whitespace-nowrap transition-colors ${
-                  tab === id
-                    ? 'border-blue-600 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                <Icon size={15} />
-                {label}
-              </button>
-            ))}
+            {TABS.filter(({ adminOnly }) => !adminOnly || isAdmin).map(
+              ({ id, label, icon: Icon }) => (
+                <button
+                  key={id}
+                  onClick={() => setTab(id)}
+                  className={`flex items-center gap-1.5 px-4 py-3 text-sm font-medium border-b-2 whitespace-nowrap transition-colors ${
+                    tab === id
+                      ? 'border-blue-600 text-blue-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+                >
+                  <Icon size={15} />
+                  {label}
+                </button>
+              ),
+            )}
           </nav>
         </div>
       </div>
@@ -159,11 +188,15 @@ export default function App() {
 
       {/* Content */}
       <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
-        {tab === 'dashboard' && <Dashboard onTabChange={setTab} />}
+        {tab === 'dashboard' && (
+          <Dashboard onTabChange={setTab} isAdmin={isAdmin} />
+        )}
         {tab === 'deals' && <DealsList />}
         {tab === 'report' && <ReportPanel />}
         {tab === 'history' && <NotificationHistory />}
-        {tab === 'config' && <ConfigPanel />}
+        {/* A checagem de papel se repete aqui de propósito: esconder a aba tira o caminho
+            óbvio, mas `tab` sobrevive a um /verify que rebaixe o usuário entre cargas. */}
+        {tab === 'config' && isAdmin && <ConfigPanel />}
       </main>
     </div>
   );

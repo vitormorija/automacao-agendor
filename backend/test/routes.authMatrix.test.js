@@ -28,23 +28,25 @@ function passouPeloPortao(res) {
   return !(res.status === 401 && res.body?.error === BLOQUEIO_DO_MIDDLEWARE);
 }
 
-// As quatro rotas que hoje respondem sem credencial. `/api/auth/verify` está aqui porque o
-// middleware a libera — ela mesma decide se o header é válido.
+// As rotas que respondem sem credencial. `/api/auth/verify` está aqui porque o middleware a
+// libera — ela mesma decide se o header é válido.
+//
+// As duas de senha ESTAVAM na lista de protegidas, e é essa movimentação que prova a
+// correção: recuperação de senha é, por definição, usada por quem não tem token. Nenhuma
+// delas envia nada quando chamada sem corpo (respondem 400 pedindo o e-mail), então
+// exercitá-las aqui é seguro.
 const PUBLICAS = [
   { path: '/api/auth/login', method: 'POST' },
   { path: '/api/auth/verify', method: 'POST' },
+  { path: '/api/auth/forgot-password', method: 'POST' },
+  { path: '/api/auth/reset-password', method: 'POST' },
   { path: '/api/track/click', method: 'GET' },
   { path: '/api/health', method: 'GET' },
 ];
 
-// Todo o resto da superfície HTTP. Os dois primeiros itens carregam a marcação DEFEITO:
-// eles são o fluxo de recuperação de senha, que por definição é usado por quem NÃO tem
-// token — e hoje é barrado antes de chegar ao handler. A expectativa aqui pina o
-// comportamento ATUAL (bloqueado); a Etapa 1 move as duas linhas para PUBLICAS junto com
-// a correção, e é essa movimentação que prova a correção.
+// Todo o resto da superfície HTTP. /change-password fica AQUI de propósito, e não junto das
+// outras duas de senha: ela exige a senha atual, o que só faz sentido para quem já entrou.
 const PROTEGIDAS = [
-  { path: '/api/auth/forgot-password', method: 'POST', defeito: true },
-  { path: '/api/auth/reset-password', method: 'POST', defeito: true },
   { path: '/api/auth/change-password', method: 'POST' },
   { path: '/api/auth/users', method: 'GET' },
   { path: '/api/auth/users', method: 'POST' },
@@ -103,18 +105,38 @@ test('portão de autenticação: matriz sem credencial', async (t) => {
   await t.test('a matriz cobre as 26 entradas da superfície HTTP', () => {
     assert.equal(PUBLICAS.length + PROTEGIDAS.length, 26);
   });
+
+  // Guarda do lado de dentro: a lista de públicas do middleware e a deste arquivo têm de
+  // descrever o mesmo conjunto. Sem isto, acrescentar uma pública lá e esquecer aqui
+  // deixaria a rota nova sem nenhuma asserção — e é exatamente assim que /forgot-password
+  // ficou anos sem cobertura.
+  await t.test(
+    'a lista de públicas do middleware é a mesma medida aqui',
+    () => {
+      const doMiddleware = [...require('../src/middleware/auth').PUBLIC_PATHS];
+      const daMatriz = PUBLICAS.map((r) => r.path);
+      assert.deepEqual([...doMiddleware].sort(), [...daMatriz].sort());
+    },
+  );
 });
 
-// Documenta, por asserção e não por comentário, os dois pontos do fluxo de senha que a
-// Etapa 1 vai corrigir. Falhar AQUI depois da correção é o comportamento desejado: força
-// quem corrigir a mover as linhas para PUBLICAS em vez de deixar a matriz desatualizada.
-test('DEFEITO CONHECIDO: recuperação de senha exige o token que o usuário não tem', async (t) => {
+// A comparação por prefixo que existia antes liberaria qualquer caminho começado por uma
+// rota pública. É um erro que não aparece em nenhuma das listas acima, porque exige uma
+// rota INVENTADA para se manifestar.
+test('rota pública não libera por prefixo', async (t) => {
   const srv = await startServer();
   t.after(() => srv.close());
 
-  for (const { path } of PROTEGIDAS.filter((r) => r.defeito)) {
-    const res = await srv.request(path, { method: 'POST', body: {} });
-    assert.equal(res.status, 401);
-    assert.equal(res.body?.error, BLOQUEIO_DO_MIDDLEWARE);
+  for (const path of [
+    '/api/auth/login-como-outro',
+    '/api/healthcheck-interno',
+    '/api/track/clickjacking',
+  ]) {
+    const res = await srv.request(path, { method: 'POST' });
+    assert.equal(
+      res.body?.error,
+      BLOQUEIO_DO_MIDDLEWARE,
+      `${path} não é rota pública e não pode herdar a liberação por prefixo`,
+    );
   }
 });

@@ -14,7 +14,10 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
-export default function Dashboard({ onTabChange }) {
+// `isAdmin` controla apenas a EXIBIÇÃO do botão de envio: POST /api/notifications/run exige
+// papel no servidor (requireAdmin) e recusa com 403 independentemente do que o painel mostre.
+// Verificar continua disponível a todos — é leitura, não coloca e-mail na caixa de ninguém.
+export default function Dashboard({ onTabChange, isAdmin = false }) {
   const [status, setStatus] = useState(null);
   const [running, setRunning] = useState(false);
   const [sending, setSending] = useState(false);
@@ -248,8 +251,9 @@ export default function Dashboard({ onTabChange }) {
           Controle manual
         </h2>
         <p className="text-sm text-gray-500 mb-4">
-          Verifique primeiro quais negócios estão parados, e só depois envie as
-          notificações se quiser.
+          {isAdmin
+            ? 'Verifique primeiro quais negócios estão parados, e só depois envie as notificações se quiser.'
+            : 'Verifique quais negócios estão parados. O envio manual é restrito a administradores.'}
         </p>
         <div className="flex flex-wrap gap-3">
           <button
@@ -264,7 +268,7 @@ export default function Dashboard({ onTabChange }) {
             )}
             {running ? 'Verificando...' : 'Verificar negócios parados'}
           </button>
-          {checkResult && (
+          {checkResult && isAdmin && (
             <button
               onClick={sendNow}
               disabled={sending || running}

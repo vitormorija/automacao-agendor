@@ -4,6 +4,7 @@ const router = express.Router();
 const { getAllConfig, setConfig } = require('../db');
 const { scheduleTask } = require('../scheduler');
 const { verifySmtp } = require('../emailer');
+const { requireAdmin } = require('../middleware/requireAdmin');
 
 // Valida cada chave de configuração. Retorna mensagem de erro ou null se ok.
 const isBool = (v) => v === 'true' || v === 'false';
@@ -50,6 +51,12 @@ const ALLOWED_KEYS = [
   'notifications_enabled',
 ];
 
+// A LEITURA segue liberada a qualquer autenticado — o painel precisa dela para exibir o
+// estado atual, e a senha SMTP nem está mais aqui (saiu para o ambiente). O que passa a
+// exigir papel é a ESCRITA e o teste de conexão: PUT reescreve destinatário de admin,
+// agendamento, threshold e o interruptor de notificações; test-smtp usa a credencial do
+// servidor para abrir conexão com um host que o operador escolhe.
+
 // GET /api/config
 router.get('/', (req, res) => {
   const config = getAllConfig();
@@ -59,7 +66,7 @@ router.get('/', (req, res) => {
 });
 
 // PUT /api/config
-router.put('/', (req, res) => {
+router.put('/', requireAdmin, (req, res) => {
   // Valida antes de gravar qualquer coisa (tudo ou nada).
   const updates = {};
   for (const key of ALLOWED_KEYS) {
@@ -83,7 +90,7 @@ router.put('/', (req, res) => {
 });
 
 // POST /api/config/test-smtp — testa conexão SMTP
-router.post('/test-smtp', async (req, res) => {
+router.post('/test-smtp', requireAdmin, async (req, res) => {
   try {
     await verifySmtp();
     res.json({ ok: true, message: 'Conexão SMTP bem-sucedida!' });

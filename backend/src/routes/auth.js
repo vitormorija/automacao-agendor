@@ -20,26 +20,16 @@ const { sendResetPasswordEmail } = require('../emailer');
 const { JWT_SECRET } = require('../secret');
 const logger = require('../logger');
 
-const TOKEN_EXPIRY = '8h';
+// Sessão de 4h. Era 8h: com o token exposto a leitura por JavaScript no localStorage, a
+// janela de uso de um token roubado era o dia inteiro de trabalho. Encurtar é a metade
+// barata da mitigação — a outra metade é tirá-lo do alcance do script.
+const TOKEN_EXPIRY = '4h';
 const BCRYPT_ROUNDS = 10;
 
-// Usuários autorizados a gerenciar outros usuários (criar/listar/excluir/ver logs).
-// Lista de e-mails separada por vírgula em ADMIN_USERS. Se vazia, qualquer
-// usuário autenticado é tratado como admin (comportamento legado) — defina
-// ADMIN_USERS em produção para restringir.
-const ADMIN_USERS = (process.env.ADMIN_USERS || '')
-  .split(',')
-  .map((u) => u.trim().toLowerCase())
-  .filter(Boolean);
-
-function requireAdmin(req, res, next) {
-  if (!ADMIN_USERS.length) return next(); // não configurado → não restringe
-  const username = (req.user?.username || '').toLowerCase();
-  if (ADMIN_USERS.includes(username)) return next();
-  return res
-    .status(403)
-    .json({ ok: false, message: 'Acesso restrito a administradores.' });
-}
+// requireAdmin saiu daqui para middleware/requireAdmin.js. O motivo está escrito no
+// cabeçalho de lá: além de falhar aberto, ele protegia a superfície errada — gestão de
+// usuário exigia papel enquanto mudar SMTP e disparar e-mail em massa não exigiam nada.
+const { requireAdmin, isAdmin } = require('../middleware/requireAdmin');
 
 // ── Rate limiting (bloqueio por IP após 5 tentativas) ────────────
 const loginAttempts = new Map(); // ip → { count, blockedUntil }
@@ -185,7 +175,11 @@ router.post('/login', async (req, res) => {
   }
 
   const token = jwt.sign({ username }, JWT_SECRET, { expiresIn: TOKEN_EXPIRY });
-  return res.json({ ok: true, token, username });
+  // `isAdmin` viaja FORA do token, e é recalculado a cada /verify. Assar o papel dentro do
+  // JWT faria uma remoção de ADMIN_USERS só valer quando a sessão expirasse — até lá o
+  // portador continuaria carregando a afirmação de que é admin. Aqui é só exibição: o
+  // servidor decide o acesso por requisição, em requireAdmin.
+  return res.json({ ok: true, token, username, isAdmin: isAdmin(username) });
 });
 
 // ── POST /api/auth/verify ────────────────────────────────────────
@@ -194,7 +188,11 @@ router.post('/verify', (req, res) => {
   if (!auth?.startsWith('Bearer ')) return res.status(401).json({ ok: false });
   try {
     const decoded = jwt.verify(auth.slice(7), JWT_SECRET);
-    res.json({ ok: true, username: decoded.username });
+    res.json({
+      ok: true,
+      username: decoded.username,
+      isAdmin: isAdmin(decoded.username),
+    });
   } catch {
     res.status(401).json({ ok: false, message: 'Sessão expirada.' });
   }

@@ -28,7 +28,14 @@ async function startServer() {
   // request('/api/config', { method: 'PUT', token, body })
   // Devolve { status, body } — `body` já desserializado quando a resposta é JSON.
   async function request(routePath, options = {}) {
-    const { method = 'GET', token = null, body = undefined } = options;
+    const { method = 'GET', token = null } = options;
+
+    // GET/HEAD com corpo é rejeitado pelo fetch ("Request with GET/HEAD method cannot have
+    // body"). As matrizes de rota varrem listas de métodos MISTOS passando o mesmo
+    // `body: {}` a todas as entradas — descartar aqui deixa a lista uniforme na chamada, e
+    // é descarte sem perda: uma rota GET não lê corpo de requisição de qualquer maneira.
+    const semCorpo = method === 'GET' || method === 'HEAD';
+    const body = semCorpo ? undefined : options.body;
 
     const headers = { ...(options.headers || {}) };
     if (token) headers.Authorization = `Bearer ${token}`;
