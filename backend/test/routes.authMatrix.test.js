@@ -141,3 +141,49 @@ test('rota pública não libera por prefixo', async (t) => {
     );
   }
 });
+
+// O casco do painel (index.html, bundle, CSS) NÃO é dado e não pode exigir credencial.
+//
+// Este caso nasceu de uma falha real que nenhum teste pegava: em `app.js`, `express.static` e
+// o fallback de SPA vêm depois do middleware de autenticação, e sem a exceção por prefixo
+// `GET /` respondia 401 — o painel simplesmente não abria em produção. Não aparecia em
+// desenvolvimento porque lá quem serve o HTML é o Vite, e só as chamadas /api passam pelo
+// backend. `deploy/nginx.conf` encaminha TODAS as rotas ao Node, e a publicação prevista na
+// AWS tem a mesma topologia — o defeito só se manifestaria no primeiro deploy.
+test('o casco do painel não exige credencial', async (t) => {
+  const srv = await startServer();
+  t.after(() => srv.close());
+
+  for (const path of [
+    '/',
+    '/index.html',
+    '/assets/index-abc123.js',
+    '/assets/index-abc123.css',
+    '/favicon.ico',
+    '/qualquer/rota/do/router/do/react',
+  ]) {
+    const res = await srv.request(path);
+    assert.notEqual(
+      res.body?.error,
+      BLOQUEIO_DO_MIDDLEWARE,
+      `${path} é arquivo estático do painel e não pode ser barrado pelo gate de dados`,
+    );
+  }
+});
+
+// O lado simétrico: alargar a exceção não pode ter aberto a API. Se `ehRotaDeDados` passasse
+// a responder falso para algo sob /api, a rota deixaria de ser protegida em silêncio.
+test('tudo sob /api continua sendo tratado como dado', () => {
+  const { ehRotaDeDados } = require('../src/middleware/auth');
+
+  for (const path of [...PROTEGIDAS.map((r) => r.path), '/api', '/api/']) {
+    assert.equal(ehRotaDeDados(path), true, `${path} precisa passar pelo gate`);
+  }
+  for (const path of ['/', '/index.html', '/apiario', '/assets/x.js']) {
+    assert.equal(
+      ehRotaDeDados(path),
+      false,
+      `${path} não é rota de dados — repare que '/apiario' começa com '/api' e mesmo assim não é`,
+    );
+  }
+});

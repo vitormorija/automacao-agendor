@@ -66,7 +66,28 @@ function lerToken(req) {
   return lerCookie(req, COOKIE_SESSAO);
 }
 
+// O que este middleware protege são DADOS, e dados moram sob /api. O restante das
+// requisições é o casco do painel — index.html, o bundle JS, o CSS — que é público por
+// natureza: não há segredo num arquivo estático que qualquer visitante do domínio baixa
+// antes de fazer login.
+//
+// A GUARDA ANTERIOR NÃO FAZIA ESSA DISTINÇÃO, e o efeito era o painel não abrir em produção.
+// Em `app.js`, `express.static` e o fallback de SPA vêm DEPOIS deste middleware; sem a
+// exceção abaixo, `GET /` respondia 401 e o navegador nunca chegava a baixar o bundle. Não
+// aparecia em desenvolvimento porque lá quem serve o HTML é o Vite, na porta 5173, e só as
+// chamadas /api passam pelo backend — o modo em que a aplicação de fato roda hoje.
+// `deploy/nginx.conf` encaminha TODAS as rotas ao Node, e a publicação prevista na AWS
+// (Caddy na mesma instância) tem a mesma topologia.
+function ehRotaDeDados(reqPath) {
+  return reqPath === '/api' || reqPath.startsWith('/api/');
+}
+
 function authMiddleware(req, res, next) {
+  // Casco do painel e arquivos estáticos: passam sem credencial.
+  if (!ehRotaDeDados(req.path)) {
+    return next();
+  }
+
   // Libera rotas públicas
   if (isPublic(req.path)) {
     return next();
@@ -98,3 +119,4 @@ module.exports.PUBLIC_PATHS = PUBLIC_PATHS;
 module.exports.isPublic = isPublic;
 module.exports.lerToken = lerToken;
 module.exports.COOKIE_SESSAO = COOKIE_SESSAO;
+module.exports.ehRotaDeDados = ehRotaDeDados;
