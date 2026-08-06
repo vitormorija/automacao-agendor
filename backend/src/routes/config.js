@@ -30,6 +30,19 @@ const VALIDATORS = {
     v === '' || isEmailList(v)
       ? null
       : 'admin_email deve conter e-mails válidos separados por vírgula.',
+  // Formato ESTRITO (AAAA-MM-DD) e data real. Um valor que o `new Date` não entenda vira
+  // `Invalid Date` no filtro, e `createdAt >= NaN` é sempre falso — o sistema pararia de
+  // notificar todo mundo em silêncio. agendor.js tem a rede de baixo (cai no padrão e
+  // registra); esta é a de cima, que impede o valor ruim de entrar.
+  deals_since: (v) => {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(v))
+      return 'deals_since deve estar no formato AAAA-MM-DD.';
+    const d = new Date(`${v}T00:00:00.000Z`);
+    if (Number.isNaN(d.getTime())) return 'deals_since não é uma data válida.';
+    if (d.toISOString().slice(0, 10) !== v)
+      return 'deals_since não é uma data existente no calendário.';
+    return null;
+  },
 };
 
 // Chaves de configuração graváveis pelo PUT. É a superfície de escrita da API:
@@ -41,6 +54,7 @@ const VALIDATORS = {
 // save() do painel reenvia o objeto inteiro que veio do GET.
 const ALLOWED_KEYS = [
   'stale_days',
+  'deals_since',
   'admin_email',
   'notify_author',
   'smtp_host',

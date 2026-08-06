@@ -19,11 +19,14 @@ const assert = require('node:assert/strict');
 const configRouter = require('../src/routes/config');
 const { ALLOWED_KEYS } = configRouter;
 
-// As 9 chaves que continuam graváveis pela UI (o híbrido de D-01: host, porta,
-// usuário e remetente seguem no banco; só a senha saiu).
+// As 10 chaves graváveis pela UI (o híbrido de D-01: host, porta, usuário e remetente
+// seguem no banco; só a senha saiu). `deals_since` entrou depois: o corte de criação dos
+// negócios monitorados era um literal em agendor.js, repetido à mão como "Criados em 2026"
+// em quatro telas — passou a ser configuração para o rótulo nunca divergir do filtro.
 const CHAVES_ESPERADAS = [
   'admin_email',
   'cron_schedule',
+  'deals_since',
   'notifications_enabled',
   'notify_author',
   'smtp_from',
@@ -42,7 +45,7 @@ test("allowlist do PUT /api/config NÃO aceita 'smtp_pass' (CFG-01)", () => {
   );
 });
 
-test('allowlist do PUT contém exatamente as 9 chaves restantes', () => {
+test('allowlist do PUT contém exatamente as 10 chaves restantes', () => {
   assert.deepEqual([...ALLOWED_KEYS].sort(), CHAVES_ESPERADAS);
 });
 

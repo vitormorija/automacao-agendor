@@ -110,6 +110,10 @@ const defaults = {
   smtp_port: process.env.SMTP_PORT || '587',
   smtp_user: process.env.SMTP_USER || '',
   smtp_from: process.env.SMTP_FROM || '',
+  // Corte de CRIAÇÃO dos negócios monitorados. O default espelha a constante de
+  // agendor.js (CORTE_DE_CRIACAO_PADRAO): um banco existente que nunca teve a chave
+  // passa a tê-la com o valor que já estava cravado no código, sem mudar quem é notificado.
+  deals_since: '2026-01-01',
   cron_schedule: '0 8 * * *', // 8h todo dia
   notifications_enabled: 'true',
   notify_author: 'false',

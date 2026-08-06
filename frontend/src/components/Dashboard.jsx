@@ -85,6 +85,25 @@ export default function Dashboard({ onTabChange, isAdmin = false }) {
   }
 
   async function sendNow() {
+    // Confirmação antes do DISPARO REAL, e só nele. As outras ações desta tela são
+    // reversíveis ou inócuas — verificar não envia nada —, mas esta coloca e-mail na caixa
+    // de entrada de gente de verdade e não tem desfazer. O texto diz QUANTOS e para QUEM,
+    // porque um "tem certeza?" genérico só treina a pessoa a clicar em OK.
+    const destinatarios = (checkResult?.deals || [])
+      .filter((d) => d.seraNotificado !== false)
+      .map((d) => d.ownerEmail)
+      .filter(Boolean);
+    const unicos = [...new Set(destinatarios)];
+    const amostra = unicos.slice(0, 5).join('\n  ');
+    const resto = unicos.length > 5 ? `\n  … e mais ${unicos.length - 5}` : '';
+
+    const confirmado = window.confirm(
+      `Disparar notificações agora?\n\n` +
+        `${aNotificarCount} negócio(s) serão notificados para ${unicos.length} destinatário(s):\n  ${amostra}${resto}\n\n` +
+        `Os e-mails são enviados imediatamente e não podem ser cancelados.`,
+    );
+    if (!confirmado) return;
+
     setSending(true);
     const toastId = toast.loading('Enviando notificações...');
     try {
@@ -225,6 +244,41 @@ export default function Dashboard({ onTabChange, isAdmin = false }) {
             <code className="bg-gray-100 px-1.5 py-0.5 rounded text-xs">
               {status?.schedule || '—'}
             </code>
+          </div>
+          {/* A expressão cron acima diz a REGRA; esta linha diz o INSTANTE. Sem ela não havia
+              como conferir pelo painel que a expressão e o fuso produzem o horário
+              pretendido — uma expressão editada podia passar a disparar de madrugada sem
+              nada na tela denunciar. O backend devolvia só a palavra "agendado". */}
+          <div>
+            <span className="text-gray-500">Próxima execução: </span>
+            <span className="font-medium text-gray-700">
+              {status?.nextRun
+                ? new Date(status.nextRun).toLocaleString('pt-BR', {
+                    dateStyle: 'short',
+                    timeStyle: 'short',
+                  })
+                : 'não agendado'}
+            </span>
+          </div>
+          <div>
+            <span className="text-gray-500">Última execução: </span>
+            <span className="font-medium text-gray-700">
+              {lastRun?.ranAt
+                ? new Date(lastRun.ranAt).toLocaleString('pt-BR', {
+                    dateStyle: 'short',
+                    timeStyle: 'short',
+                  })
+                : '—'}
+            </span>
+            {lastRun && (
+              <span className="text-gray-400 ml-1.5">
+                ({lastRun.notified ?? 0} enviada(s)
+                {lastRun.errors?.length
+                  ? `, ${lastRun.errors.length} erro(s)`
+                  : ''}
+                )
+              </span>
+            )}
           </div>
           {status?.isRunning && (
             <div className="text-amber-600 font-medium flex items-center gap-1">

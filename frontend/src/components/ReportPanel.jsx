@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { rotuloDoCorte } from '../formatarCorte';
 import {
   RefreshCw,
   TrendingUp,
@@ -213,6 +214,7 @@ export default function ReportPanel() {
     topOwner: ownerData[0]?.name || '—',
     topOwnerCount: ownerData[0]?.count || 0,
     staleDays: data.summary.staleDays,
+    dealsSince: data.summary.dealsSince,
     leads: allDeals.filter((d) => d.dealType === 'Lead').length,
     negocios: allDeals.filter((d) => d.dealType === 'Negócio').length,
   };
@@ -226,7 +228,8 @@ export default function ReportPanel() {
             Relatório de Negócios Parados
           </h2>
           <p className="text-sm text-gray-500 mt-0.5">
-            Threshold: {summary.staleDays} dias • criados em 2026
+            Threshold: {summary.staleDays} dias •{' '}
+            {rotuloDoCorte(summary.dealsSince).toLowerCase()}
           </p>
           {lastUpdated && (
             <p className="text-xs text-gray-400 mt-0.5">

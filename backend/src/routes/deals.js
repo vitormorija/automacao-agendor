@@ -6,6 +6,7 @@ const {
   getDealsWithFutureTasks,
 } = require('../agendor');
 const { getConfig } = require('../db');
+const { CORTE_DE_CRIACAO_PADRAO } = require('../agendor');
 const logger = require('../logger');
 
 // GET /api/deals/stale — lista negócios parados
@@ -28,6 +29,10 @@ async function staleHandler(req, res) {
       deals: dealsWithEmails,
       total: dealsWithEmails.length,
       staleDays,
+      // Acompanha `staleDays` pelo mesmo motivo: o painel rotulava o recorte com o texto
+      // fixo "Criados em 2026", digitado à mão em quatro telas. Devolvendo o corte efetivo,
+      // o rótulo não tem como divergir do filtro nem envelhecer sozinho.
+      dealsSince: getConfig('deals_since') || CORTE_DE_CRIACAO_PADRAO,
     });
   } catch (err) {
     // Só a MENSAGEM vai para o log — nunca o objeto de erro (CR-02). O AxiosError carrega

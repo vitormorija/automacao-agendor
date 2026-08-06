@@ -87,7 +87,7 @@ export default function ConfigPanel() {
       <Section title="Regras de monitoramento">
         <Field
           label="Dias sem atualização para alertar"
-          help="Negócios criados em 2026 sem atualização por X dias recebem notificação"
+          help="Negócios dentro do período monitorado, sem atualização por X dias, recebem notificação"
         >
           <input
             type="number"
@@ -96,6 +96,22 @@ export default function ConfigPanel() {
             value={config.stale_days || 15}
             onChange={(e) => handleChange('stale_days', e.target.value)}
             className="input w-24"
+          />
+        </Field>
+
+        {/* Este recorte era um literal em backend/src/agendor.js, repetido à mão como
+            "Criados em 2026" em três telas. Virou configuração para deixar de envelhecer
+            sozinho — e o aviso abaixo existe porque mexer aqui muda QUEM é notificado:
+            antecipar a data traz negócios antigos de volta para a fila de envio. */}
+        <Field
+          label="Monitorar negócios criados a partir de"
+          help="Negócios criados antes desta data são ignorados. Alterar aqui muda quem entra na fila — confira com “Verificar negócios parados” antes de disparar."
+        >
+          <input
+            type="date"
+            value={config.deals_since || ''}
+            onChange={(e) => handleChange('deals_since', e.target.value)}
+            className="input w-44"
           />
         </Field>
 

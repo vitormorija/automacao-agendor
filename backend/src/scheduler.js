@@ -654,7 +654,16 @@ function getStatus() {
     lastRunResult,
     schedule: getConfig('cron_schedule'),
     notificationsEnabled: getConfig('notifications_enabled') === 'true',
-    nextRun: currentTask ? 'agendado' : 'não agendado',
+    // `nextRun` devolvia a string literal 'agendado' — que informa se EXISTE agendamento e
+    // nada sobre QUANDO. Quem opera precisa do instante para conferir que a expressão cron e
+    // o fuso produzem o horário pretendido; era impossível notar pelo painel que uma
+    // expressão editada passou a disparar de madrugada. O instante real vem do
+    // getNextRun() que o node-cron 4 passou a expor.
+    //
+    // `nextRun` (ISO, ou null quando não há tarefa) é o campo novo; `nextRunLabel` preserva
+    // as duas strings antigas para qualquer consumidor que ainda leia texto.
+    nextRun: currentTask?.getNextRun?.()?.toISOString() ?? null,
+    nextRunLabel: currentTask ? 'agendado' : 'não agendado',
   };
 }
 

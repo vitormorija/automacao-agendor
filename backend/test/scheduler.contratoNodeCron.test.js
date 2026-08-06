@@ -64,7 +64,21 @@ test('scheduleTask/stopTasks sobrevivem à major', () => {
   const status = scheduler.getStatus();
   assert.equal(status.schedule, '0 8 * * *');
 
+  // O instante real da próxima execução, e não a palavra 'agendado': é ele que permite
+  // conferir pelo painel que a expressão cron e o fuso produzem o horário pretendido.
+  assert.match(
+    status.nextRun,
+    /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/,
+    'nextRun precisa ser o instante da próxima execução, em ISO',
+  );
+  assert.ok(
+    new Date(status.nextRun) > new Date(),
+    'a próxima execução não pode estar no passado',
+  );
+
   scheduler.stopTasks();
-  // Depois de parar, o status precisa refletir que não há tarefa viva — é o que o painel lê.
-  assert.equal(scheduler.getStatus().nextRun, 'não agendado');
+  // Sem tarefa viva não há instante a informar — e o rótulo textual volta ao estado antigo.
+  const parado = scheduler.getStatus();
+  assert.equal(parado.nextRun, null);
+  assert.equal(parado.nextRunLabel, 'não agendado');
 });
