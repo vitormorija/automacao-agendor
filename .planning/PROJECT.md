@@ -65,6 +65,7 @@ Antes de qualquer mudança, existir uma **rede de testes automatizados sobre a l
 - **Processo**: Não alterar comportamento funcional sem teste cobrindo o novo comportamento
 - **Processo**: Não misturar refatoração estrutural com novas funcionalidades no mesmo trabalho
 - **Processo**: Não remover código sem comprovar que está realmente inutilizado
+- **Processo**: Faça commits pequenos, independentes e reversíveis. Não misture refatoração estrutural com alteração de comportamento
 - **Deploy**: Alvo único de produção via PM2 (`ecosystem.config.js`), single-instance — sem staging, sem escala horizontal
 - **Tech stack**: Manter stack atual (Express 4, better-sqlite3 9, React 18, Vite 5); sem trocar frameworks nesta etapa
 - **Dados**: SQLite compartilhado para dados de negócio e auth; manter (sem migrar de banco)
