@@ -64,6 +64,33 @@ try {
   `);
 } catch (_) {}
 
+// Trilha de auditoria de ações sensíveis.
+//
+// `login_logs` (abaixo) registra ENTRADA no sistema. Esta tabela registra o que foi FEITO
+// depois de entrar — mudar configuração, disparar e-mail, criar ou excluir usuário —, que é
+// o que o parecer de segurança pediu junto com os papéis: sem ela, o controle de acesso diz
+// quem PODE agir e nada diz sobre quem AGIU.
+//
+// `status` guarda o código HTTP porque a tentativa NEGADA é tão relevante quanto a
+// permitida: um 403 repetido numa rota administrativa é o sinal de que alguém está tentando
+// o que não devia, e é exatamente esse sinal que se perde quando só o sucesso é registrado.
+try {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS audit_log (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      username TEXT,
+      acao TEXT NOT NULL,
+      detalhe TEXT,
+      status INTEGER,
+      ip TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+  `);
+  db.exec(
+    `CREATE INDEX IF NOT EXISTS idx_audit_created_at ON audit_log (created_at)`,
+  );
+} catch (_) {}
+
 // Log de acessos ao sistema
 try {
   db.exec(`
@@ -200,6 +227,20 @@ function setConfig(key, value) {
 function getAllConfig() {
   const rows = db.prepare('SELECT key, value FROM config').all();
   return Object.fromEntries(rows.map((r) => [r.key, r.value]));
+}
+
+function logAudit({ username, acao, detalhe, status, ip }) {
+  return db
+    .prepare(
+      'INSERT INTO audit_log (username, acao, detalhe, status, ip) VALUES (?, ?, ?, ?, ?)',
+    )
+    .run(username ?? null, acao, detalhe ?? null, status ?? null, ip ?? null);
+}
+
+function getAuditLogs(limit = 200) {
+  return db
+    .prepare('SELECT * FROM audit_log ORDER BY id DESC LIMIT ?')
+    .all(limit);
 }
 
 function logNotification({
@@ -502,5 +543,7 @@ module.exports = {
   getResetToken,
   markTokenUsed,
   logLogin,
+  logAudit,
+  getAuditLogs,
   getLoginLogs,
 };

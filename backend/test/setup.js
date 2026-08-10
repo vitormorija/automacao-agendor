@@ -11,8 +11,13 @@
 // a variável estiver ausente — assim um teste individual pode sobrescrever antes
 // (ex.: um DB_PATH em arquivo temporário para testar dedup) e vencer este preset.
 
+// 64 caracteres, o mesmo piso que src/secret.js passou a exigir (os 32 bytes do parecer de
+// segurança, em hexadecimal). O valor é descartável e deliberadamente legível como
+// "de teste": ele vai para dentro de um arquivo versionado, e o job `secrets` (gitleaks)
+// roda em todo PR — um hex aleatório de verdade aqui seria sinalizado como segredo vazado.
 if (!process.env.JWT_SECRET) {
-  process.env.JWT_SECRET = 'test-jwt-secret-0123456789abcdef';
+  process.env.JWT_SECRET =
+    'jwt-secret-de-teste-descartavel-sem-valor-em-producao-0123456789';
 }
 
 if (!process.env.DB_PATH) {

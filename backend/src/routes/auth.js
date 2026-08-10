@@ -15,6 +15,7 @@ const {
   markTokenUsed,
   logLogin,
   getLoginLogs,
+  getAuditLogs,
 } = require('../db');
 const { sendResetPasswordEmail } = require('../emailer');
 const { JWT_SECRET } = require('../secret');
@@ -54,6 +55,7 @@ function opcoesDoCookie() {
 // cabeçalho de lá: além de falhar aberto, ele protegia a superfície errada — gestão de
 // usuário exigia papel enquanto mudar SMTP e disparar e-mail em massa não exigiam nada.
 const { requireAdmin, isAdmin } = require('../middleware/requireAdmin');
+const { auditar } = require('../middleware/auditoria');
 
 // ── Rate limiting ────────────────────────────────────────────────
 // A regra saiu daqui para src/rateLimit.js quando passou a ter DOIS consumidores. Os
@@ -108,6 +110,15 @@ async function ensureDefaultUsers() {
   const seedPassword = process.env.SEED_ADMIN_PASSWORD || '';
 
   if (seedEmail && seedPassword && listUsers().length === 0) {
+    // O quarto caminho que grava senha, e o mais sensível: esta conta nasce administradora.
+    // Recusar em vez de criar fraco — um boot sem admin é um problema visível que o operador
+    // conserta em um minuto; um admin com senha curta é um problema invisível que fica.
+    if (seedPassword.length < MIN_SENHA) {
+      logger.error(
+        `[Auth] SEED_ADMIN_PASSWORD tem menos de ${MIN_SENHA} caracteres — o usuário inicial NÃO foi criado. Defina uma senha maior e reinicie.`,
+      );
+      return;
+    }
     const hash = await bcrypt.hash(seedPassword, BCRYPT_ROUNDS);
     createUser(seedEmail, hash);
     logger.info(`[Auth] Usuário administrador inicial criado: ${seedEmail}`);
@@ -378,39 +389,69 @@ router.get('/users', requireAdmin, (req, res) => {
 });
 
 // ── POST /api/auth/users ─────────────────────────────────────────
-router.post('/users', requireAdmin, async (req, res) => {
-  const { username, password } = req.body;
-  if (!username || !password) {
-    return res
-      .status(400)
-      .json({ ok: false, message: 'Usuário e senha são obrigatórios.' });
-  }
-  try {
-    const hash = await bcrypt.hash(password, BCRYPT_ROUNDS);
-    createUser(username, hash);
-    res.json({
-      ok: true,
-      message: `Usuário "${username}" criado com sucesso.`,
-    });
-  } catch (err) {
-    res.status(400).json({ ok: false, message: err.message });
-  }
-});
+router.post(
+  '/users',
+  auditar('usuario.criar'),
+  requireAdmin,
+  async (req, res) => {
+    const { username, password } = req.body;
+    if (!username || !password) {
+      return res
+        .status(400)
+        .json({ ok: false, message: 'Usuário e senha são obrigatórios.' });
+    }
+    // O MESMO piso da redefinição e da troca de senha. Sem ele a política era decorativa:
+    // bastava um administrador criar a conta com senha de um caractere para contornar as
+    // outras duas portas — e uma conta criada assim nasce com o mesmo acesso de qualquer
+    // outra. É o terceiro caminho que grava senha, e faltava justamente ele.
+    if (password.length < MIN_SENHA) {
+      return res.status(400).json({
+        ok: false,
+        message: `A senha deve ter pelo menos ${MIN_SENHA} caracteres.`,
+      });
+    }
+    try {
+      const hash = await bcrypt.hash(password, BCRYPT_ROUNDS);
+      createUser(username, hash);
+      res.json({
+        ok: true,
+        message: `Usuário "${username}" criado com sucesso.`,
+      });
+    } catch (err) {
+      res.status(400).json({ ok: false, message: err.message });
+    }
+  },
+);
 
 // ── DELETE /api/auth/users/:username ────────────────────────────
-router.delete('/users/:username', requireAdmin, (req, res) => {
-  if (req.params.username === req.user?.username) {
-    return res
-      .status(400)
-      .json({ ok: false, message: 'Você não pode excluir o próprio usuário.' });
-  }
-  deleteUser(req.params.username);
-  res.json({ ok: true });
-});
+router.delete(
+  '/users/:username',
+  auditar('usuario.excluir'),
+  requireAdmin,
+  (req, res) => {
+    if (req.params.username === req.user?.username) {
+      return res
+        .status(400)
+        .json({
+          ok: false,
+          message: 'Você não pode excluir o próprio usuário.',
+        });
+    }
+    deleteUser(req.params.username);
+    res.json({ ok: true });
+  },
+);
 
 // ── GET /api/auth/logs ───────────────────────────────────────────
 router.get('/logs', requireAdmin, (req, res) => {
   res.json(getLoginLogs(100));
+});
+
+// ── GET /api/auth/audit ──────────────────────────────────────────
+// A trilha só serve se alguém puder lê-la. Fica ao lado de /logs (que é a trilha de
+// ENTRADA) e sob o mesmo papel: quem não pode agir também não precisa ver quem agiu.
+router.get('/audit', requireAdmin, (req, res) => {
+  res.json(getAuditLogs(200));
 });
 
 module.exports = router;

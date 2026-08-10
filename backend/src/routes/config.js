@@ -5,6 +5,11 @@ const { getAllConfig, setConfig } = require('../db');
 const { scheduleTask } = require('../scheduler');
 const { verifySmtp } = require('../emailer');
 const { requireAdmin } = require('../middleware/requireAdmin');
+const { auditar } = require('../middleware/auditoria');
+
+// `auditar` vem ANTES de `requireAdmin` de propósito: assim a tentativa NEGADA também é
+// registrada. Um 403 repetido aqui é o sinal de que alguém está tentando o que não devia —
+// e é exatamente esse sinal que se perde quando só o sucesso entra na trilha.
 
 // Valida cada chave de configuração. Retorna mensagem de erro ou null se ok.
 const isBool = (v) => v === 'true' || v === 'false';
@@ -80,7 +85,7 @@ router.get('/', (req, res) => {
 });
 
 // PUT /api/config
-router.put('/', requireAdmin, (req, res) => {
+router.put('/', auditar('config.alterar'), requireAdmin, (req, res) => {
   // Valida antes de gravar qualquer coisa (tudo ou nada).
   const updates = {};
   for (const key of ALLOWED_KEYS) {
@@ -96,6 +101,11 @@ router.put('/', requireAdmin, (req, res) => {
     updates[key] = value;
   }
 
+  // O QUE mudou entra na trilha; o VALOR não. Chaves como smtp_user e admin_email
+  // carregam endereço de pessoa, e uma trilha de auditoria não deve virar um segundo
+  // lugar onde esse dado é acumulado.
+  req.auditDetalhe = `chaves: ${Object.keys(updates).join(', ') || '(nenhuma)'}`;
+
   for (const [key, value] of Object.entries(updates)) setConfig(key, value);
 
   // Reagendar se necessário
@@ -104,14 +114,19 @@ router.put('/', requireAdmin, (req, res) => {
 });
 
 // POST /api/config/test-smtp — testa conexão SMTP
-router.post('/test-smtp', requireAdmin, async (req, res) => {
-  try {
-    await verifySmtp();
-    res.json({ ok: true, message: 'Conexão SMTP bem-sucedida!' });
-  } catch (err) {
-    res.status(400).json({ ok: false, message: err.message });
-  }
-});
+router.post(
+  '/test-smtp',
+  auditar('config.testar-smtp'),
+  requireAdmin,
+  async (req, res) => {
+    try {
+      await verifySmtp();
+      res.json({ ok: true, message: 'Conexão SMTP bem-sucedida!' });
+    } catch (err) {
+      res.status(400).json({ ok: false, message: err.message });
+    }
+  },
+);
 
 module.exports = router;
 
