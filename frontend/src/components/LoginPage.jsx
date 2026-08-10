@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { MIN_SENHA } from '../constantes';
 import {
   Lock,
   User,
@@ -21,8 +22,8 @@ function ResetPasswordForm({ token }) {
 
   async function handleSubmit(e) {
     e.preventDefault();
-    if (password.length < 6) {
-      toast.error('A senha deve ter pelo menos 6 caracteres.');
+    if (password.length < MIN_SENHA) {
+      toast.error(`A senha deve ter pelo menos ${MIN_SENHA} caracteres.`);
       return;
     }
     if (password !== confirm) {
@@ -98,7 +99,7 @@ function ResetPasswordForm({ token }) {
                   type={showPass ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Mínimo 6 caracteres"
+                  placeholder={`Mínimo ${MIN_SENHA} caracteres`}
                   autoFocus
                   className="w-full pl-9 pr-10 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
                 />

@@ -40,15 +40,44 @@ const { lerToken, COOKIE_SESSAO } = require('../middleware/auth');
 //             Não custa usabilidade aqui porque o painel é aberto direto, e não por link
 //             de terceiro; e o único link que mandamos por e-mail (redefinição de senha)
 //             aponta para uma rota pública, que não depende do cookie.
-//   secure    só em produção — em desenvolvimento o painel roda em http://localhost e um
-//             cookie `secure` simplesmente não seria gravado.
-function opcoesDoCookie() {
+//   secure    derivado do PROTOCOLO REAL da requisição, e não de NODE_ENV.
+//
+// POR QUE NÃO `NODE_ENV === 'production'`, QUE ERA A VERSÃO ANTERIOR. `ecosystem.config.js`
+// define NODE_ENV=production, mas o `deploy/nginx.conf` que o repositório entrega escuta em
+// :80 com o redirect para HTTPS e o bloco `listen 443 ssl` COMENTADOS. A combinação emitia
+// um cookie `Secure` sobre uma origem `http://` — que todo navegador descarta em silêncio.
+// O efeito seria o painel abrir, renderizar, e então toda chamada seguinte responder 401,
+// sem nenhum caminho alternativo (o Bearer foi removido). Ninguém conseguiria entrar, e o
+// primeiro sinal viria de um usuário, não de um teste: em desenvolvimento secure é falso e
+// em localhost o navegador aceita Secure de qualquer jeito.
+//
+// `req.secure` responde a pergunta certa — esta conexão é HTTPS? —, e com
+// `trust proxy: 'loopback'` ele já considera o X-Forwarded-Proto que o nginx envia. Assim o
+// cookie é Secure exatamente quando pode ser, e a aplicação funciona nas duas topologias em
+// vez de escolher uma e quebrar na outra.
+function opcoesDoCookie(req) {
   return {
     httpOnly: true,
     sameSite: 'strict',
-    secure: process.env.NODE_ENV === 'production',
+    secure: req.secure === true,
     path: '/',
   };
+}
+
+// Servir o painel em HTTP puro é uma decisão de infraestrutura, não um detalhe: sem TLS o
+// cookie de sessão viaja legível na rede. O código não pode impedir isso — recusar o login
+// deixaria o sistema inutilizável —, mas pode parar de deixar acontecer em silêncio. Avisa
+// UMA vez por processo, para não inundar o log a cada requisição.
+let avisouSemTls = false;
+function avisarSeSemTls(req) {
+  if (avisouSemTls || req.secure || process.env.NODE_ENV !== 'production')
+    return;
+  avisouSemTls = true;
+  logger.warn(
+    '[Auth] Sessão emitida sobre HTTP em ambiente de produção: o cookie NÃO pôde ser marcado ' +
+      'como Secure e trafega legível na rede. Habilite TLS (deploy/nginx.conf tem o bloco 443 ' +
+      'comentado) e redirecione :80 para :443.',
+  );
 }
 
 // requireAdmin saiu daqui para middleware/requireAdmin.js. O motivo está escrito no
@@ -78,7 +107,13 @@ const clearAttempts = limitadorLogin.clear;
 // SMTP da empresa, e o endereço de destino vem do corpo da requisição. Sem cota, a rota
 // pública é um canal de envio aberto — que é justamente o motivo de ela ter cota ANTES de
 // virar pública, e não depois.
-const MAX_RECUPERACOES = 3;
+// 10, e não 3. O número precisa caber num ESCRITÓRIO, não numa pessoa: com `trust proxy` o
+// req.ip é o endereço público real, e todo mundo atrás do mesmo NAT corporativo divide um
+// único endereço. Três era pouco a ponto de a quarta pessoa do dia levar 429 sem ninguém ter
+// abusado — e o cenário mais provável de acontecer é justamente o pior, uma onda de
+// recuperações logo após a rotação de credencial que este mesmo trabalho torna necessária.
+// Dez continua longe de ser um canal de spam utilizável, que é o que a cota existe para impedir.
+const MAX_RECUPERACOES = 10;
 const limitadorRecuperacao = criarLimitador({
   maxTentativas: MAX_RECUPERACOES,
   minutosBloqueio: BLOCK_MINUTES,
@@ -210,8 +245,9 @@ router.post('/login', async (req, res) => {
   // O token vai no cookie e NÃO no corpo da resposta. Devolvê-lo também no JSON manteria
   // viva a via que esta mudança fecha: o painel voltaria a poder guardá-lo no localStorage,
   // e o HttpOnly do cookie deixaria de significar coisa alguma.
+  avisarSeSemTls(req);
   res.cookie(COOKIE_SESSAO, token, {
-    ...opcoesDoCookie(),
+    ...opcoesDoCookie(req),
     maxAge: TOKEN_EXPIRY_MS,
   });
 
@@ -250,7 +286,7 @@ router.post('/verify', (req, res) => {
 router.post('/logout', (req, res) => {
   // Os atributos precisam ser os MESMOS do login. Um clearCookie sem `path`/`sameSite`
   // iguais mira um cookie diferente do que existe, responde 200 e não apaga nada.
-  res.clearCookie(COOKIE_SESSAO, opcoesDoCookie());
+  res.clearCookie(COOKIE_SESSAO, opcoesDoCookie(req));
   res.json({ ok: true });
 });
 
@@ -430,12 +466,10 @@ router.delete(
   requireAdmin,
   (req, res) => {
     if (req.params.username === req.user?.username) {
-      return res
-        .status(400)
-        .json({
-          ok: false,
-          message: 'Você não pode excluir o próprio usuário.',
-        });
+      return res.status(400).json({
+        ok: false,
+        message: 'Você não pode excluir o próprio usuário.',
+      });
     }
     deleteUser(req.params.username);
     res.json({ ok: true });

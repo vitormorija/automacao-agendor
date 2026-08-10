@@ -13,13 +13,25 @@ const logger = require('../logger');
 // depois. Aqui a auditoria fica ao lado do `requireAdmin` na declaração da rota: quem
 // adiciona uma rota administrativa vê os dois juntos e dificilmente copia só um.
 //
-// POR QUE `res.on('finish')`. O registro sai DEPOIS que a resposta foi enviada, então grava
-// o desfecho REAL — inclusive o código de status. Registrar antes gravaria a intenção, e
-// intenção não é evidência: uma rodada que falhou no meio apareceria como se tivesse dado
-// certo.
+// POR QUE O REGISTRO SAI NO FIM DA RESPOSTA. Gravando depois, a linha carrega o desfecho
+// REAL — inclusive o código de status. Registrar antes gravaria a INTENÇÃO, e intenção não é
+// evidência: uma rodada que falhou no meio apareceria como se tivesse dado certo.
 function auditar(acao) {
   return (req, res, next) => {
-    res.on('finish', () => {
+    // OS DOIS EVENTOS, e uma trava. `finish` marca "resposta enviada por inteiro"; `close`
+    // marca "conexão terminou", inclusive quando o cliente desistiu ou o proxy cortou.
+    // Ouvir só `finish` perdia justamente o registro mais importante: `POST /run` pagina a
+    // API Agendor com retry e envia SMTP por negócio, e o deploy/nginx.conf corta a conexão
+    // com o backend em 60s (`proxy_read_timeout`). Numa rodada real que passe disso, o
+    // socket é destruído, `finish` nunca vem — e a trilha ficava sem linha para um disparo
+    // que JÁ COLOCOU e-mail em caixas de entrada reais.
+    //
+    // `close` sempre dispara, então a trava evita a linha duplicada no caminho normal, em
+    // que os dois eventos ocorrem.
+    let registrado = false;
+    const registrar = () => {
+      if (registrado) return;
+      registrado = true;
       try {
         logAudit({
           username: req.user?.username ?? null,
@@ -38,7 +50,10 @@ function auditar(acao) {
         // é pior. A falha vira log de erro, que é o sinal de que a trilha tem um buraco.
         logger.error('[Auditoria] Falha ao registrar ação:', err.message);
       }
-    });
+    };
+
+    res.on('finish', registrar);
+    res.on('close', registrar);
     next();
   };
 }

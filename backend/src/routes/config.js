@@ -90,7 +90,14 @@ router.put('/', auditar('config.alterar'), requireAdmin, (req, res) => {
   const updates = {};
   for (const key of ALLOWED_KEYS) {
     const value = req.body[key];
+    // `deals_since` vazio é IGNORADO, não recusado. O painel reenvia o objeto inteiro a cada
+    // save, e o <input type="date"> devolve '' enquanto a data está incompleta ou foi limpa —
+    // com a validação estrita, um campo em branco reprovava o PUT inteiro e derrubava junto
+    // as outras nove chaves (a gravação é tudo-ou-nada). O admin perdia a capacidade de
+    // salvar SMTP, agendamento ou o interruptor de notificações por causa de um campo que
+    // nem estava editando. Mesmo tratamento que a máscara da senha SMTP já recebia.
     if (value === undefined || value === '••••••••') continue;
+    if (key === 'deals_since' && value === '') continue;
     if (typeof value !== 'string' || value.length > 500) {
       return res
         .status(400)

@@ -89,9 +89,15 @@ export default function Dashboard({ onTabChange, isAdmin = false }) {
     // reversíveis ou inócuas — verificar não envia nada —, mas esta coloca e-mail na caixa
     // de entrada de gente de verdade e não tem desfazer. O texto diz QUANTOS e para QUEM,
     // porque um "tem certeza?" genérico só treina a pessoa a clicar em OK.
+    // Os DOIS endereços. `sendStaleNotification` envia para ownerEmail E authorEmail, e o
+    // backend marca `seraNotificado` com `Boolean(ownerEmail || authorEmail)` — contar só o
+    // responsável fazia a caixa dizer "1 negócio será notificado para 0 destinatários",
+    // com a lista vazia, sempre que o responsável não tivesse e-mail cadastrado e o autor
+    // tivesse. Com notify_author ligado, todo destinatário-autor sumia da amostra: o
+    // diálogo subestimava quem recebe, que é o oposto do motivo de ele existir.
     const destinatarios = (checkResult?.deals || [])
       .filter((d) => d.seraNotificado !== false)
-      .map((d) => d.ownerEmail)
+      .flatMap((d) => [d.ownerEmail, d.authorEmail])
       .filter(Boolean);
     const unicos = [...new Set(destinatarios)];
     const amostra = unicos.slice(0, 5).join('\n  ');

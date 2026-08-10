@@ -120,7 +120,14 @@ app.use(express.json());
 // LOG_DIR é um seam de teste, no mesmo padrão de DB_PATH: sem ele, exercitar o app
 // por HTTP faria a suíte escrever no logs/ real do repositório a cada requisição de
 // teste. O default preserva exatamente o caminho anterior.
-const logDir = process.env.LOG_DIR || path.join(__dirname, '../../logs');
+// RESOLVIDO CONTRA __dirname, e não contra o cwd. Um `LOG_DIR=../logs` relativo cairia em
+// `/opt/logs` sob PM2 (que roda com cwd `/opt/agendor`), e não no `/opt/agendor/logs` que o
+// ecosystem.config.js e o deploy/backup.sh referenciam: o operador abriria o error.log vazio
+// enquanto os stack traces estariam noutro lugar. É exatamente a dependência de diretório de
+// trabalho que a correção D-13 tirou do dotenv, e que este seam reintroduziria.
+const logDir = process.env.LOG_DIR
+  ? path.resolve(__dirname, process.env.LOG_DIR)
+  : path.join(__dirname, '../../logs');
 if (!fs.existsSync(logDir)) fs.mkdirSync(logDir, { recursive: true });
 
 // Log em arquivo (produção) + console (desenvolvimento)

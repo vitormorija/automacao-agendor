@@ -66,33 +66,41 @@ test('login devolve a sessão em cookie, e NÃO no corpo', async (t) => {
   assert.match(cookie, /Path=\//i);
 });
 
-test('Secure só em produção — em http local o cookie não seria gravado', async (t) => {
+test('Secure acompanha o PROTOCOLO, e não o NODE_ENV', async (t) => {
   const srv = await startServer();
   t.after(() => srv.close());
   await criarUsuario();
 
-  const pedirLogin = (ip) =>
+  const pedirLogin = (ip, extra = {}) =>
     srv.request('/api/auth/login', {
       method: 'POST',
       body: { username: USUARIO, password: SENHA },
-      headers: { 'X-Forwarded-For': ip },
+      headers: { 'X-Forwarded-For': ip, ...extra },
     });
 
-  const semProducao = cookieDaSessao(await pedirLogin('10.7.0.2'));
-  assert.doesNotMatch(
-    semProducao,
-    /Secure/i,
-    'fora de produção o painel roda em http://localhost e um cookie Secure seria descartado',
-  );
-
+  // ESTE CASO MUDOU DE AFIRMAÇÃO na revisão de código, e a versão anterior estava errada.
+  // Ela dizia "Secure só em produção" e media exatamente isso — enquanto o deploy que o
+  // repositório entrega roda com NODE_ENV=production sobre HTTP puro (nginx na porta 80,
+  // bloco 443 comentado). O cookie sairia Secure numa origem http://, todo navegador o
+  // descartaria, e ninguém conseguiria entrar no painel. O teste passava porque afirmava a
+  // regra errada com precisão.
   const anterior = process.env.NODE_ENV;
   process.env.NODE_ENV = 'production';
   try {
-    const emProducao = cookieDaSessao(await pedirLogin('10.7.0.3'));
-    assert.match(
-      emProducao,
+    const sobreHttp = cookieDaSessao(await pedirLogin('10.7.0.2'));
+    assert.doesNotMatch(
+      sobreHttp,
       /Secure/i,
-      'em produção o cookie precisa exigir HTTPS',
+      'produção sobre HTTP não pode emitir Secure — o navegador descartaria o cookie',
+    );
+
+    const sobreHttps = cookieDaSessao(
+      await pedirLogin('10.7.0.3', { 'X-Forwarded-Proto': 'https' }),
+    );
+    assert.match(
+      sobreHttps,
+      /Secure/i,
+      'sob HTTPS o cookie precisa exigir canal seguro',
     );
   } finally {
     process.env.NODE_ENV = anterior;

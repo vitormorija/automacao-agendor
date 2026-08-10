@@ -110,6 +110,18 @@ function assuntoSeguro(texto) {
   );
 }
 
+// Mesma razão do rótulo do painel, e o mesmo defeito que ele tinha: a frase era digitada à
+// mão e podia divergir do filtro. Aqui a divergência era pior — o painel é lido por quem
+// configurou, enquanto ESTA frase vai para a caixa de entrada de toda a equipe comercial, e
+// a partir de 2027 estaria simplesmente errada para todo mundo.
+function rotuloDoCorteEmail() {
+  const bruto = (getConfig('deals_since') || '').trim();
+  if (!bruto) return 'monitorados';
+  const d = new Date(`${bruto}T00:00:00.000Z`);
+  if (Number.isNaN(d.getTime())) return 'monitorados';
+  return `criados a partir de ${d.toLocaleDateString('pt-BR', { timeZone: 'UTC' })}`;
+}
+
 function urgencyColor(days) {
   if (days >= 45) return '#dc2626';
   if (days >= 30) return '#d97706';
@@ -256,7 +268,7 @@ function dealEmailHtml({ deal, ownerName, role, logId }) {
           <!-- Footer -->
           <p style="margin:0;font-size:12px;color:#9ca3af;border-top:1px solid #f3f4f6;padding-top:16px;line-height:1.6;">
             Este email foi enviado automaticamente pelo sistema de monitoramento do Agendor.<br>
-            Negócios criados em 2026 sem movimentação há mais de ${getConfig('stale_days') || 15} dias são monitorados diariamente.
+            Negócios ${rotuloDoCorteEmail()} sem movimentação há mais de ${getConfig('stale_days') || 15} dias são monitorados diariamente.
           </p>
 
         </td></tr>
@@ -548,7 +560,7 @@ function weeklySummaryHtml({ deals, weekLabel }) {
 
         <p style="color:#94a3b8;font-size:12px;border-top:1px solid #e5e7eb;padding-top:16px;margin-top:8px;">
           Este resumo é enviado automaticamente toda sexta-feira às 11h pelo sistema de monitoramento do Agendor.<br>
-          Inclui negócios criados em 2026 sem atualização há mais de ${getConfig('stale_days') || 15} dias.
+          Inclui negócios ${rotuloDoCorteEmail()} sem atualização há mais de ${getConfig('stale_days') || 15} dias.
         </p>
       </div>
     </body>
