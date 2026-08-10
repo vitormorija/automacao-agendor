@@ -84,7 +84,7 @@ Automacao_agendor/
 └── .planning/codebase/               # Codebase map documents (this directory)
 ```
 
-Non-essential/generated artifacts at repo root (presentations, reports, exports) are gitignored (`*.pptx`, `*.docx`, `*.csv`, `*.xlsx`, `relatorio_*.html`, `slides_screenshots/`, `unpacked/`) and are not part of the application — ignore `Agendor_Atualizar_Cards.pptx`, `Solucao_Monitoramento_Agendor.*`, `make_*.js`, `capture_screenshots.py`, `luiz_andrade_*`, `empresas_luiz.*`, `relatorio_luiz_andrade.*` when navigating the codebase; they are one-off outputs, not source.
+Material that is not part of the application no longer sits loose at the repo root. Two gitignored directories hold it: `tools/` (presentation/document generation scripts — `make_*.js`, `capture_screenshots.py` — plus their own `package.json`/`node_modules`) and `arquivos/` (`apresentacoes/`, `documentos/`, `dados/` — one-off outputs and CRM exports containing real names and e-mail addresses). Neither is source; ignore both when navigating the codebase. The application is `backend/` and `frontend/`, and nothing else ships.
 
 ## Directory Purposes
 
@@ -211,7 +211,7 @@ Non-essential/generated artifacts at repo root (presentations, reports, exports)
 ## Special Directories
 
 **`backend/node_modules/`, `frontend/node_modules/`, root `node_modules/`:**
-- Purpose: Installed dependencies (three separate `package.json`/`node_modules` trees: root, backend, frontend)
+- Purpose: Installed dependencies. Two trees belong to the application (`backend/`, `frontend/`); a third, `tools/`, exists only for the local generation scripts and is gitignored
 - Generated: Yes
 - Committed: No (gitignored)
 

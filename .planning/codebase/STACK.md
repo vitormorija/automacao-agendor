@@ -24,7 +24,7 @@
 **Package Manager:**
 - npm
 - Three separate `package.json`/lockfile pairs (no workspaces):
-  - `/package.json` + `/package-lock.json` (root — only `pptxgenjs`, used by ad-hoc scripts `make_pptx.js`, `make_docx.js`, `make_slides.js`, not part of the app)
+  - `tools/package.json` + `tools/package-lock.json` (only `pptxgenjs`, for the local generation scripts `make_pptx.js`, `make_docx.js`, `make_slides.js`). Moved out of the repo root and untracked: the scripts it serves were never versioned, so the manifest alone had nothing to run
   - `backend/package.json` + `backend/package-lock.json`
   - `frontend/package.json` + `frontend/package-lock.json`
 - All three lockfiles present (committed)
@@ -71,7 +71,7 @@
 - `recharts` ^3.8.1 - Charts on the Reports panel, `frontend/src/components/ReportPanel.jsx`
 - `react-hot-toast` ^2.4.1 - Toast notifications across UI
 - `lucide-react` ^0.395.0 - Icon set
-- `pptxgenjs` ^4.0.1 - Present in both root `package.json` and `backend/devDependencies`; used only by ad-hoc/one-off scripts (`make_pptx.js`, `make_slides.js`) for generating presentation decks, not part of the running application
+- `pptxgenjs` ^4.0.1 - Lives in `tools/package.json` only. It WAS also declared in `backend/devDependencies`, where nothing imported it — dead weight in every `npm ci` of the CI backend job, and needless supply-chain surface for a project under dependency audit. Removed from the backend on 2026-08-10; used solely by the local deck-generation scripts
 
 ## Configuration
 
