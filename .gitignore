@@ -6,8 +6,13 @@ node_modules/
 .env.*
 
 # Banco de dados (dados locais)
+# O sufixo importa: `*.db` NÃO cobre `agendor.db.bak-2026-08-10`. Backups do banco
+# carregam hashes de senha e dados reais do CRM — o padrão abaixo existe para que um
+# `git add .` distraído não os versione.
 *.db
 *.db-journal
+*.db.bak*
+*.db.backup*
 
 # Build
 dist/
