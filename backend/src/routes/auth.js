@@ -19,6 +19,7 @@ const {
 } = require('../db');
 const { sendResetPasswordEmail } = require('../emailer');
 const { JWT_SECRET } = require('../secret');
+const { motivoBloqueio, mensagemBloqueio } = require('../senhasBloqueadas');
 const logger = require('../logger');
 
 // Sessão de 4h. Era 8h: encurtar é a metade barata da mitigação — a outra metade é tirar o
@@ -151,6 +152,15 @@ async function ensureDefaultUsers() {
     if (seedPassword.length < MIN_SENHA) {
       logger.error(
         `[Auth] SEED_ADMIN_PASSWORD tem menos de ${MIN_SENHA} caracteres — o usuário inicial NÃO foi criado. Defina uma senha maior e reinicie.`,
+      );
+      return;
+    }
+    // Mesma razão do piso de tamanho, um degrau acima: esta conta nasce administradora e a
+    // senha vem de uma variável de ambiente que alguém digitou às pressas durante um deploy.
+    // É o caminho mais provável para uma senha comum entrar no sistema.
+    if (motivoBloqueio(seedPassword)) {
+      logger.error(
+        '[Auth] SEED_ADMIN_PASSWORD é uma senha comum ou já vazada — o usuário inicial NÃO foi criado. Escolha outra e reinicie.',
       );
       return;
     }
@@ -316,6 +326,12 @@ router.post('/change-password', async (req, res) => {
       message: `A nova senha deve ter pelo menos ${MIN_SENHA} caracteres.`,
     });
   }
+  const bloqueio = motivoBloqueio(newPassword);
+  if (bloqueio) {
+    return res
+      .status(400)
+      .json({ ok: false, message: mensagemBloqueio(bloqueio) });
+  }
 
   const user = getUser(username);
   if (!user)
@@ -395,6 +411,12 @@ router.post('/reset-password', async (req, res) => {
       message: `A senha deve ter pelo menos ${MIN_SENHA} caracteres.`,
     });
   }
+  const bloqueio = motivoBloqueio(newPassword);
+  if (bloqueio) {
+    return res
+      .status(400)
+      .json({ ok: false, message: mensagemBloqueio(bloqueio) });
+  }
 
   const record = getResetToken(token);
   if (!record) {
@@ -445,6 +467,12 @@ router.post(
         ok: false,
         message: `A senha deve ter pelo menos ${MIN_SENHA} caracteres.`,
       });
+    }
+    const bloqueio = motivoBloqueio(password);
+    if (bloqueio) {
+      return res
+        .status(400)
+        .json({ ok: false, message: mensagemBloqueio(bloqueio) });
     }
     try {
       const hash = await bcrypt.hash(password, BCRYPT_ROUNDS);
