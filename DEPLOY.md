@@ -119,7 +119,7 @@ Três regras, todas verificadas nos quatro caminhos que gravam senha (criar usu�
 - não pode ser uma **senha comum** (`senha123`, `admin123`, `password`…);
 - não pode **conter `cadmus2026`** — a senha que vazou no commit público `9c39c40`. A regra é por continência, e não por igualdade, porque `cadmus2026` sozinha já morre no piso de 12 caracteres: quem a encontra no histórico do Git tenta as *variantes*, não ela mesma.
 
-> ⚠️ Consequência prática: **`Cadmus2026@Agendor` é recusada por esta regra.** Se ela estiver em uso, o login continua funcionando (o login não valida política), mas ela não pode ser usada como `SEED_ADMIN_PASSWORD` nem escolhida numa troca de senha — o seed aborta e avisa no log. Escolha uma senha sem relação com a que vazou.
+> A regra pega variantes, e isso já aconteceu na prática: `Cadmus2026@Agendor` chegou a ser usada e é **recusada** — o login com ela funcionaria (o login não valida política), mas o seed abortaria em produção e ninguém conseguiria escolhê-la numa troca de senha. Foi substituída em 11/08/2026. Ao escolher a senha do `SEED_ADMIN_PASSWORD`, confira que ela não contém `cadmus2026` em nenhuma forma.
 
 ## 5. Já resolvido
 
