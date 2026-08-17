@@ -301,13 +301,27 @@ async function sendMailWithRetry(transporter, mailOptions, retries = 3) {
       await transporter.sendMail(mailOptions);
       return { success: true, transporteEmUso: transporter };
     } catch (err) {
-      const isNetworkError =
+      // A conexão caiu ou expirou antes de o servidor chegar a responder.
+      const erroDeRede =
         err.code === 'ECONNRESET' ||
         err.code === 'ETIMEDOUT' ||
         err.message?.toLowerCase().includes('timeout') ||
         err.message?.toLowerCase().includes('econnreset');
 
-      if (isNetworkError && attempt < retries) {
+      // O servidor respondeu, e respondeu 4xx. No SMTP a classe 4 significa "temporário,
+      // tente de novo" — é a própria borda PEDINDO retentativa, e era exatamente o caso
+      // que esta função existia para cobrir e não cobria. Em 17/08/2026 a Locaweb devolveu
+      // `451 4.3.0 queue file write error` no vigésimo e-mail de uma rodada de 40; como a
+      // guarda só reconhecia falha de rede, desistiu na PRIMEIRA tentativa e a notificação
+      // ficou para o dia seguinte.
+      //
+      // A classe 5 fica de fora de propósito: ela é recusa DEFINITIVA (caixa inexistente,
+      // mensagem barrada por conteúdo). Retentar um 5xx repete o mesmo erro três vezes e
+      // ainda atrasa todos os destinatários seguintes da rodada.
+      const respostaTemporaria =
+        err.responseCode >= 400 && err.responseCode < 500;
+
+      if ((erroDeRede || respostaTemporaria) && attempt < retries) {
         const wait = attempt * 3000; // 3s, 6s entre tentativas
         console.warn(
           `[Emailer] Tentativa ${attempt} falhou (${err.message}). Aguardando ${wait / 1000}s antes de retentar...`,
