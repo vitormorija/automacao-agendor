@@ -28,6 +28,14 @@ if (!process.env.AGENDOR_TOKEN) {
   process.env.AGENDOR_TOKEN = 'test';
 }
 
+// Desliga a pausa entre envios (scheduler.js). Em produção ela vale 3s e protege o servidor
+// SMTP de um pico de conexões; numa suíte que roda `runCheck` com vários negócios, ela
+// custaria 3s por notificação e travaria o CI. Zero é o valor que a própria função trata
+// como "sem pausa", então isto exercita o mesmo caminho de produção, só sem esperar.
+if (!process.env.EMAIL_INTERVALO_MS) {
+  process.env.EMAIL_INTERVALO_MS = '0';
+}
+
 // Mesmo motivo e mesmo padrão de DB_PATH, para o outro efeito de import que passou a
 // existir quando a montagem do Express saiu de index.js para app.js: `require('../src/app')`
 // abre dois streams de escrita (morgan + erro) no diretório de logs. Sem este desvio, cada

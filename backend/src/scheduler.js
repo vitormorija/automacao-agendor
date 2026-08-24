@@ -19,6 +19,29 @@ const {
 } = require('./emailer');
 const logger = require('./logger');
 
+// ── Ritmo de envio ────────────────────────────────────────────────
+// Pausa entre dois envios consecutivos da mesma rodada.
+//
+// Existe por causa de 17/08/2026: 40 e-mails saíram em 67 segundos e o servidor recusou o
+// vigésimo com `451 4.3.0 queue file write error`. O limite que estourou NÃO é o de volume
+// — a Locaweb permite 100 mensagens por hora por caixa, e a rodada nem chega perto — mas o
+// de CONEXÕES: `sendStaleNotification` cria um transporte próprio por notificação, então
+// foram ~40 conexões em pouco mais de um minuto. Contra limite de conexão a defesa é
+// espaçar, não enviar menos.
+//
+// O default de 3s leva uma rodada de 40 de ~1min para ~2min, o que é irrelevante num
+// disparo agendado para as 8h, e derruba a taxa para 20 conexões por minuto. Fica em
+// variável de ambiente porque o número certo é do PROVEDOR e não do código: trocando de
+// SMTP, ajusta-se sem alterar código nem abrir PR. Zero desliga a pausa — é o que
+// test/setup.js define, para a suíte não pagar 3s por negócio.
+const INTERVALO_ENVIO_MS =
+  Number.parseInt(process.env.EMAIL_INTERVALO_MS, 10) || 3000;
+
+function pausaEntreEnvios() {
+  if (!(INTERVALO_ENVIO_MS > 0)) return Promise.resolve();
+  return new Promise((resolver) => setTimeout(resolver, INTERVALO_ENVIO_MS));
+}
+
 let currentTask = null;
 let weeklyTask = null;
 let lastRunResult = null;
@@ -426,6 +449,12 @@ async function runCheck() {
             if (houveEnvioConfirmado) results.notified++;
           }
         }
+
+        // A pausa fica AQUI, e não no topo do laço, de propósito: só paga o intervalo quem
+        // realmente tentou enviar. Negócio deduplicado, sem responsável ou com notificação
+        // desligada não abre conexão nenhuma, e fazê-lo esperar transformaria uma rodada de
+        // 300 negócios com 5 notificações em vinte minutos de nada.
+        await pausaEntreEnvios();
       } else {
         // Quarto e último ramo de skip — era o único sem motivo escrito nenhum (D-CR4-01-f).
         // Um negócio suprimido sem justificativa é exatamente o que CR4-01 descreve numa escala
