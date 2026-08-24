@@ -27,6 +27,16 @@ const path = require('node:path');
 const crypto = require('node:crypto');
 
 const BACKEND_DIR = path.join(__dirname, '..');
+// A ordem de carregamento que estes casos medem MUDOU DE ARQUIVO: a montagem do Express
+// (com o dotenv e o require('./config') no topo) saiu de index.js para app.js, para que a
+// cadeia de middlewares pudesse ser exercitada por HTTP nos testes. O invariante é o mesmo
+// — validar antes de qualquer módulo local — só que agora vale para app.js. O caso do boot
+// por subprocesso continua apontando para src/index.js de propósito: é ele o entrypoint
+// real do PM2, e é o boot inteiro, ponta a ponta, que precisa abortar.
+const FONTE_APP = fs.readFileSync(
+  path.join(BACKEND_DIR, 'src', 'app.js'),
+  'utf8',
+);
 const FONTE_INDEX = fs.readFileSync(
   path.join(BACKEND_DIR, 'src', 'index.js'),
   'utf8',
@@ -181,17 +191,17 @@ test('index.js: boot em produção sem obrigatórias falha com a mensagem do con
   );
 });
 
-// ── 6. A ordem de carregamento no index.js ───────────────────────
+// ── 6. A ordem de carregamento no app.js ─────────────────────────
 
-test('index.js: require(./config) vem logo após o dotenv, sem nada executável entre eles', () => {
-  const linhas = FONTE_INDEX.split('\n');
+test('app.js: require(./config) vem logo após o dotenv, sem nada executável entre eles', () => {
+  const linhas = FONTE_APP.split('\n');
   const acha = (re) => linhas.findIndex((l) => re.test(l));
 
   const iDotenv = acha(/require\('dotenv'\)\.config\(/);
   const iConfig = acha(/require\('\.\/config'\)/);
 
-  assert.notEqual(iDotenv, -1, 'index.js precisa carregar o dotenv');
-  assert.notEqual(iConfig, -1, "index.js precisa requerer './config' (CFG-04)");
+  assert.notEqual(iDotenv, -1, 'app.js precisa carregar o dotenv');
+  assert.notEqual(iConfig, -1, "app.js precisa requerer './config' (CFG-04)");
   assert.ok(
     iConfig > iDotenv,
     'validar antes do dotenv leria um process.env ainda vazio',
@@ -210,8 +220,8 @@ test('index.js: require(./config) vem logo após o dotenv, sem nada executável 
   }
 });
 
-test('index.js: a validação vem antes de QUALQUER outro módulo local', () => {
-  const linhas = FONTE_INDEX.split('\n');
+test('app.js: a validação vem antes de QUALQUER outro módulo local', () => {
+  const linhas = FONTE_APP.split('\n');
   const iConfig = linhas.findIndex((l) => /require\('\.\/config'\)/.test(l));
 
   // `./middleware/auth` puxa secret.js; `./routes/auth` puxa db.js, que abre e
@@ -220,11 +230,31 @@ test('index.js: a validação vem antes de QUALQUER outro módulo local', () => 
     (l) => /require\('\.\//.test(l) && !/require\('\.\/config'\)/.test(l),
   );
 
-  assert.notEqual(iConfig, -1, "index.js precisa requerer './config' (CFG-04)");
+  assert.notEqual(iConfig, -1, "app.js precisa requerer './config' (CFG-04)");
   assert.notEqual(iPrimeiroLocal, -1);
   assert.ok(
     iConfig < iPrimeiroLocal,
     `require('./config') precisa preceder o primeiro módulo local (linha ${iPrimeiroLocal + 1}: ${linhas[iPrimeiroLocal].trim()})`,
+  );
+});
+
+// IRMÃO CRIADO PELO SPLIT. Mover o dotenv e a validação para app.js abriu uma segunda
+// maneira de quebrar exatamente a mesma garantia: basta index.js requerer qualquer módulo
+// local ANTES de './app'. Nesse caso o db.js abriria o SQLite e o secret.js exigiria o
+// JWT_SECRET antes de o config.js ter chance de listar TODAS as faltantes de uma vez — que
+// é o comportamento que os casos 1-4 deste arquivo protegem. Os dois testes acima medem a
+// ordem DENTRO do app.js e não veriam isso; este mede a ordem no entrypoint.
+test('index.js: require(./app) precede qualquer outro módulo local', () => {
+  const linhas = FONTE_INDEX.split('\n');
+  const iApp = linhas.findIndex((l) => /require\('\.\/app'\)/.test(l));
+  const iPrimeiroLocal = linhas.findIndex(
+    (l) => /require\('\.\//.test(l) && !/require\('\.\/app'\)/.test(l),
+  );
+
+  assert.notEqual(iApp, -1, "index.js precisa requerer './app'");
+  assert.ok(
+    iPrimeiroLocal === -1 || iApp < iPrimeiroLocal,
+    `require('./app') carrega o dotenv e a validação: nenhum módulo local pode vir antes (linha ${iPrimeiroLocal + 1}: ${linhas[iPrimeiroLocal]?.trim()})`,
   );
 });
 

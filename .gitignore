@@ -6,8 +6,13 @@ node_modules/
 .env.*
 
 # Banco de dados (dados locais)
+# O sufixo importa: `*.db` NÃO cobre `agendor.db.bak-2026-08-10`. Backups do banco
+# carregam hashes de senha e dados reais do CRM — o padrão abaixo existe para que um
+# `git add .` distraído não os versione.
 *.db
 *.db-journal
+*.db.bak*
+*.db.backup*
 
 # Build
 dist/
@@ -15,7 +20,22 @@ dist/
 # Cobertura de testes (relatório gerado por c8 — report-only)
 coverage/
 
+# ── Material local, fora da aplicação ────────────────────────────
+# Duas pastas concentram o que antes ficava solto na raiz. A regra é por PASTA e não
+# mais por arquivo: a lista anterior nomeava `make_pptx.js`, `unpacked/` e afins um a
+# um, e todo arquivo novo desse tipo nascia versionável até alguém lembrar de
+# acrescentá-lo aqui.
+#
+#   arquivos/  apresentações, documentos e planilhas — inclui dados REAIS do CRM
+#              (nomes e e-mails de responsáveis). Nunca pode subir.
+#   tools/     scripts de geração de apresentação/documento e o node_modules deles.
+#              Não fazem parte do que é publicado; a aplicação vive em backend/ e frontend/.
+arquivos/
+tools/
+
 # Exports e dados de cliente (NUNCA versionar — contêm nomes, e-mails e dados reais do CRM)
+# Mantidos ALÉM da regra de pasta acima, de propósito: se um export for salvo por
+# engano fora de arquivos/, estes padrões continuam sendo a rede de baixo.
 /data/
 *.csv
 *.xlsx
@@ -27,20 +47,12 @@ relatorio_*.html
 .DS_Store
 Thumbs.db
 
-# Arquivos gerados (apresentações, docs)
+# Arquivos gerados (apresentações, docs) — mesma razão: rede de baixo por extensão
 *.pptx
 *.pptx.bak
 *.docx
 *.pdf
 ~$*
-
-# Screenshots e arquivos temporários
-slides_screenshots/
-unpacked/
-capture_screenshots.py
-make_pptx.js
-make_slides.js
-make_docx.js
 
 # Logs
 *.log

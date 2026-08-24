@@ -2,6 +2,7 @@
 // arquivo ou caso de teste —, nunca por número de linha, que se desloca no próprio commit que o escreve.
 const axios = require('axios');
 const logger = require('./logger');
+const { getConfig } = require('./db');
 
 const BASE_URL = 'https://api.agendor.com.br/v3';
 const TOKEN = process.env.AGENDOR_TOKEN;
@@ -299,10 +300,39 @@ async function fetchDealsPage(page, perPage, retries = 3) {
   return data;
 }
 
-// Busca negócios criados a partir de 2026, em andamento, com paginação paralela
+// Data de corte de CRIAÇÃO dos negócios monitorados.
+//
+// Era o literal `new Date('2026-01-01T00:00:00.000Z')` dentro de getStaleDeals, e o painel
+// repetia "Criados em 2026" como texto digitado à mão em quatro telas. Duas coisas erradas
+// nisso: o rótulo podia divergir do filtro sem ninguém perceber, e em 2027 a frase
+// continuaria dizendo 2026 — correta e incompreensível ao mesmo tempo.
+//
+// Agora mora na tabela `config`, com ESTE valor como default, de modo que um banco existente
+// que nunca teve a chave se comporta exatamente como antes.
+const CORTE_DE_CRIACAO_PADRAO = '2026-01-01';
+
+// Resolve o corte efetivo. Um valor inválido no banco NÃO pode virar `Invalid Date`: a
+// comparação `createdAt >= NaN` é sempre falsa e o sistema pararia de notificar TODO MUNDO
+// em silêncio, que é precisamente o modo de falha que a rede de testes existe para impedir.
+// Diante de valor irrecuperável, cai no padrão e registra.
+function resolverCorteDeCriacao() {
+  const bruto = (getConfig('deals_since') || '').trim();
+  if (!bruto) return new Date(`${CORTE_DE_CRIACAO_PADRAO}T00:00:00.000Z`);
+
+  const data = new Date(`${bruto}T00:00:00.000Z`);
+  if (Number.isNaN(data.getTime())) {
+    logger.warn(
+      `[Agendor] deals_since inválido no banco (${bruto}) — usando o padrão ${CORTE_DE_CRIACAO_PADRAO}.`,
+    );
+    return new Date(`${CORTE_DE_CRIACAO_PADRAO}T00:00:00.000Z`);
+  }
+  return data;
+}
+
+// Busca negócios criados a partir do corte configurado, em andamento, com paginação paralela
 async function getStaleDeals(staleDays = 15) {
   const cutoffDate = new Date(Date.now() - staleDays * 24 * 60 * 60 * 1000);
-  const startOf2026 = new Date('2026-01-01T00:00:00.000Z');
+  const corteDeCriacao = resolverCorteDeCriacao();
   const perPage = 100;
 
   // Busca página 1 para saber o total
@@ -348,7 +378,7 @@ async function getStaleDeals(staleDays = 15) {
   const staleRaw = allRawDeals.filter((deal) => {
     const createdAt = new Date(deal.createdAt);
     const updatedAt = new Date(deal.updatedAt);
-    return createdAt >= startOf2026 && updatedAt < cutoffDate;
+    return createdAt >= corteDeCriacao && updatedAt < cutoffDate;
   });
 
   // Busca categorias de todas as orgs únicas em paralelo
@@ -554,4 +584,6 @@ module.exports = {
   shouldNotifyOwner,
   getDealType,
   isExcludedStage,
+  CORTE_DE_CRIACAO_PADRAO,
+  resolverCorteDeCriacao,
 };

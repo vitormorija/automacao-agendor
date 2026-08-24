@@ -293,6 +293,7 @@ Para cada deal parado, são notificados:
 
 ## 8. API — Endpoints disponíveis
 
+
 ### Deals
 
 | Método | Rota | Descrição |

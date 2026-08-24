@@ -63,19 +63,6 @@ Sistema interno que monitora negócios ("deals") parados no CRM Agendor e notifi
 - Security-sensitive code is heavily commented to explain the threat being mitigated, e.g. `backend/src/secret.js` (why no fallback for `JWT_SECRET`), `backend/src/routes/auth.js` (why rate limiting, why the `forgot-password` response is always generic).
 <!-- GSD:conventions-end -->
 
-<!-- GSD:workflow-start source:GSD defaults -->
-## GSD Workflow Enforcement
-
-Before using Edit, Write, or other file-changing tools, start work through a GSD command so planning artifacts and execution context stay in sync.
-
-Use these entry points:
-- `/gsd-quick` for small fixes, doc updates, and ad-hoc tasks
-- `/gsd-debug` for investigation and bug fixing
-- `/gsd-execute-phase` for planned phase work
-
-Do not make direct repo edits outside a GSD workflow unless the user explicitly asks to bypass it.
-<!-- GSD:workflow-end -->
-
 <!--
   SEÇÃO MANTIDA À MÃO — deliberadamente FORA de qualquer par de marcadores GSD.
   Todo bloco delimitado por marcadores acima é reescrito por geradores
@@ -85,6 +72,8 @@ Do not make direct repo edits outside a GSD workflow unless the user explicitly 
 ## Regras de Trabalho e Convenções (mantidas à mão)
 
 ### Processo
+- **Este projeto não usa mais o fluxo GSD.** Decisão do dono em 2026-08-10: trabalhar direto, sem passar por `/gsd-*` antes de editar arquivos. A seção "GSD Workflow Enforcement" que existia aqui foi removida. Não reintroduzir essa exigência, e não perguntar a cada sessão se o bypass continua valendo — continua. Os documentos de `.planning/codebase/` (ARCHITECTURE, STACK, STRUCTURE, CONVENTIONS) seguem válidos como referência; as **fases** e o `ROADMAP.md` de `.planning/`, não — estão desatualizados e não regem o trabalho.
+- **A lista do que falta para produção é o `DEPLOY.md` da raiz.** É a única fonte de verdade sobre estado de prontidão. `PRD.md`, `.local/reports/PRODUCTION_REQUIREMENTS.md` e `.planning/ROADMAP.md` estão superados nesse assunto — não usar, e atualizar o `DEPLOY.md` sempre que um item mudar de estado.
 - Faça commits pequenos, independentes e reversíveis. Não misture refatoração estrutural com alteração de comportamento. *(Também registrado em `.planning/PROJECT.md` §Constraints — fonte de verdade.)*
 
 ### Código

@@ -1,6 +1,10 @@
 const express = require('express');
 const router = express.Router();
-const { getStaleDeals, getUsers } = require('../agendor');
+const {
+  getStaleDeals,
+  getUsers,
+  CORTE_DE_CRIACAO_PADRAO,
+} = require('../agendor');
 const { getConfig, getWeeklySnapshots } = require('../db');
 
 // GET /api/reports/current — dados para os gráficos (tempo real)
@@ -81,6 +85,9 @@ router.get('/current', async (req, res) => {
       topOwner: ownerData[0]?.name || '—',
       topOwnerCount: ownerData[0]?.count || 0,
       staleDays,
+      // Mesmo par de /api/deals/stale: o relatório rotulava o recorte com "criados em 2026"
+      // digitado à mão. O corte efetivo vem junto para o rótulo não poder mentir.
+      dealsSince: getConfig('deals_since') || CORTE_DE_CRIACAO_PADRAO,
     };
 
     res.json({

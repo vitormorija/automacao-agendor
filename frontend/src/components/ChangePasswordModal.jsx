@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { MIN_SENHA } from '../constantes';
 import { Lock, Eye, EyeOff, X, CheckCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -15,8 +16,8 @@ export default function ChangePasswordModal({ username, onClose }) {
       toast.error('Informe sua senha atual.');
       return;
     }
-    if (newPass.length < 6) {
-      toast.error('A nova senha deve ter pelo menos 6 caracteres.');
+    if (newPass.length < MIN_SENHA) {
+      toast.error(`A nova senha deve ter pelo menos ${MIN_SENHA} caracteres.`);
       return;
     }
     if (newPass !== confirm) {
@@ -117,7 +118,7 @@ export default function ChangePasswordModal({ username, onClose }) {
                 type={showPass ? 'text' : 'password'}
                 value={newPass}
                 onChange={(e) => setNewPass(e.target.value)}
-                placeholder="Mínimo 6 caracteres"
+                placeholder={`Mínimo ${MIN_SENHA} caracteres`}
                 className="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
               />
             </div>
@@ -164,7 +165,7 @@ export default function ChangePasswordModal({ username, onClose }) {
                 ))}
               </div>
               <p className="text-xs text-gray-400">
-                {newPass.length < 6
+                {newPass.length < MIN_SENHA
                   ? 'Muito curta'
                   : newPass.length < 9
                     ? 'Razoável'

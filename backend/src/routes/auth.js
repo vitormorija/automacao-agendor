@@ -15,67 +15,115 @@ const {
   markTokenUsed,
   logLogin,
   getLoginLogs,
+  getAuditLogs,
 } = require('../db');
 const { sendResetPasswordEmail } = require('../emailer');
 const { JWT_SECRET } = require('../secret');
+const { motivoBloqueio, mensagemBloqueio } = require('../senhasBloqueadas');
 const logger = require('../logger');
 
-const TOKEN_EXPIRY = '8h';
+// Sessão de 4h. Era 8h: encurtar é a metade barata da mitigação — a outra metade é tirar o
+// token do alcance do script, que é o que o cookie HttpOnly faz.
+const TOKEN_EXPIRY = '4h';
+const TOKEN_EXPIRY_MS = 4 * 60 * 60 * 1000;
 const BCRYPT_ROUNDS = 10;
 
-// Usuários autorizados a gerenciar outros usuários (criar/listar/excluir/ver logs).
-// Lista de e-mails separada por vírgula em ADMIN_USERS. Se vazia, qualquer
-// usuário autenticado é tratado como admin (comportamento legado) — defina
-// ADMIN_USERS em produção para restringir.
-const ADMIN_USERS = (process.env.ADMIN_USERS || '')
-  .split(',')
-  .map((u) => u.trim().toLowerCase())
-  .filter(Boolean);
+const { lerToken, COOKIE_SESSAO } = require('../middleware/auth');
 
-function requireAdmin(req, res, next) {
-  if (!ADMIN_USERS.length) return next(); // não configurado → não restringe
-  const username = (req.user?.username || '').toLowerCase();
-  if (ADMIN_USERS.includes(username)) return next();
-  return res
-    .status(403)
-    .json({ ok: false, message: 'Acesso restrito a administradores.' });
+// Atributos do cookie de sessão, num lugar só — login e logout precisam concordar, e um
+// logout que não repita `sameSite`/`path` não apaga o cookie que o login criou.
+//
+//   httpOnly  o ponto da mudança: JavaScript da página não lê o token, nem o nosso nem um
+//             injetado por XSS.
+//   sameSite  'strict' é a defesa de CSRF deste desenho: o navegador simplesmente não
+//             envia o cookie em requisição originada de outro site, então um formulário
+//             hostil não consegue disparar PUT /api/config em nome de quem está logado.
+//             Não custa usabilidade aqui porque o painel é aberto direto, e não por link
+//             de terceiro; e o único link que mandamos por e-mail (redefinição de senha)
+//             aponta para uma rota pública, que não depende do cookie.
+//   secure    derivado do PROTOCOLO REAL da requisição, e não de NODE_ENV.
+//
+// POR QUE NÃO `NODE_ENV === 'production'`, QUE ERA A VERSÃO ANTERIOR. `ecosystem.config.js`
+// define NODE_ENV=production, mas o `deploy/nginx.conf` que o repositório entrega escuta em
+// :80 com o redirect para HTTPS e o bloco `listen 443 ssl` COMENTADOS. A combinação emitia
+// um cookie `Secure` sobre uma origem `http://` — que todo navegador descarta em silêncio.
+// O efeito seria o painel abrir, renderizar, e então toda chamada seguinte responder 401,
+// sem nenhum caminho alternativo (o Bearer foi removido). Ninguém conseguiria entrar, e o
+// primeiro sinal viria de um usuário, não de um teste: em desenvolvimento secure é falso e
+// em localhost o navegador aceita Secure de qualquer jeito.
+//
+// `req.secure` responde a pergunta certa — esta conexão é HTTPS? —, e com
+// `trust proxy: 'loopback'` ele já considera o X-Forwarded-Proto que o nginx envia. Assim o
+// cookie é Secure exatamente quando pode ser, e a aplicação funciona nas duas topologias em
+// vez de escolher uma e quebrar na outra.
+function opcoesDoCookie(req) {
+  return {
+    httpOnly: true,
+    sameSite: 'strict',
+    secure: req.secure === true,
+    path: '/',
+  };
 }
 
-// ── Rate limiting (bloqueio por IP após 5 tentativas) ────────────
-const loginAttempts = new Map(); // ip → { count, blockedUntil }
+// Servir o painel em HTTP puro é uma decisão de infraestrutura, não um detalhe: sem TLS o
+// cookie de sessão viaja legível na rede. O código não pode impedir isso — recusar o login
+// deixaria o sistema inutilizável —, mas pode parar de deixar acontecer em silêncio. Avisa
+// UMA vez por processo, para não inundar o log a cada requisição.
+let avisouSemTls = false;
+function avisarSeSemTls(req) {
+  if (avisouSemTls || req.secure || process.env.NODE_ENV !== 'production')
+    return;
+  avisouSemTls = true;
+  logger.warn(
+    '[Auth] Sessão emitida sobre HTTP em ambiente de produção: o cookie NÃO pôde ser marcado ' +
+      'como Secure e trafega legível na rede. Habilite TLS (deploy/nginx.conf tem o bloco 443 ' +
+      'comentado) e redirecione :80 para :443.',
+  );
+}
+
+// requireAdmin saiu daqui para middleware/requireAdmin.js. O motivo está escrito no
+// cabeçalho de lá: além de falhar aberto, ele protegia a superfície errada — gestão de
+// usuário exigia papel enquanto mudar SMTP e disparar e-mail em massa não exigiam nada.
+const { requireAdmin, isAdmin } = require('../middleware/requireAdmin');
+const { auditar } = require('../middleware/auditoria');
+
+// ── Rate limiting ────────────────────────────────────────────────
+// A regra saiu daqui para src/rateLimit.js quando passou a ter DOIS consumidores. Os
+// parâmetros do login são preservados exatamente — 5 tentativas, 15 minutos —, e os nomes
+// abaixo continuam existindo porque test/auth.test.js os exercita diretamente.
+const { criarLimitador } = require('../rateLimit');
+
 const MAX_ATTEMPTS = 5;
 const BLOCK_MINUTES = 15;
+const limitadorLogin = criarLimitador({
+  maxTentativas: MAX_ATTEMPTS,
+  minutosBloqueio: BLOCK_MINUTES,
+});
+const checkRateLimit = limitadorLogin.check;
+const recordFailedAttempt = limitadorLogin.record;
+const clearAttempts = limitadorLogin.clear;
 
-function checkRateLimit(ip) {
-  const now = Date.now();
-  const entry = loginAttempts.get(ip);
-  if (!entry) return { blocked: false };
-  if (entry.blockedUntil && now < entry.blockedUntil) {
-    const minutesLeft = Math.ceil((entry.blockedUntil - now) / 60000);
-    return { blocked: true, minutesLeft };
-  }
-  if (entry.blockedUntil && now >= entry.blockedUntil) {
-    loginAttempts.delete(ip);
-  }
-  return { blocked: false };
-}
+// Balde PRÓPRIO para "esqueci minha senha", com cota menor. O recurso protegido aqui é
+// outro: cada requisição bem-sucedida faz o servidor ENVIAR um e-mail usando a credencial
+// SMTP da empresa, e o endereço de destino vem do corpo da requisição. Sem cota, a rota
+// pública é um canal de envio aberto — que é justamente o motivo de ela ter cota ANTES de
+// virar pública, e não depois.
+// 10, e não 3. O número precisa caber num ESCRITÓRIO, não numa pessoa: com `trust proxy` o
+// req.ip é o endereço público real, e todo mundo atrás do mesmo NAT corporativo divide um
+// único endereço. Três era pouco a ponto de a quarta pessoa do dia levar 429 sem ninguém ter
+// abusado — e o cenário mais provável de acontecer é justamente o pior, uma onda de
+// recuperações logo após a rotação de credencial que este mesmo trabalho torna necessária.
+// Dez continua longe de ser um canal de spam utilizável, que é o que a cota existe para impedir.
+const MAX_RECUPERACOES = 10;
+const limitadorRecuperacao = criarLimitador({
+  maxTentativas: MAX_RECUPERACOES,
+  minutosBloqueio: BLOCK_MINUTES,
+});
 
-function recordFailedAttempt(ip) {
-  const entry = loginAttempts.get(ip) || { count: 0 };
-  entry.count += 1;
-  if (entry.count >= MAX_ATTEMPTS) {
-    entry.blockedUntil = Date.now() + BLOCK_MINUTES * 60 * 1000;
-    entry.count = 0;
-    loginAttempts.set(ip, entry);
-    return { nowBlocked: true };
-  }
-  loginAttempts.set(ip, entry);
-  return { nowBlocked: false, remaining: MAX_ATTEMPTS - entry.count };
-}
-
-function clearAttempts(ip) {
-  loginAttempts.delete(ip);
-}
+// Piso de tamanho da senha. Eram 6 — o parecer de segurança pediu 12, e o número precisa
+// valer nos DOIS caminhos que gravam senha nova: a redefinição por link e a troca pelo
+// usuário logado. Aplicar só num deles deixaria o outro como a porta larga.
+const MIN_SENHA = 12;
 
 // ── Verificação de senha (bcrypt + texto puro legado) ────────────
 // Fator comum extraído do login e do change-password: suporta hash bcrypt
@@ -98,6 +146,24 @@ async function ensureDefaultUsers() {
   const seedPassword = process.env.SEED_ADMIN_PASSWORD || '';
 
   if (seedEmail && seedPassword && listUsers().length === 0) {
+    // O quarto caminho que grava senha, e o mais sensível: esta conta nasce administradora.
+    // Recusar em vez de criar fraco — um boot sem admin é um problema visível que o operador
+    // conserta em um minuto; um admin com senha curta é um problema invisível que fica.
+    if (seedPassword.length < MIN_SENHA) {
+      logger.error(
+        `[Auth] SEED_ADMIN_PASSWORD tem menos de ${MIN_SENHA} caracteres — o usuário inicial NÃO foi criado. Defina uma senha maior e reinicie.`,
+      );
+      return;
+    }
+    // Mesma razão do piso de tamanho, um degrau acima: esta conta nasce administradora e a
+    // senha vem de uma variável de ambiente que alguém digitou às pressas durante um deploy.
+    // É o caminho mais provável para uma senha comum entrar no sistema.
+    if (motivoBloqueio(seedPassword)) {
+      logger.error(
+        '[Auth] SEED_ADMIN_PASSWORD é uma senha comum ou já vazada — o usuário inicial NÃO foi criado. Escolha outra e reinicie.',
+      );
+      return;
+    }
     const hash = await bcrypt.hash(seedPassword, BCRYPT_ROUNDS);
     createUser(seedEmail, hash);
     logger.info(`[Auth] Usuário administrador inicial criado: ${seedEmail}`);
@@ -185,30 +251,64 @@ router.post('/login', async (req, res) => {
   }
 
   const token = jwt.sign({ username }, JWT_SECRET, { expiresIn: TOKEN_EXPIRY });
-  return res.json({ ok: true, token, username });
+
+  // O token vai no cookie e NÃO no corpo da resposta. Devolvê-lo também no JSON manteria
+  // viva a via que esta mudança fecha: o painel voltaria a poder guardá-lo no localStorage,
+  // e o HttpOnly do cookie deixaria de significar coisa alguma.
+  avisarSeSemTls(req);
+  res.cookie(COOKIE_SESSAO, token, {
+    ...opcoesDoCookie(req),
+    maxAge: TOKEN_EXPIRY_MS,
+  });
+
+  // `isAdmin` viaja FORA do token, e é recalculado a cada /verify. Assar o papel dentro do
+  // JWT faria uma remoção de ADMIN_USERS só valer quando a sessão expirasse — até lá o
+  // portador continuaria carregando a afirmação de que é admin. Aqui é só exibição: o
+  // servidor decide o acesso por requisição, em requireAdmin.
+  return res.json({ ok: true, username, isAdmin: isAdmin(username) });
 });
 
 // ── POST /api/auth/verify ────────────────────────────────────────
+// É esta rota que o painel usa para descobrir, ao carregar, se há sessão — o token não
+// está mais visível ao JavaScript, então perguntar ao servidor é o único caminho.
 router.post('/verify', (req, res) => {
-  const auth = req.headers.authorization;
-  if (!auth?.startsWith('Bearer ')) return res.status(401).json({ ok: false });
+  const token = lerToken(req);
+  if (!token) return res.status(401).json({ ok: false });
   try {
-    const decoded = jwt.verify(auth.slice(7), JWT_SECRET);
-    res.json({ ok: true, username: decoded.username });
+    const decoded = jwt.verify(token, JWT_SECRET);
+    res.json({
+      ok: true,
+      username: decoded.username,
+      isAdmin: isAdmin(decoded.username),
+    });
   } catch {
     res.status(401).json({ ok: false, message: 'Sessão expirada.' });
   }
 });
 
+// ── POST /api/auth/logout ────────────────────────────────────────
+// Precisa existir no servidor: o cookie é HttpOnly, então o painel não tem como apagá-lo
+// sozinho — era isso que o `localStorage.removeItem` fazia antes.
+//
+// É rota PÚBLICA de propósito. Sair não é uma operação privilegiada, e exigir sessão válida
+// para encerrá-la deixaria quem está com o token expirado sem como limpar o próprio estado.
+// A resposta é sempre 200, com ou sem cookie: não há nada a revelar aqui.
+router.post('/logout', (req, res) => {
+  // Os atributos precisam ser os MESMOS do login. Um clearCookie sem `path`/`sameSite`
+  // iguais mira um cookie diferente do que existe, responde 200 e não apaga nada.
+  res.clearCookie(COOKIE_SESSAO, opcoesDoCookie(req));
+  res.json({ ok: true });
+});
+
 // ── POST /api/auth/change-password (usuário logado) ─────────────
 router.post('/change-password', async (req, res) => {
-  const auth = req.headers.authorization;
-  if (!auth?.startsWith('Bearer '))
+  const token = lerToken(req);
+  if (!token)
     return res.status(401).json({ ok: false, message: 'Não autenticado.' });
 
   let username;
   try {
-    const decoded = jwt.verify(auth.slice(7), JWT_SECRET);
+    const decoded = jwt.verify(token, JWT_SECRET);
     username = decoded.username;
   } catch {
     return res.status(401).json({ ok: false, message: 'Sessão expirada.' });
@@ -220,11 +320,17 @@ router.post('/change-password', async (req, res) => {
       .status(400)
       .json({ ok: false, message: 'Preencha todos os campos.' });
   }
-  if (newPassword.length < 6) {
+  if (newPassword.length < MIN_SENHA) {
     return res.status(400).json({
       ok: false,
-      message: 'A nova senha deve ter pelo menos 6 caracteres.',
+      message: `A nova senha deve ter pelo menos ${MIN_SENHA} caracteres.`,
     });
+  }
+  const bloqueio = motivoBloqueio(newPassword);
+  if (bloqueio) {
+    return res
+      .status(400)
+      .json({ ok: false, message: mensagemBloqueio(bloqueio) });
   }
 
   const user = getUser(username);
@@ -251,6 +357,20 @@ router.post('/forgot-password', async (req, res) => {
   const { username } = req.body;
   if (!username)
     return res.status(400).json({ ok: false, message: 'Informe o e-mail.' });
+
+  // Cota por IP. Note que ela é consumida a CADA requisição, e não só nas que falham como
+  // no login: aqui o recurso escasso é o envio de e-mail, e uma requisição bem-sucedida é
+  // exatamente a que consome. Recusar com 429 não revela nada sobre a existência da conta —
+  // o bloqueio é do IP, e chega igual para e-mail cadastrado e não cadastrado.
+  const ip = req.ip || req.connection.remoteAddress;
+  const cota = limitadorRecuperacao.check(ip);
+  if (cota.blocked) {
+    return res.status(429).json({
+      ok: false,
+      message: `Muitas solicitações. Tente novamente em ${cota.minutesLeft} minuto(s).`,
+    });
+  }
+  limitadorRecuperacao.record(ip);
 
   // Sempre retorna sucesso (não revela se o usuário existe)
   const user = getUser(username);
@@ -285,11 +405,17 @@ router.post('/reset-password', async (req, res) => {
       .status(400)
       .json({ ok: false, message: 'Token e nova senha são obrigatórios.' });
   }
-  if (newPassword.length < 6) {
+  if (newPassword.length < MIN_SENHA) {
     return res.status(400).json({
       ok: false,
-      message: 'A senha deve ter pelo menos 6 caracteres.',
+      message: `A senha deve ter pelo menos ${MIN_SENHA} caracteres.`,
     });
+  }
+  const bloqueio = motivoBloqueio(newPassword);
+  if (bloqueio) {
+    return res
+      .status(400)
+      .json({ ok: false, message: mensagemBloqueio(bloqueio) });
   }
 
   const record = getResetToken(token);
@@ -321,39 +447,73 @@ router.get('/users', requireAdmin, (req, res) => {
 });
 
 // ── POST /api/auth/users ─────────────────────────────────────────
-router.post('/users', requireAdmin, async (req, res) => {
-  const { username, password } = req.body;
-  if (!username || !password) {
-    return res
-      .status(400)
-      .json({ ok: false, message: 'Usuário e senha são obrigatórios.' });
-  }
-  try {
-    const hash = await bcrypt.hash(password, BCRYPT_ROUNDS);
-    createUser(username, hash);
-    res.json({
-      ok: true,
-      message: `Usuário "${username}" criado com sucesso.`,
-    });
-  } catch (err) {
-    res.status(400).json({ ok: false, message: err.message });
-  }
-});
+router.post(
+  '/users',
+  auditar('usuario.criar'),
+  requireAdmin,
+  async (req, res) => {
+    const { username, password } = req.body;
+    if (!username || !password) {
+      return res
+        .status(400)
+        .json({ ok: false, message: 'Usuário e senha são obrigatórios.' });
+    }
+    // O MESMO piso da redefinição e da troca de senha. Sem ele a política era decorativa:
+    // bastava um administrador criar a conta com senha de um caractere para contornar as
+    // outras duas portas — e uma conta criada assim nasce com o mesmo acesso de qualquer
+    // outra. É o terceiro caminho que grava senha, e faltava justamente ele.
+    if (password.length < MIN_SENHA) {
+      return res.status(400).json({
+        ok: false,
+        message: `A senha deve ter pelo menos ${MIN_SENHA} caracteres.`,
+      });
+    }
+    const bloqueio = motivoBloqueio(password);
+    if (bloqueio) {
+      return res
+        .status(400)
+        .json({ ok: false, message: mensagemBloqueio(bloqueio) });
+    }
+    try {
+      const hash = await bcrypt.hash(password, BCRYPT_ROUNDS);
+      createUser(username, hash);
+      res.json({
+        ok: true,
+        message: `Usuário "${username}" criado com sucesso.`,
+      });
+    } catch (err) {
+      res.status(400).json({ ok: false, message: err.message });
+    }
+  },
+);
 
 // ── DELETE /api/auth/users/:username ────────────────────────────
-router.delete('/users/:username', requireAdmin, (req, res) => {
-  if (req.params.username === req.user?.username) {
-    return res
-      .status(400)
-      .json({ ok: false, message: 'Você não pode excluir o próprio usuário.' });
-  }
-  deleteUser(req.params.username);
-  res.json({ ok: true });
-});
+router.delete(
+  '/users/:username',
+  auditar('usuario.excluir'),
+  requireAdmin,
+  (req, res) => {
+    if (req.params.username === req.user?.username) {
+      return res.status(400).json({
+        ok: false,
+        message: 'Você não pode excluir o próprio usuário.',
+      });
+    }
+    deleteUser(req.params.username);
+    res.json({ ok: true });
+  },
+);
 
 // ── GET /api/auth/logs ───────────────────────────────────────────
 router.get('/logs', requireAdmin, (req, res) => {
   res.json(getLoginLogs(100));
+});
+
+// ── GET /api/auth/audit ──────────────────────────────────────────
+// A trilha só serve se alguém puder lê-la. Fica ao lado de /logs (que é a trilha de
+// ENTRADA) e sob o mesmo papel: quem não pode agir também não precisa ver quem agiu.
+router.get('/audit', requireAdmin, (req, res) => {
+  res.json(getAuditLogs(200));
 });
 
 module.exports = router;
@@ -366,4 +526,7 @@ module.exports.checkRateLimit = checkRateLimit;
 module.exports.recordFailedAttempt = recordFailedAttempt;
 module.exports.clearAttempts = clearAttempts;
 module.exports.verifyPassword = verifyPassword;
-module.exports._loginAttempts = loginAttempts;
+module.exports._loginAttempts = limitadorLogin.mapa;
+module.exports._recuperacaoAttempts = limitadorRecuperacao.mapa;
+module.exports.MIN_SENHA = MIN_SENHA;
+module.exports.MAX_RECUPERACOES = MAX_RECUPERACOES;

@@ -11,8 +11,13 @@
 // a variável estiver ausente — assim um teste individual pode sobrescrever antes
 // (ex.: um DB_PATH em arquivo temporário para testar dedup) e vencer este preset.
 
+// 64 caracteres, o mesmo piso que src/secret.js passou a exigir (os 32 bytes do parecer de
+// segurança, em hexadecimal). O valor é descartável e deliberadamente legível como
+// "de teste": ele vai para dentro de um arquivo versionado, e o job `secrets` (gitleaks)
+// roda em todo PR — um hex aleatório de verdade aqui seria sinalizado como segredo vazado.
 if (!process.env.JWT_SECRET) {
-  process.env.JWT_SECRET = 'test-jwt-secret-0123456789abcdef';
+  process.env.JWT_SECRET =
+    'jwt-secret-de-teste-descartavel-sem-valor-em-producao-0123456789';
 }
 
 if (!process.env.DB_PATH) {
@@ -21,6 +26,17 @@ if (!process.env.DB_PATH) {
 
 if (!process.env.AGENDOR_TOKEN) {
   process.env.AGENDOR_TOKEN = 'test';
+}
+
+// Mesmo motivo e mesmo padrão de DB_PATH, para o outro efeito de import que passou a
+// existir quando a montagem do Express saiu de index.js para app.js: `require('../src/app')`
+// abre dois streams de escrita (morgan + erro) no diretório de logs. Sem este desvio, cada
+// requisição de teste gravaria uma linha no logs/access.log real do repositório.
+if (!process.env.LOG_DIR) {
+  process.env.LOG_DIR = require('node:path').join(
+    require('node:os').tmpdir(),
+    'agendor-test-logs',
+  );
 }
 
 // DIFERENTEMENTE dos presets guardados acima, estas duas variáveis são SEMPRE

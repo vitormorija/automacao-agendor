@@ -1,5 +1,6 @@
 const Database = require('better-sqlite3');
 const path = require('path');
+const crypto = require('crypto');
 const logger = require('./logger');
 
 const dbPath = process.env.DB_PATH || path.join(__dirname, '..', 'agendor.db');
@@ -63,6 +64,33 @@ try {
   `);
 } catch (_) {}
 
+// Trilha de auditoria de ações sensíveis.
+//
+// `login_logs` (abaixo) registra ENTRADA no sistema. Esta tabela registra o que foi FEITO
+// depois de entrar — mudar configuração, disparar e-mail, criar ou excluir usuário —, que é
+// o que o parecer de segurança pediu junto com os papéis: sem ela, o controle de acesso diz
+// quem PODE agir e nada diz sobre quem AGIU.
+//
+// `status` guarda o código HTTP porque a tentativa NEGADA é tão relevante quanto a
+// permitida: um 403 repetido numa rota administrativa é o sinal de que alguém está tentando
+// o que não devia, e é exatamente esse sinal que se perde quando só o sucesso é registrado.
+try {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS audit_log (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      username TEXT,
+      acao TEXT NOT NULL,
+      detalhe TEXT,
+      status INTEGER,
+      ip TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+  `);
+  db.exec(
+    `CREATE INDEX IF NOT EXISTS idx_audit_created_at ON audit_log (created_at)`,
+  );
+} catch (_) {}
+
 // Log de acessos ao sistema
 try {
   db.exec(`
@@ -109,6 +137,10 @@ const defaults = {
   smtp_port: process.env.SMTP_PORT || '587',
   smtp_user: process.env.SMTP_USER || '',
   smtp_from: process.env.SMTP_FROM || '',
+  // Corte de CRIAÇÃO dos negócios monitorados. O default espelha a constante de
+  // agendor.js (CORTE_DE_CRIACAO_PADRAO): um banco existente que nunca teve a chave
+  // passa a tê-la com o valor que já estava cravado no código, sem mudar quem é notificado.
+  deals_since: '2026-01-01',
   cron_schedule: '0 8 * * *', // 8h todo dia
   notifications_enabled: 'true',
   notify_author: 'false',
@@ -156,6 +188,30 @@ try {
   /* banco recém-criado ou chave inexistente — nada a migrar */
 }
 
+// ── Migração: tokens de redefinição passam a ser gravados como hash ──
+//
+// As linhas gravadas pelo esquema anterior guardam o token CRU e nunca mais casariam com a
+// busca por hash — ficariam ali, ilegíveis para o código e legíveis para quem abrisse o
+// arquivo. São apagadas de uma vez.
+//
+// Roda UMA ÚNICA VEZ, marcada na própria tabela `config`, e a guarda importa: sem ela, todo
+// restart do PM2 invalidaria os links de redefinição pendentes daquele momento. Como o
+// token cru e o hash têm os mesmos 64 caracteres hexadecimais, não há como distingui-los
+// pelo formato — por isso a marca, e não uma heurística.
+try {
+  if (getConfig('reset_tokens_hashed') !== '1') {
+    const { changes } = db.prepare('DELETE FROM reset_tokens').run();
+    setConfig('reset_tokens_hashed', '1');
+    if (changes > 0) {
+      logger.info(
+        `[DB] ${changes} token(s) de redefinição em claro removido(s) — a coluna passa a guardar hash. Quem tinha link pendente precisa solicitar outro.`,
+      );
+    }
+  }
+} catch (_) {
+  /* banco recém-criado — a tabela nasce já no formato novo */
+}
+
 function getConfig(key) {
   const row = db.prepare('SELECT value FROM config WHERE key = ?').get(key);
   return row ? row.value : null;
@@ -171,6 +227,20 @@ function setConfig(key, value) {
 function getAllConfig() {
   const rows = db.prepare('SELECT key, value FROM config').all();
   return Object.fromEntries(rows.map((r) => [r.key, r.value]));
+}
+
+function logAudit({ username, acao, detalhe, status, ip }) {
+  return db
+    .prepare(
+      'INSERT INTO audit_log (username, acao, detalhe, status, ip) VALUES (?, ?, ?, ?, ?)',
+    )
+    .run(username ?? null, acao, detalhe ?? null, status ?? null, ip ?? null);
+}
+
+function getAuditLogs(limit = 200) {
+  return db
+    .prepare('SELECT * FROM audit_log ORDER BY id DESC LIMIT ?')
+    .all(limit);
 }
 
 function logNotification({
@@ -383,6 +453,21 @@ function updateUserPassword(username, hashedPassword) {
 }
 
 // ── Reset de senha ───────────────────────────────────────────────
+//
+// A COLUNA `token` GUARDA O HASH, NUNCA O VALOR DO LINK. Antes guardava o token cru, e o
+// efeito era que qualquer leitura do banco — o próprio arquivo, ou uma das até 30 cópias que
+// deploy/backup.sh mantém em disco — entregava links de redefinição ainda válidos, prontos
+// para uso. É o mesmo raciocínio que tirou a senha SMTP da tabela `config` (D-01): o que
+// não pode ser lido de um backup não deve ser gravado em claro.
+//
+// O hash mora AQUI, e não na rota, para que a garantia seja do módulo de persistência: quem
+// chama continua passando o token cru e não tem como gravá-lo por engano. SHA-256 sem sal
+// é o correto neste caso, ao contrário de senha — o token tem 256 bits de entropia vinda de
+// crypto.randomBytes, então não há dicionário a pré-computar, e a busca precisa ser
+// determinística para achar a linha.
+function hashResetToken(token) {
+  return crypto.createHash('sha256').update(String(token)).digest('hex');
+}
 
 function saveResetToken(username, token, expiresAt) {
   // Limpa tokens anteriores deste usuário
@@ -391,19 +476,19 @@ function saveResetToken(username, token, expiresAt) {
     .prepare(
       'INSERT INTO reset_tokens (username, token, expires_at) VALUES (?, ?, ?)',
     )
-    .run(username, token, expiresAt);
+    .run(username, hashResetToken(token), expiresAt);
 }
 
 function getResetToken(token) {
   return db
     .prepare('SELECT * FROM reset_tokens WHERE token = ? AND used = 0')
-    .get(token);
+    .get(hashResetToken(token));
 }
 
 function markTokenUsed(token) {
   return db
     .prepare('UPDATE reset_tokens SET used = 1 WHERE token = ?')
-    .run(token);
+    .run(hashResetToken(token));
 }
 
 // ── Log de acessos ───────────────────────────────────────────────
@@ -458,5 +543,7 @@ module.exports = {
   getResetToken,
   markTokenUsed,
   logLogin,
+  logAudit,
+  getAuditLogs,
   getLoginLogs,
 };

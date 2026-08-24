@@ -4,6 +4,12 @@ const router = express.Router();
 const { getAllConfig, setConfig } = require('../db');
 const { scheduleTask } = require('../scheduler');
 const { verifySmtp } = require('../emailer');
+const { requireAdmin } = require('../middleware/requireAdmin');
+const { auditar } = require('../middleware/auditoria');
+
+// `auditar` vem ANTES de `requireAdmin` de propósito: assim a tentativa NEGADA também é
+// registrada. Um 403 repetido aqui é o sinal de que alguém está tentando o que não devia —
+// e é exatamente esse sinal que se perde quando só o sucesso entra na trilha.
 
 // Valida cada chave de configuração. Retorna mensagem de erro ou null se ok.
 const isBool = (v) => v === 'true' || v === 'false';
@@ -29,6 +35,19 @@ const VALIDATORS = {
     v === '' || isEmailList(v)
       ? null
       : 'admin_email deve conter e-mails válidos separados por vírgula.',
+  // Formato ESTRITO (AAAA-MM-DD) e data real. Um valor que o `new Date` não entenda vira
+  // `Invalid Date` no filtro, e `createdAt >= NaN` é sempre falso — o sistema pararia de
+  // notificar todo mundo em silêncio. agendor.js tem a rede de baixo (cai no padrão e
+  // registra); esta é a de cima, que impede o valor ruim de entrar.
+  deals_since: (v) => {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(v))
+      return 'deals_since deve estar no formato AAAA-MM-DD.';
+    const d = new Date(`${v}T00:00:00.000Z`);
+    if (Number.isNaN(d.getTime())) return 'deals_since não é uma data válida.';
+    if (d.toISOString().slice(0, 10) !== v)
+      return 'deals_since não é uma data existente no calendário.';
+    return null;
+  },
 };
 
 // Chaves de configuração graváveis pelo PUT. É a superfície de escrita da API:
@@ -40,6 +59,7 @@ const VALIDATORS = {
 // save() do painel reenvia o objeto inteiro que veio do GET.
 const ALLOWED_KEYS = [
   'stale_days',
+  'deals_since',
   'admin_email',
   'notify_author',
   'smtp_host',
@@ -50,6 +70,12 @@ const ALLOWED_KEYS = [
   'notifications_enabled',
 ];
 
+// A LEITURA segue liberada a qualquer autenticado — o painel precisa dela para exibir o
+// estado atual, e a senha SMTP nem está mais aqui (saiu para o ambiente). O que passa a
+// exigir papel é a ESCRITA e o teste de conexão: PUT reescreve destinatário de admin,
+// agendamento, threshold e o interruptor de notificações; test-smtp usa a credencial do
+// servidor para abrir conexão com um host que o operador escolhe.
+
 // GET /api/config
 router.get('/', (req, res) => {
   const config = getAllConfig();
@@ -59,12 +85,19 @@ router.get('/', (req, res) => {
 });
 
 // PUT /api/config
-router.put('/', (req, res) => {
+router.put('/', auditar('config.alterar'), requireAdmin, (req, res) => {
   // Valida antes de gravar qualquer coisa (tudo ou nada).
   const updates = {};
   for (const key of ALLOWED_KEYS) {
     const value = req.body[key];
+    // `deals_since` vazio é IGNORADO, não recusado. O painel reenvia o objeto inteiro a cada
+    // save, e o <input type="date"> devolve '' enquanto a data está incompleta ou foi limpa —
+    // com a validação estrita, um campo em branco reprovava o PUT inteiro e derrubava junto
+    // as outras nove chaves (a gravação é tudo-ou-nada). O admin perdia a capacidade de
+    // salvar SMTP, agendamento ou o interruptor de notificações por causa de um campo que
+    // nem estava editando. Mesmo tratamento que a máscara da senha SMTP já recebia.
     if (value === undefined || value === '••••••••') continue;
+    if (key === 'deals_since' && value === '') continue;
     if (typeof value !== 'string' || value.length > 500) {
       return res
         .status(400)
@@ -75,6 +108,11 @@ router.put('/', (req, res) => {
     updates[key] = value;
   }
 
+  // O QUE mudou entra na trilha; o VALOR não. Chaves como smtp_user e admin_email
+  // carregam endereço de pessoa, e uma trilha de auditoria não deve virar um segundo
+  // lugar onde esse dado é acumulado.
+  req.auditDetalhe = `chaves: ${Object.keys(updates).join(', ') || '(nenhuma)'}`;
+
   for (const [key, value] of Object.entries(updates)) setConfig(key, value);
 
   // Reagendar se necessário
@@ -83,14 +121,19 @@ router.put('/', (req, res) => {
 });
 
 // POST /api/config/test-smtp — testa conexão SMTP
-router.post('/test-smtp', async (req, res) => {
-  try {
-    await verifySmtp();
-    res.json({ ok: true, message: 'Conexão SMTP bem-sucedida!' });
-  } catch (err) {
-    res.status(400).json({ ok: false, message: err.message });
-  }
-});
+router.post(
+  '/test-smtp',
+  auditar('config.testar-smtp'),
+  requireAdmin,
+  async (req, res) => {
+    try {
+      await verifySmtp();
+      res.json({ ok: true, message: 'Conexão SMTP bem-sucedida!' });
+    } catch (err) {
+      res.status(400).json({ ok: false, message: err.message });
+    }
+  },
+);
 
 module.exports = router;
 

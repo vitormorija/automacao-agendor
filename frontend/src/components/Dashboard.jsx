@@ -14,7 +14,10 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
-export default function Dashboard({ onTabChange }) {
+// `isAdmin` controla apenas a EXIBIÇÃO do botão de envio: POST /api/notifications/run exige
+// papel no servidor (requireAdmin) e recusa com 403 independentemente do que o painel mostre.
+// Verificar continua disponível a todos — é leitura, não coloca e-mail na caixa de ninguém.
+export default function Dashboard({ onTabChange, isAdmin = false }) {
   const [status, setStatus] = useState(null);
   const [running, setRunning] = useState(false);
   const [sending, setSending] = useState(false);
@@ -82,6 +85,31 @@ export default function Dashboard({ onTabChange }) {
   }
 
   async function sendNow() {
+    // Confirmação antes do DISPARO REAL, e só nele. As outras ações desta tela são
+    // reversíveis ou inócuas — verificar não envia nada —, mas esta coloca e-mail na caixa
+    // de entrada de gente de verdade e não tem desfazer. O texto diz QUANTOS e para QUEM,
+    // porque um "tem certeza?" genérico só treina a pessoa a clicar em OK.
+    // Os DOIS endereços. `sendStaleNotification` envia para ownerEmail E authorEmail, e o
+    // backend marca `seraNotificado` com `Boolean(ownerEmail || authorEmail)` — contar só o
+    // responsável fazia a caixa dizer "1 negócio será notificado para 0 destinatários",
+    // com a lista vazia, sempre que o responsável não tivesse e-mail cadastrado e o autor
+    // tivesse. Com notify_author ligado, todo destinatário-autor sumia da amostra: o
+    // diálogo subestimava quem recebe, que é o oposto do motivo de ele existir.
+    const destinatarios = (checkResult?.deals || [])
+      .filter((d) => d.seraNotificado !== false)
+      .flatMap((d) => [d.ownerEmail, d.authorEmail])
+      .filter(Boolean);
+    const unicos = [...new Set(destinatarios)];
+    const amostra = unicos.slice(0, 5).join('\n  ');
+    const resto = unicos.length > 5 ? `\n  … e mais ${unicos.length - 5}` : '';
+
+    const confirmado = window.confirm(
+      `Disparar notificações agora?\n\n` +
+        `${aNotificarCount} negócio(s) serão notificados para ${unicos.length} destinatário(s):\n  ${amostra}${resto}\n\n` +
+        `Os e-mails são enviados imediatamente e não podem ser cancelados.`,
+    );
+    if (!confirmado) return;
+
     setSending(true);
     const toastId = toast.loading('Enviando notificações...');
     try {
@@ -223,6 +251,41 @@ export default function Dashboard({ onTabChange }) {
               {status?.schedule || '—'}
             </code>
           </div>
+          {/* A expressão cron acima diz a REGRA; esta linha diz o INSTANTE. Sem ela não havia
+              como conferir pelo painel que a expressão e o fuso produzem o horário
+              pretendido — uma expressão editada podia passar a disparar de madrugada sem
+              nada na tela denunciar. O backend devolvia só a palavra "agendado". */}
+          <div>
+            <span className="text-gray-500">Próxima execução: </span>
+            <span className="font-medium text-gray-700">
+              {status?.nextRun
+                ? new Date(status.nextRun).toLocaleString('pt-BR', {
+                    dateStyle: 'short',
+                    timeStyle: 'short',
+                  })
+                : 'não agendado'}
+            </span>
+          </div>
+          <div>
+            <span className="text-gray-500">Última execução: </span>
+            <span className="font-medium text-gray-700">
+              {lastRun?.ranAt
+                ? new Date(lastRun.ranAt).toLocaleString('pt-BR', {
+                    dateStyle: 'short',
+                    timeStyle: 'short',
+                  })
+                : '—'}
+            </span>
+            {lastRun && (
+              <span className="text-gray-400 ml-1.5">
+                ({lastRun.notified ?? 0} enviada(s)
+                {lastRun.errors?.length
+                  ? `, ${lastRun.errors.length} erro(s)`
+                  : ''}
+                )
+              </span>
+            )}
+          </div>
           {status?.isRunning && (
             <div className="text-amber-600 font-medium flex items-center gap-1">
               <RefreshCw size={14} className="animate-spin" /> Verificação em
@@ -248,8 +311,9 @@ export default function Dashboard({ onTabChange }) {
           Controle manual
         </h2>
         <p className="text-sm text-gray-500 mb-4">
-          Verifique primeiro quais negócios estão parados, e só depois envie as
-          notificações se quiser.
+          {isAdmin
+            ? 'Verifique primeiro quais negócios estão parados, e só depois envie as notificações se quiser.'
+            : 'Verifique quais negócios estão parados. O envio manual é restrito a administradores.'}
         </p>
         <div className="flex flex-wrap gap-3">
           <button
@@ -264,7 +328,7 @@ export default function Dashboard({ onTabChange }) {
             )}
             {running ? 'Verificando...' : 'Verificar negócios parados'}
           </button>
-          {checkResult && (
+          {checkResult && isAdmin && (
             <button
               onClick={sendNow}
               disabled={sending || running}

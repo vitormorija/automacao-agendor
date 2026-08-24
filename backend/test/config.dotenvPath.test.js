@@ -96,9 +96,13 @@ test('dotenv: com path absoluto carrega mesmo com o cwd em outro diretório', ()
 
 // ── (c) A fonte do boot está corrigida ───────────────────────────
 
-test('index.js: carrega o .env por caminho absoluto derivado de __dirname', () => {
+// A carga do dotenv saiu de index.js para app.js junto com a montagem do Express (o
+// entrypoint ficou só com o ciclo de vida do processo). D-13 não mudou de conteúdo, mudou
+// de endereço: quem é lido pelo PM2 continua sendo o index.js, mas quem chama o dotenv é o
+// app.js que ele requer na primeira linha executável.
+test('app.js: carrega o .env por caminho absoluto derivado de __dirname', () => {
   const fonte = fs.readFileSync(
-    path.join(__dirname, '..', 'src', 'index.js'),
+    path.join(__dirname, '..', 'src', 'app.js'),
     'utf8',
   );
 
@@ -108,7 +112,7 @@ test('index.js: carrega o .env por caminho absoluto derivado de __dirname', () =
   assert.match(
     fonte,
     /require\('dotenv'\)\.config\(\{[^}]*path:[^}]*__dirname/,
-    'index.js deve carregar o .env por caminho absoluto derivado de __dirname (D-13)',
+    'app.js deve carregar o .env por caminho absoluto derivado de __dirname (D-13)',
   );
 
   // E a forma dependente do cwd não pode voltar.

@@ -23,7 +23,12 @@ const REQUIRED = [
   },
   {
     name: 'JWT_SECRET',
-    hint: 'mín. 16 caracteres — gere com `openssl rand -hex 32`',
+    // O NÚMERO PRECISA CASAR COM src/secret.js. Esta mensagem existe para o operador
+    // receber a lista COMPLETA do que falta num único boot; se ela anunciar um piso menor
+    // que o exigido, o operador corrige seguindo a dica, reinicia, e o boot aborta de novo
+    // — desta vez pelo secret.js. O propósito do contrato é derrotado justamente na
+    // variável cuja regra mudou, ao custo de um segundo deploy com o painel fora do ar.
+    hint: 'mín. 64 caracteres (32 bytes) — gere com `openssl rand -hex 32`',
   },
   {
     name: 'SMTP_PASS',

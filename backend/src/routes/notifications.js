@@ -16,6 +16,18 @@ const {
   sendOwnerWeeklySummary,
 } = require('../emailer');
 const { getStaleDeals, getUsers, getDealById } = require('../agendor');
+const { requireAdmin } = require('../middleware/requireAdmin');
+const { auditar } = require('../middleware/auditoria');
+
+// LINHA DE CORTE DESTE ARQUIVO: envia e-mail ou não envia.
+//
+// Consulta (histórico, status, negócios notificados, /resolved) e a PRÉVIA (/check, que
+// verifica sem enviar) seguem liberadas a qualquer autenticado — é o que o painel mostra.
+// Tudo que coloca mensagem na caixa de entrada de alguém passa a exigir papel de admin.
+//
+// As três rotas `test-*` são as mais sensíveis do conjunto, e não as menos: elas aceitam o
+// endereço de DESTINO no corpo da requisição. Sem controle de papel, qualquer conta usava a
+// credencial SMTP da empresa para enviar e-mail com a marca da empresa para onde quisesse.
 
 // GET /api/notifications — histórico de notificações
 router.get('/', (req, res) => {
@@ -41,14 +53,19 @@ router.post('/check', async (req, res) => {
 });
 
 // POST /api/notifications/run — verifica E envia emails
-router.post('/run', async (req, res) => {
-  try {
-    const result = await runCheck();
-    res.json(result);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
+router.post(
+  '/run',
+  auditar('notificacao.disparar'),
+  requireAdmin,
+  async (req, res) => {
+    try {
+      const result = await runCheck();
+      res.json(result);
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  },
+);
 
 // POST /api/notifications/test-card — envia email de card de teste para um email específico
 async function testCardHandler(req, res) {
@@ -112,89 +129,109 @@ async function testCardHandler(req, res) {
   }
 }
 
-router.post('/test-card', testCardHandler);
+router.post(
+  '/test-card',
+  auditar('notificacao.teste-card'),
+  requireAdmin,
+  testCardHandler,
+);
 
 // POST /api/notifications/test-summary — envia resumo semanal de teste com dados reais
-router.post('/test-summary', async (req, res) => {
-  const { email } = req.body;
-  if (!email) return res.status(400).json({ error: 'Email obrigatório' });
-  try {
-    const staleDays = parseInt(getConfig('stale_days')) || 15;
-    const [deals, users] = await Promise.all([
-      getStaleDeals(staleDays),
-      getUsers(),
-    ]);
-    const enriched = deals.map((d) => ({
-      ...d,
-      ownerEmail: users[d.ownerId]?.email || null,
-    }));
-    await sendWeeklySummary({ deals: enriched, adminEmails: [email] });
-    res.json({
-      ok: true,
-      message: `Resumo semanal enviado para ${email} com ${enriched.length} negócio(s)`,
-    });
-  } catch (err) {
-    res.status(500).json({ ok: false, error: err.message });
-  }
-});
+router.post(
+  '/test-summary',
+  auditar('notificacao.teste-resumo'),
+  requireAdmin,
+  async (req, res) => {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ error: 'Email obrigatório' });
+    try {
+      const staleDays = parseInt(getConfig('stale_days')) || 15;
+      const [deals, users] = await Promise.all([
+        getStaleDeals(staleDays),
+        getUsers(),
+      ]);
+      const enriched = deals.map((d) => ({
+        ...d,
+        ownerEmail: users[d.ownerId]?.email || null,
+      }));
+      await sendWeeklySummary({ deals: enriched, adminEmails: [email] });
+      res.json({
+        ok: true,
+        message: `Resumo semanal enviado para ${email} com ${enriched.length} negócio(s)`,
+      });
+    } catch (err) {
+      res.status(500).json({ ok: false, error: err.message });
+    }
+  },
+);
 
 // POST /api/notifications/test-owner-summary — envia amostra do relatório individual (todos os deals) para um email de teste
-router.post('/test-owner-summary', async (req, res) => {
-  const { email, ownerName } = req.body;
-  if (!email) return res.status(400).json({ error: 'Email obrigatório' });
-  try {
-    const staleDays = parseInt(getConfig('stale_days')) || 15;
-    const [deals, users] = await Promise.all([
-      getStaleDeals(staleDays),
-      getUsers(),
-    ]);
-    const enriched = deals.map((d) => ({
-      ...d,
-      ownerEmail: users[d.ownerId]?.email || null,
-    }));
+router.post(
+  '/test-owner-summary',
+  auditar('notificacao.teste-resumo-individual'),
+  requireAdmin,
+  async (req, res) => {
+    const { email, ownerName } = req.body;
+    if (!email) return res.status(400).json({ error: 'Email obrigatório' });
+    try {
+      const staleDays = parseInt(getConfig('stale_days')) || 15;
+      const [deals, users] = await Promise.all([
+        getStaleDeals(staleDays),
+        getUsers(),
+      ]);
+      const enriched = deals.map((d) => ({
+        ...d,
+        ownerEmail: users[d.ownerId]?.email || null,
+      }));
 
-    // Simula como se todos os deals fossem do email de teste
-    const fakeOwnerId = '__test__';
-    const mockUsers = { [fakeOwnerId]: { email } };
-    const mockDeals = enriched.map((d) => ({
-      ...d,
-      ownerId: fakeOwnerId,
-      ownerName: ownerName || d.ownerName || 'Comercial Teste',
-    }));
+      // Simula como se todos os deals fossem do email de teste
+      const fakeOwnerId = '__test__';
+      const mockUsers = { [fakeOwnerId]: { email } };
+      const mockDeals = enriched.map((d) => ({
+        ...d,
+        ownerId: fakeOwnerId,
+        ownerName: ownerName || d.ownerName || 'Comercial Teste',
+      }));
 
-    const results = await sendOwnerWeeklySummary({
-      deals: mockDeals,
-      users: mockUsers,
-    });
-    res.json({
-      ok: true,
-      message: `Relatório de teste enviado para ${email} com ${enriched.length} card(s)`,
-      results,
-    });
-  } catch (err) {
-    res.status(500).json({ ok: false, error: err.message });
-  }
-});
+      const results = await sendOwnerWeeklySummary({
+        deals: mockDeals,
+        users: mockUsers,
+      });
+      res.json({
+        ok: true,
+        message: `Relatório de teste enviado para ${email} com ${enriched.length} card(s)`,
+        results,
+      });
+    } catch (err) {
+      res.status(500).json({ ok: false, error: err.message });
+    }
+  },
+);
 
 // POST /api/notifications/send-owner-summaries — dispara os relatórios para TODOS os comerciais agora
-router.post('/send-owner-summaries', async (req, res) => {
-  try {
-    const staleDays = parseInt(getConfig('stale_days')) || 15;
-    const [deals, users] = await Promise.all([
-      getStaleDeals(staleDays),
-      getUsers(),
-    ]);
-    const enriched = deals.map((d) => ({
-      ...d,
-      ownerEmail: users[d.ownerId]?.email || null,
-    }));
-    const results = await sendOwnerWeeklySummary({ deals: enriched, users });
-    const sent = results.filter((r) => r.success).length;
-    res.json({ ok: true, sent, total: results.length, results });
-  } catch (err) {
-    res.status(500).json({ ok: false, error: err.message });
-  }
-});
+router.post(
+  '/send-owner-summaries',
+  auditar('notificacao.disparar-resumos'),
+  requireAdmin,
+  async (req, res) => {
+    try {
+      const staleDays = parseInt(getConfig('stale_days')) || 15;
+      const [deals, users] = await Promise.all([
+        getStaleDeals(staleDays),
+        getUsers(),
+      ]);
+      const enriched = deals.map((d) => ({
+        ...d,
+        ownerEmail: users[d.ownerId]?.email || null,
+      }));
+      const results = await sendOwnerWeeklySummary({ deals: enriched, users });
+      const sent = results.filter((r) => r.success).length;
+      res.json({ ok: true, sent, total: results.length, results });
+    } catch (err) {
+      res.status(500).json({ ok: false, error: err.message });
+    }
+  },
+);
 
 // GET /api/notifications/notified-deals — retorna mapa de deal_id -> {clicked, clicked_at}
 router.get('/notified-deals', (req, res) => {

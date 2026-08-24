@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { rotuloDoCorte } from '../formatarCorte';
 import {
   RefreshCw,
   ExternalLink,
@@ -24,6 +25,7 @@ export default function DealsList() {
   const [notifiedMap, setNotifiedMap] = useState({});
   const [loading, setLoading] = useState(false);
   const [staleDays, setStaleDays] = useState(15);
+  const [dealsSince, setDealsSince] = useState(null);
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('todos');
   const [ownerFilter, setOwnerFilter] = useState('todos');
@@ -80,6 +82,7 @@ export default function DealsList() {
       if (d.error) throw new Error(d.error);
       setDeals(d.deals || []);
       setStaleDays(d.staleDays);
+      setDealsSince(d.dealsSince ?? null);
       setNotifiedMap(n || {});
       const now = new Date().toISOString();
       setLastUpdated(now);
@@ -175,8 +178,8 @@ export default function DealsList() {
               Negócios parados
             </h2>
             <p className="text-sm text-gray-500 mt-0.5">
-              Criados em 2026 • sem atualização há mais de {staleDays} dias • em
-              andamento
+              {rotuloDoCorte(dealsSince)} • sem atualização há mais de{' '}
+              {staleDays} dias • em andamento
             </p>
             {lastUpdated ? (
               <p className="text-xs text-gray-400 mt-0.5 flex items-center gap-1.5">

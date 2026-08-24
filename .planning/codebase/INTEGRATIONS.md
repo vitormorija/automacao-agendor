@@ -42,9 +42,9 @@
 - Custom (no third-party auth provider/OAuth). Self-contained username/password + JWT implementation.
   - Implementation: `backend/src/routes/auth.js` (login, verify, change-password, forgot/reset-password, user management), `backend/src/middleware/auth.js` (request-level JWT enforcement), `backend/src/secret.js` (JWT secret loading/validation)
   - Passwords hashed with `bcryptjs` (10 rounds); legacy plaintext passwords are auto-migrated to bcrypt hashes on next successful login (`backend/src/routes/auth.js`, `ensureDefaultUsers()` and inline migration in `POST /login`)
-  - JWT signed with `JWT_SECRET` env var (mandatory — process refuses to boot without it, `backend/src/secret.js`), 8-hour expiry (`TOKEN_EXPIRY = '8h'`)
+  - JWT signed with `JWT_SECRET` env var (mandatory — process refuses to boot without it, `backend/src/secret.js`), 4-hour expiry (`TOKEN_EXPIRY = '4h'`), delivered as an `HttpOnly; SameSite=Strict; Secure`(prod) cookie. The `Authorization: Bearer` scheme is no longer accepted
   - Initial admin account seeded from `SEED_ADMIN_EMAIL`/`SEED_ADMIN_PASSWORD` env vars only when no users exist yet (`backend/src/routes/auth.js`, `ensureDefaultUsers()`)
-  - Admin-only endpoints (user create/list/delete, login logs) gated by `requireAdmin` middleware, checking username against comma-separated `ADMIN_USERS` env var (if unset, any authenticated user is treated as admin — legacy/permissive default)
+  - Admin-only endpoints gated by `requireAdmin` (`backend/src/middleware/requireAdmin.js`), checking username against comma-separated `ADMIN_USERS`. FAIL-CLOSED: if unset, nobody is admin. Covers user management, `PUT /api/config`, `POST /api/config/test-smtp` and every notification dispatch route (`/run`, `/send-owner-summaries`, `/test-*`)
   - Public (unauthenticated) routes explicitly allowlisted in `backend/src/middleware/auth.js`: `/api/auth/login`, `/api/auth/verify`, `/api/track/click`, `/api/health`
   - Login rate limiting: in-memory per-IP counter, 5 failed attempts → 15-minute block (`backend/src/routes/auth.js`)
   - `backend/test/auth.test.js` covers auth-critical behaviors (login, rate limiting, token verification) under `node:test`
