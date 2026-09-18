@@ -14,6 +14,33 @@ import {
 
 const AUTO_REFRESH_SECONDS = 300; // 5 minutos
 
+// Lê o corpo da resposta como JSON sem confiar que ele É JSON.
+//
+// Quando o backend demora mais que o `proxy_read_timeout` do nginx (deploy/nginx.conf), o que chega
+// aqui não é o `{ deals: [...] }` desta API — é a página de erro 504 do próprio nginx, em HTML. O
+// `.json()` cru estourava com `Unexpected token '<'`, e essa string ia direto para o `setError`: a
+// tela ficava vazia com uma mensagem que não diz nada a quem está olhando, e que manda quem for
+// investigar procurar defeito no JavaScript em vez de na demora do servidor.
+//
+// Trocar a mensagem não conserta a lentidão — quem conserta é o backend, e as correções de
+// 2026-09-18 em backend/src/agendor.js levaram esta rota de 153 s para ~35 s. O que isto garante é
+// que a PRÓXIMA vez que algo assim acontecer, a tela diga o que de fato aconteceu.
+async function lerJson(resposta, oQue) {
+  const texto = await resposta.text();
+  try {
+    return JSON.parse(texto);
+  } catch {
+    if (resposta.status === 504 || resposta.status === 502) {
+      throw new Error(
+        `O servidor demorou demais para responder ao carregar ${oQue} (HTTP ${resposta.status}). Tente novamente em instantes.`,
+      );
+    }
+    throw new Error(
+      `Resposta inesperada do servidor ao carregar ${oQue} (HTTP ${resposta.status}).`,
+    );
+  }
+}
+
 export default function DealsList() {
   const [deals, setDeals] = useState(() => {
     try {
@@ -77,8 +104,8 @@ export default function DealsList() {
         fetch('/api/deals/stale'),
         fetch('/api/notifications/notified-deals'),
       ]);
-      const d = await dealsRes.json();
-      const n = await notifiedRes.json();
+      const d = await lerJson(dealsRes, 'os negócios parados');
+      const n = await lerJson(notifiedRes, 'o histórico de notificações');
       if (d.error) throw new Error(d.error);
       setDeals(d.deals || []);
       setStaleDays(d.staleDays);
