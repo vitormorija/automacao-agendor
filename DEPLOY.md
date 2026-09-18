@@ -4,7 +4,7 @@
 
 Atualize este arquivo sempre que um item mudar de estado. Se ele estiver desatualizado, ninguém sabe onde o projeto está.
 
-> Última revisão: **2026-08-10**
+> Última revisão: **2026-09-18**
 
 ---
 
@@ -134,7 +134,49 @@ Não reabrir estes itens:
 
 ---
 
-## 6. Aberto, mas não bloqueia a subida
+## 6. Estado da instância da Cadmus (10.10.15.23)
+
+O código subiu na VPN da Cadmus em **01/09/2026**, em `http://10.10.15.23/`, com PM2 e nginx ativos no boot. O deploy foi feito pela infraestrutura da Cadmus — este repositório **não** tem entrega contínua (ver §8).
+
+### ✅ Resolvido em 18/09/2026 — a tela de negócios parados não carregava
+
+A pendência relatada na subida ("a listagem agregada `/api/deals/stale` excedeu 180 segundos porque o Agendor respondeu 429") tinha duas causas, as duas no código e as duas medidas contra a API real:
+
+1. **`fetchDealsPage` enviava `deal_status_id`, um parâmetro que não existe na API v3 do Agendor.** Nome desconhecido não é recusado: a borda responde 200 e devolve a base inteira. Medido em 18/09: `deal_status_id=1` → 6.021 negócios, igual a não enviar filtro nenhum; `dealStatus=1` → 565. A função baixava 61 páginas em vez de 6 e ainda consultava a organização de negócios já ganhos e perdidos.
+2. **A fase de categorias consultava `/organizations/:id` uma vez por organização** — 252 requisições por carregamento de tela, 31 delas respondidas com 429. O limite do Agendor é de **quota acumulada**, não de paralelismo (baixar a concorrência de 10 para 3 piorou o número de 429), então a correção foi pedir menos vezes: a listagem `/organizations` traz 100 categorias por requisição.
+
+| | antes | depois |
+|---|---|---|
+| tempo de `GET /api/deals/stale` | 153 s | **29–36 s** |
+| requisições ao Agendor por carregamento | 508 | **42** |
+| respostas HTTP 429 | 31 | **0** |
+| negócios devolvidos | 98 | 98 (idêntico) |
+
+**O efeito grave não era a tela lenta.** Sob 429 a consulta de categoria esgotava o retry e o negócio virava `CATEGORIA_INDECIDIVEL` — que fica **fora do envio**. A medição de 18/09 pegou isso acontecendo com uma organização real. O parâmetro errado estava suprimindo notificação em silêncio.
+
+Oráculo: `backend/test/agendor.prefetchDeCategorias.test.js` (7 casos; 5 ficam vermelhos contra o código anterior). `deploy/nginx.conf` subiu de `proxy_read_timeout 60s` para `180s` como margem — não como solução —, e `frontend/src/components/DealsList.jsx` deixou de quebrar com `Unexpected token '<'` quando a resposta não é JSON.
+
+### ❌ Aberto — o backend está fora do ar desde 18/09/2026
+
+Durante a validação, o processo entrou em **loop de reinício** e o PM2 esgotou as 10 tentativas de `ecosystem.config.js` (`max_restarts: 10`). Hoje o nginx responde **502 em tudo**; só o que não depende do backend (a página estática) continua de pé.
+
+O que foi observado de fora, sem acesso ao servidor:
+
+- `GET /api/health` e a página estática respondiam em ~25 ms;
+- todo `POST` (inclusive `/api/auth/login` com credenciais inválidas, que é um caminho sem rede e sem bcrypt) ficava pendurado até o 504 do nginx aos 60 s;
+- logo em seguida o processo morreu e passou a alternar 200/502 a cada poucos segundos, até parar de subir.
+
+**Não é o mesmo defeito da §6 acima** — `/api/deals/stale` era lento, não derrubava o processo — e a causa não é determinável daqui: exige `pm2 logs agendor-backend --err` e `/opt/agendor/logs/pm2-error.log`, no servidor. Uma hipótese a checar primeiro: `backend/src/index.js` não instala handler de `unhandledRejection` nem de `uncaughtException`, então qualquer promessa rejeitada sem `catch` derruba o processo no Node ≥ 15 sem deixar nada no log da aplicação — só no do PM2.
+
+Para religar e diagnosticar, no servidor:
+
+```bash
+pm2 restart agendor-backend        # o "errored" do PM2 não se recupera sozinho
+pm2 logs agendor-backend --err --lines 200
+tail -n 200 /opt/agendor/logs/pm2-error.log
+```
+
+## 7. Aberto, mas não bloqueia a subida
 
 Lacunas de usabilidade apontadas no parecer (P1/P2). Valem trabalho próprio, com teste:
 
@@ -146,7 +188,7 @@ Lacunas de usabilidade apontadas no parecer (P1/P2). Valem trabalho próprio, co
 
 ---
 
-## 7. Ordem de execução
+## 8. Ordem de execução
 
 1. Revisar e **mesclar o PR #9** (`dev` → `main`) — está verde e limpo, esperando revisão humana.
 2. Preparar o servidor com os cinco pré-requisitos da seção 2, **nessa ordem**.
