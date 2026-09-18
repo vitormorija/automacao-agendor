@@ -41,6 +41,14 @@ const MAX_PAGES = 200;
 // teste (agendor.loteDeOrganizacoes.test.js) DERIVE o número em vez de duplicar o literal.
 const LOTE_DE_ORGS = 10;
 
+// Páginas de `/organizations` em voo ao mesmo tempo no prefetch de categorias
+// (prefetchCategoriasDeOrganizacoes, abaixo). Medido contra a API real em 2026-09-18, listando as
+// 3.185 organizações da conta: 32 páginas sequenciais levam 62,5 s, em lotes de 5 levam 21,4 s, e
+// em lotes de 8 a quota do Agendor devolve 429 em metade das páginas. Cinco é o valor medido que
+// entrega o ganho sem provocar o 429 — e é o mesmo `batchSize` da paginação de negócios, que já
+// convive com esta borda no mesmo processo.
+const LOTE_DE_PAGINAS_DE_ORG = 5;
+
 // Busca todos os usuários com seus emails
 async function getUsers() {
   const users = {};
@@ -120,6 +128,91 @@ async function getOrgCategory(orgId, cache) {
     cache.set(orgId, CATEGORIA_INDECIDIVEL);
     return CATEGORIA_INDECIDIVEL;
   }
+}
+
+// Prefetch das categorias pela LISTAGEM de organizações, em vez de uma consulta por id.
+//
+// O QUE ISTO RESOLVE. A fase de categorias de getStaleDeals era a única do módulo cujo NÚMERO de
+// requisições cresce com o dado, e LOTE_DE_ORGS limitava a CONCORRÊNCIA dela — não a contagem.
+// Medido contra a API real em 2026-09-18, com o parâmetro de status já corrigido: 252 consultas a
+// `/organizations/:id`, das quais 31 voltaram HTTP 429, totalizando 117 s só nesta fase. O limite
+// do Agendor é de QUOTA ACUMULADA e não de paralelismo — baixar LOTE_DE_ORGS de 10 para 3 piorou o
+// número de 429 na medição, porque o que estoura é o total de requisições numa janela, não quantas
+// saem juntas. Contra quota, a defesa é pedir MENOS VEZES, e a listagem pagina 100 organizações por
+// requisição: as mesmas categorias saem em 32 requisições em vez de 252.
+//
+// POR QUE ISTO NÃO É UM CACHE. Nenhum valor atravessa execuções: a listagem é refeita a cada
+// chamada de getStaleDeals, exatamente como as consultas por id eram. A decisão REL-04/D-05 — uma
+// organização recategorizada no Agendor vale já na rodada seguinte — fica preservada por
+// construção, e não por disciplina de quem mexer aqui depois.
+//
+// A ESCOLHA ENTRE OS DOIS CAMINHOS É ARITMÉTICA, e por isso não envelhece. A listagem custa
+// `ceil(totalCount / 100)` requisições, a consulta por id custa uma por organização necessária:
+// vale a listagem só quando ela pede menos requisições. Hoje são 32 contra 252; num dia de poucos
+// negócios parados — cinco organizações, digamos — o número se inverte e a função devolve o mapa
+// vazio, deixando o chamador fazer as cinco consultas por id. A primeira página é o que revela
+// `totalCount`, então esse caso paga UMA requisição a mais para descobrir que não compensa.
+//
+// FALHA SEMPRE PARA O LADO SEGURO. O que esta função devolve é uma OTIMIZAÇÃO, nunca uma decisão:
+// toda organização ausente do mapa — porque a listagem não compensou, porque uma página falhou,
+// porque a organização foi criada entre duas páginas — volta para getOrgCategory por id no
+// chamador, com o retry e a sentinela CATEGORIA_INDECIDIVEL de sempre. O pior caso desta função é
+// ser exatamente o comportamento anterior, mais algumas requisições; ela não tem como produzir um
+// resultado ERRADO, só um resultado incompleto que o chamador completa.
+//
+// Um mapa PARCIAL é devolvido de propósito quando uma página falha no meio: as páginas que
+// chegaram trazem categoria correta, e descartá-las jogaria fora requisições já pagas para depois
+// refazê-las uma a uma. Só a MENSAGEM do erro é logada — o objeto de erro do axios carrega
+// `config.headers` com o AGENDOR_TOKEN (mesma regra do CR-02, e a Agendor ainda ecoa o header de
+// volta no corpo da resposta).
+async function prefetchCategoriasDeOrganizacoes(quantidadeNecessaria) {
+  const mapa = new Map();
+  if (quantidadeNecessaria <= 0) return mapa;
+
+  const registrar = (registros) => {
+    for (const org of registros || []) {
+      if (org?.id) mapa.set(org.id, org.category?.name || null);
+    }
+  };
+
+  try {
+    const { data: primeira } = await fetchWithRetry(() =>
+      api.get('/organizations', { params: { page: 1, per_page: 100 } }),
+    );
+    const totalPages = Math.ceil((primeira.meta?.totalCount || 0) / 100);
+
+    // Mesmo teto e mesma razão das três paginações do módulo (MAX_PAGES): o comprimento vem de
+    // `meta.totalCount`, um valor da RESPOSTA. Aqui, porém, estourá-lo NÃO é `throw` — esta borda
+    // é otimização, e a forma segura de desistir dela é devolver o que já se tem e deixar o
+    // caminho por id decidir.
+    if (totalPages > MAX_PAGES) {
+      logger.warn(
+        `[Agendor] /organizations anunciou ${totalPages} páginas (> ${MAX_PAGES}) — prefetch de categorias abandonado, seguindo por consulta individual.`,
+      );
+      return new Map();
+    }
+    if (totalPages >= quantidadeNecessaria) return new Map();
+
+    registrar(primeira.data);
+    const restantes = Array.from({ length: totalPages - 1 }, (_, i) => i + 2);
+    for (let i = 0; i < restantes.length; i += LOTE_DE_PAGINAS_DE_ORG) {
+      const lote = restantes.slice(i, i + LOTE_DE_PAGINAS_DE_ORG);
+      const respostas = await Promise.all(
+        lote.map((p) =>
+          fetchWithRetry(() =>
+            api.get('/organizations', { params: { page: p, per_page: 100 } }),
+          ),
+        ),
+      );
+      for (const { data } of respostas) registrar(data.data);
+    }
+  } catch (err) {
+    logger.warn(
+      `[Agendor] listagem de organizações falhou (${err.message}) — as categorias que faltarem serão consultadas uma a uma.`,
+    );
+  }
+
+  return mapa;
 }
 
 // Busca um negócio pelo ID, devolvendo o conteúdo já desembrulhado do envelope da Agendor.
@@ -289,11 +382,40 @@ async function fetchWithRetry(fn, retries = 3) {
   }
 }
 
+// O parâmetro de status da borda é `dealStatus`, e NÃO `deal_status_id`.
+//
+// A diferença não aparece como erro: um nome de parâmetro desconhecido não é recusado pela
+// API Agendor — ela responde 200 e devolve a BASE INTEIRA, em silêncio. Medido nesta conta em
+// 2026-09-18, `GET /v3/deals?per_page=1`:
+//
+//   deal_status_id=1 → totalCount 6021   (idêntico a não enviar filtro nenhum)
+//   sem filtro       → totalCount 6021
+//   dealStatus=1     → totalCount  565
+//
+// O custo medido em getStaleDeals contra a API real, ponta a ponta:
+//
+//   com deal_status_id → 61 páginas + 447 consultas de organização = 508 requisições, 153 s
+//   com dealStatus     →  6 páginas + 219 consultas de organização = 225 requisições,  70 s
+//
+// Os 153 s batem em `proxy_read_timeout 60s` (deploy/nginx.conf): o 504 do nginx chega ao
+// navegador como página HTML e o `r.json()` do painel quebra com `Unexpected token '<'` — é a
+// tela de negócios parados que não carrega. Por isso a correção é aqui, na origem, e não
+// aumentando o teto do nginx: o desperdício é que precisa sumir.
+//
+// A lista NÃO muda de conteúdo: o filtro por payload mais abaixo em getStaleDeals
+// (`dealStatusId !== 1`) já descartava os negócios ganhos/perdidos/congelados — só que DEPOIS
+// de a fase de categorias ter pago uma requisição HTTP por organização deles. Ele fica onde
+// está, de propósito: é a rede que segura o caso de a borda voltar a ignorar o parâmetro.
+//
+// O efeito mais grave não era a tela lenta. Sob esse volume a Agendor responde 429 nas
+// consultas de organização, getOrgCategory esgota o retry e grava CATEGORIA_INDECIDIVEL — e
+// negócio indecidível fica FORA do envio. A medição de 2026-09-18 pegou isso acontecendo com
+// uma organização real. Ou seja: o parâmetro errado estava suprimindo notificação.
 async function fetchDealsPage(page, perPage, retries = 3) {
   const { data } = await fetchWithRetry(
     () =>
       api.get('/deals', {
-        params: { page, per_page: perPage, deal_status_id: 1 },
+        params: { page, per_page: perPage, dealStatus: 1 },
       }),
     retries,
   );
@@ -419,8 +541,22 @@ async function getStaleDeals(staleDays = 15) {
   // agendor.loteDeOrganizacoes.test.js, que mede CONCORRÊNCIA EM VOO: uma "otimização" que volte ao
   // Promise.all único sobre uniqueOrgIds fica vermelha lá.
   const categoriaPorOrg = new Map();
-  for (let i = 0; i < uniqueOrgIds.length; i += LOTE_DE_ORGS) {
-    const lote = uniqueOrgIds.slice(i, i + LOTE_DE_ORGS);
+
+  // Primeiro a listagem em lote (prefetchCategoriasDeOrganizacoes, acima), que resolve a maioria
+  // das organizações por um punhado de requisições. O que ela não trouxer cai no laço por id logo
+  // abaixo — que é o caminho de antes, byte a byte, com o mesmo teto de concorrência, o mesmo
+  // retry e a mesma sentinela CATEGORIA_INDECIDIVEL. Quem lê `faltantes` está lendo a lista das
+  // organizações para as quais a otimização não valeu; num dia em que a listagem não compensa ela
+  // devolve o mapa vazio e `faltantes` é `uniqueOrgIds` inteiro, ou seja, o comportamento original.
+  const doLote = await prefetchCategoriasDeOrganizacoes(uniqueOrgIds.length);
+  const faltantes = [];
+  for (const id of uniqueOrgIds) {
+    if (doLote.has(id)) categoriaPorOrg.set(id, doLote.get(id));
+    else faltantes.push(id);
+  }
+
+  for (let i = 0; i < faltantes.length; i += LOTE_DE_ORGS) {
+    const lote = faltantes.slice(i, i + LOTE_DE_ORGS);
     const pares = await Promise.all(
       lote.map(async (id) => [id, await getOrgCategory(id, cacheDaExecucao)]),
     );
@@ -577,6 +713,7 @@ module.exports = {
   CATEGORIA_INDECIDIVEL,
   MAX_PAGES,
   LOTE_DE_ORGS,
+  LOTE_DE_PAGINAS_DE_ORG,
   getUsers,
   getStaleDeals,
   getDealById,
