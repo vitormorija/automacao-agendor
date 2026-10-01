@@ -138,7 +138,9 @@ Não reabrir estes itens:
 
 O código subiu na VPN da Cadmus em **01/09/2026**, em `http://10.10.15.23/`, com PM2 e nginx ativos no boot. O deploy foi feito pela infraestrutura da Cadmus — este repositório **não** tem entrega contínua (ver §8).
 
-### ✅ Resolvido em 18/09/2026 — a tela de negócios parados não carregava
+### ⏳ Corrigido no código em 18/09/2026, ainda não publicado — a tela de negócios parados não carregava
+
+**Em 01/10/2026 a instância ainda servia o código de antes da correção.** O bundle publicado é `index-C7IkgZYX.js`, idêntico byte a byte ao build de `431a63c` (PR #10); o build da `main` com a correção (`ed3e98e`, PR #11) gera `index-Cjzfc6L4.js`. Até a Cadmus atualizar o servidor, o painel da VPN continua sem carregar a tela de negócios parados. Para conferir de fora qual versão está no ar, compare o nome do `index-*.js` servido em `/` com um `vite build` local do commit suspeito.
 
 A pendência relatada na subida ("a listagem agregada `/api/deals/stale` excedeu 180 segundos porque o Agendor respondeu 429") tinha duas causas, as duas no código e as duas medidas contra a API real:
 
@@ -156,9 +158,9 @@ A pendência relatada na subida ("a listagem agregada `/api/deals/stale` excedeu
 
 Oráculo: `backend/test/agendor.prefetchDeCategorias.test.js` (7 casos; 5 ficam vermelhos contra o código anterior). `deploy/nginx.conf` subiu de `proxy_read_timeout 60s` para `180s` como margem — não como solução —, e `frontend/src/components/DealsList.jsx` deixou de quebrar com `Unexpected token '<'` quando a resposta não é JSON.
 
-### ❌ Aberto — o backend está fora do ar desde 18/09/2026
+### ❌ Aberto — o backend caiu em loop de reinício em 18/09/2026, causa não determinada
 
-Durante a validação, o processo entrou em **loop de reinício** e o PM2 esgotou as 10 tentativas de `ecosystem.config.js` (`max_restarts: 10`). Hoje o nginx responde **502 em tudo**; só o que não depende do backend (a página estática) continua de pé.
+Durante a validação, o processo entrou em **loop de reinício** e o PM2 esgotou as 10 tentativas de `ecosystem.config.js` (`max_restarts: 10`), deixando o nginx em **502 em tudo**. Em 01/10/2026 o backend estava de volta (`/api/health` → 200, `env: production`), mas a causa da queda segue desconhecida — pode se repetir.
 
 O que foi observado de fora, sem acesso ao servidor:
 
