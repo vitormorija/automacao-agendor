@@ -138,9 +138,9 @@ Não reabrir estes itens:
 
 O código subiu na VPN da Cadmus em **01/09/2026**, em `http://10.10.15.23/`, com PM2 e nginx ativos no boot. O deploy foi feito pela infraestrutura da Cadmus — este repositório **não** tem entrega contínua (ver §8).
 
-### ⏳ Corrigido no código em 18/09/2026, ainda não publicado — a tela de negócios parados não carregava
+### ✅ Resolvido e publicado — a tela de negócios parados não carregava
 
-**Em 01/10/2026 a instância ainda servia o código de antes da correção.** O bundle publicado é `index-C7IkgZYX.js`, idêntico byte a byte ao build de `431a63c` (PR #10); o build da `main` com a correção (`ed3e98e`, PR #11) gera `index-Cjzfc6L4.js`. Até a Cadmus atualizar o servidor, o painel da VPN continua sem carregar a tela de negócios parados. Para conferir de fora qual versão está no ar, compare o nome do `index-*.js` servido em `/` com um `vite build` local do commit suspeito.
+Corrigido no código em 18/09/2026 (PR #11) e **publicado em 01/10/2026** junto com o PR #14 (`main` @ `100f325`; a instância passou a servir `index-Cjzfc6L4.js`). Para conferir de fora qual versão está no ar, compare o nome do `index-*.js` servido em `/` com um `vite build` local do commit suspeito.
 
 A pendência relatada na subida ("a listagem agregada `/api/deals/stale` excedeu 180 segundos porque o Agendor respondeu 429") tinha duas causas, as duas no código e as duas medidas contra a API real:
 
@@ -158,25 +158,18 @@ A pendência relatada na subida ("a listagem agregada `/api/deals/stale` excedeu
 
 Oráculo: `backend/test/agendor.prefetchDeCategorias.test.js` (7 casos; 5 ficam vermelhos contra o código anterior). `deploy/nginx.conf` subiu de `proxy_read_timeout 60s` para `180s` como margem — não como solução —, e `frontend/src/components/DealsList.jsx` deixou de quebrar com `Unexpected token '<'` quando a resposta não é JSON.
 
-### ❌ Aberto — o backend caiu em loop de reinício em 18/09/2026, causa não determinada
+### ✅ Causa encontrada — a queda de 18/09/2026 foi disco cheio
 
-Durante a validação, o processo entrou em **loop de reinício** e o PM2 esgotou as 10 tentativas de `ecosystem.config.js` (`max_restarts: 10`), deixando o nginx em **502 em tudo**. Em 01/10/2026 o backend estava de volta (`/api/health` → 200, `env: production`), mas a causa da queda segue desconhecida — pode se repetir.
+Durante a validação de 18/09 o processo entrou em **loop de reinício** e o PM2 esgotou as 10 tentativas de `ecosystem.config.js` (`max_restarts: 10`), deixando o nginx em 502. Com o acesso SSH liberado em 01/10, o `/opt/agendor/logs/pm2-error.log` mostrou a causa: **`ENOSPC: no space left on device`** e **`SqliteError: database or disk is full`** em `logLogin` (`backend/src/db.js`), chamado de `routes/auth.js` dentro do handler assíncrono de login. A gravação falhava, a promessa rejeitava sem `catch` (`unhandledRejection`) e o processo morria — o que explica também os `POST` pendurados até o 504.
 
-O que foi observado de fora, sem acesso ao servidor:
+Em 07/10/2026 o volume raiz tinha **97 GB, 41% usados** e o backend estava de pé desde 01/10 sem reinício. O banco fica em `/var/lib/agendor/agendor.db`, com backup diário às 06h em `/var/lib/agendor/backups/`.
 
-- `GET /api/health` e a página estática respondiam em ~25 ms;
-- todo `POST` (inclusive `/api/auth/login` com credenciais inválidas, que é um caminho sem rede e sem bcrypt) ficava pendurado até o 504 do nginx aos 60 s;
-- logo em seguida o processo morreu e passou a alternar 200/502 a cada poucos segundos, até parar de subir.
+Continua valendo como melhoria, não como bloqueio:
 
-**Não é o mesmo defeito da §6 acima** — `/api/deals/stale` era lento, não derrubava o processo — e a causa não é determinável daqui: exige `pm2 logs agendor-backend --err` e `/opt/agendor/logs/pm2-error.log`, no servidor. Uma hipótese a checar primeiro: `backend/src/index.js` não instala handler de `unhandledRejection` nem de `uncaughtException`, então qualquer promessa rejeitada sem `catch` derruba o processo no Node ≥ 15 sem deixar nada no log da aplicação — só no do PM2.
+- **Espaço em disco precisa de alerta** do lado da infraestrutura — encher de novo derruba o processo do mesmo jeito.
+- `backend/src/index.js` não instala handler de `unhandledRejection`; uma falha de gravação no log de login não deveria derrubar o servidor inteiro. Mudança de comportamento: exige teste próprio.
 
-Para religar e diagnosticar, no servidor:
-
-```bash
-pm2 restart agendor-backend        # o "errored" do PM2 não se recupera sozinho
-pm2 logs agendor-backend --err --lines 200
-tail -n 200 /opt/agendor/logs/pm2-error.log
-```
+Acesso: `ssh vitormorija@10.10.15.23` (chave `~/.ssh/agendor_deploy`, alias `agendor`). O usuário está no grupo `agendor` — **lê** os logs e o código, mas o PM2 roda como `agendor` e `sudo` pede senha, então **reiniciar e publicar ainda dependem da infraestrutura da Cadmus**.
 
 ## 7. Aberto, mas não bloqueia a subida
 
