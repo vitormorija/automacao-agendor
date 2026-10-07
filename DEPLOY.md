@@ -140,7 +140,7 @@ O código subiu na VPN da Cadmus em **01/09/2026**, em `http://10.10.15.23/`, co
 
 ### ✅ Resolvido e publicado — a tela de negócios parados não carregava
 
-Corrigido no código em 18/09/2026 (PR #11) e **publicado em 01/10/2026** junto com o PR #14 (`main` @ `100f325`; a instância passou a servir `index-Cjzfc6L4.js`). Para conferir de fora qual versão está no ar, compare o nome do `index-*.js` servido em `/` com um `vite build` local do commit suspeito.
+Corrigido no código em 18/09/2026 (PR #11) e **publicado em 01/10/2026** junto com o PR #14 (`main` @ `100f325`; a instância passou a servir `index-Cjzfc6L4.js`). **Pendente de publicação:** o PR #16 (`proxy-addr` 2.0.8, alerta crítico, só `backend/package-lock.json`) entrou na `main` em 07/10/2026 e ainda não está no servidor — basta `git pull`, `npm ci --omit=dev` no backend e `pm2 restart agendor-backend`; o frontend não muda. Para conferir de fora qual versão está no ar, compare o nome do `index-*.js` servido em `/` com um `vite build` local do commit suspeito.
 
 A pendência relatada na subida ("a listagem agregada `/api/deals/stale` excedeu 180 segundos porque o Agendor respondeu 429") tinha duas causas, as duas no código e as duas medidas contra a API real:
 
