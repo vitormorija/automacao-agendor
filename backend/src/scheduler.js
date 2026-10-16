@@ -573,6 +573,10 @@ async function runCheck() {
     );
   } catch (err) {
     results.error = err.message;
+    // Marca a rodada que NÃO concluiu — distinta de uma rodada que concluiu com alarme em
+    // `results.error` (supressão total por categoria). Só esta é retentada pelo agendamento:
+    // ver runScheduledCheck.
+    results.abortada = true;
     logger.error('[Scheduler] Erro na verificação:', err);
   } finally {
     isRunning = false;
@@ -647,7 +651,55 @@ async function runWeeklySummary() {
   }
 }
 
+// ── Retentativa da rodada agendada ──────────────────────────────
+//
+// Em 15/10/2026 a consulta de tarefas futuras passou dos 15 s de timeout às 8h, a rodada
+// abortou inteira e ninguém foi notificado naquele dia — a próxima chance era só o cron do dia
+// seguinte. O timeout por requisição continua sem retry (ver o comentário de `api` em
+// agendor.js); quem tenta de novo é a RODADA, mais tarde, quando a lentidão da borda já passou.
+//
+// Reenvio não é risco: a dedup do dia (alreadyNotifiedToday) pula o negócio já notificado, e
+// uma rodada abortada nem chegou ao laço de envio. Só a rodada ABORTADA é retentada — uma que
+// concluiu com alarme, ou uma recusada pelo lock (outra rodada em voo), não.
+const RETENTATIVA_INTERVALO_MS = 15 * 60 * 1000;
+const MAX_RETENTATIVAS = 3;
+let retentativaTimer = null;
+
+function cancelarRetentativa() {
+  if (retentativaTimer) {
+    clearTimeout(retentativaTimer);
+    retentativaTimer = null;
+  }
+}
+
+async function runScheduledCheck({ tentativa = 0, agendar = setTimeout } = {}) {
+  retentativaTimer = null;
+  const results = await runCheck();
+  if (!results.abortada) return results;
+
+  // O operador pode ter desligado as notificações entre uma tentativa e outra.
+  if (getConfig('notifications_enabled') !== 'true') return results;
+
+  if (tentativa >= MAX_RETENTATIVAS) {
+    logger.error(
+      `[Scheduler] Rodada abortada ${tentativa + 1} vez(es) — desistindo até o próximo agendamento. Último erro: ${results.error}`,
+    );
+    return results;
+  }
+
+  const minutos = RETENTATIVA_INTERVALO_MS / 60000;
+  logger.warn(
+    `[Scheduler] Rodada abortada (${results.error}) — nova tentativa em ${minutos} min (${tentativa + 1}/${MAX_RETENTATIVAS})`,
+  );
+  retentativaTimer = agendar(
+    () => runScheduledCheck({ tentativa: tentativa + 1, agendar }),
+    RETENTATIVA_INTERVALO_MS,
+  );
+  return results;
+}
+
 function scheduleTask() {
+  cancelarRetentativa();
   if (currentTask) {
     currentTask.stop();
     currentTask = null;
@@ -666,7 +718,7 @@ function scheduleTask() {
   }
 
   logger.info(`[Scheduler] Agendado com: "${schedule}"`);
-  currentTask = cron.schedule(schedule, runCheck, {
+  currentTask = cron.schedule(schedule, () => runScheduledCheck(), {
     timezone: 'America/Sao_Paulo',
   });
 
@@ -757,6 +809,7 @@ async function runCheckOnly() {
 
 // Para todos os agendamentos (usado no graceful shutdown).
 function stopTasks() {
+  cancelarRetentativa();
   if (currentTask) {
     currentTask.stop();
     currentTask = null;
@@ -777,3 +830,8 @@ module.exports = { scheduleTask, runCheck, runCheckOnly, getStatus, stopTasks };
 // corpo de runWeeklySummary, logando '[Scheduler] Erro no resumo semanal:').
 // Acrescentar a propriedade não muda o que scheduleTask agenda nem quem chama o quê.
 module.exports.runWeeklySummary = runWeeklySummary;
+
+// Seam de teste da retentativa: em produção ela só é alcançada pelo cron de scheduleTask, e
+// scheduler.retentativa.test.js precisa chamá-la direto, com um `agendar` falso no lugar do
+// setTimeout de 15 minutos.
+module.exports.runScheduledCheck = runScheduledCheck;
