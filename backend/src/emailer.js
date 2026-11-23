@@ -168,11 +168,28 @@ function dealEmailHtml({ deal, ownerName, role, logId }) {
   const createdDate = new Date(deal.createdAt).toLocaleDateString('pt-BR');
   const color = urgencyColor(deal.daysSinceUpdate);
 
-  const tipoLabel = deal.dealType === 'Lead' ? 'lead' : 'negócio';
+  // O aviso é sempre sobre o NEGÓCIO (a oportunidade), nunca sobre a empresa. Até nov/2026 o
+  // texto dizia "Lead parado" quando a empresa era da categoria Lead (ou sem categoria), e quem
+  // recebia ia conferir a EMPRESA — que pode ter outro dono e atualizações recentes — e concluía
+  // que o aviso estava errado. Lead/Negócio continua aparecendo, mas só como tipo de cliente.
   const greeting =
     role === 'author'
-      ? `Olá, <strong>${ownerName}</strong>! Um ${tipoLabel} que você criou está sem atualização há <strong style="color:${color};">${deal.daysSinceUpdate} dias</strong>.`
-      : `Olá, <strong>${ownerName}</strong>! Um ${tipoLabel} sob sua responsabilidade está sem atualização há <strong style="color:${color};">${deal.daysSinceUpdate} dias</strong>.`;
+      ? `Olá, <strong>${ownerName}</strong>! Um negócio que você criou está sem atualização há <strong style="color:${color};">${deal.daysSinceUpdate} dias</strong>.`
+      : `Olá, <strong>${ownerName}</strong>! Um negócio sob sua responsabilidade está sem atualização há <strong style="color:${color};">${deal.daysSinceUpdate} dias</strong>.`;
+
+  // Responsável divergente (ver agendor.js, getStaleDeals): a empresa mudou de dono e o
+  // negócio ficou no nome anterior. Diz o que fazer, porque é isso que encerra os avisos.
+  const avisoDivergencia = deal.responsavelDivergente
+    ? `
+          <table width="100%" cellpadding="0" cellspacing="0" style="background:#fffbeb;border-left:3px solid #d97706;border-radius:4px;margin-bottom:20px;">
+            <tr><td style="padding:12px 16px;">
+              <p style="margin:0;font-size:13px;color:#92400e;line-height:1.5;">
+                <strong>Atenção: responsáveis diferentes.</strong> A empresa <strong>${deal.organization || '—'}</strong> hoje está com <strong>${deal.orgOwnerName}</strong>, mas este negócio continua no nome de <strong>${deal.ownerName || '—'}</strong> — ao transferir uma empresa, o Agendor não transfere os negócios dela.<br>
+                Se este negócio deveria ter acompanhado a empresa, transfira-o para quem cuida dela; se a oportunidade acabou, encerre-o como perdido. Se ele continua com você, basta atualizá-lo no card.
+              </p>
+            </td></tr>
+          </table>`
+    : '';
 
   return `<!DOCTYPE html>
 <html>
@@ -185,19 +202,20 @@ function dealEmailHtml({ deal, ownerName, role, logId }) {
         <!-- Header -->
         <tr><td style="background:#1a56db;border-radius:10px 10px 0 0;padding:24px 28px;">
           <p style="margin:0;color:rgba(255,255,255,0.75);font-size:12px;letter-spacing:1px;text-transform:uppercase;">Automação Agendor · Monitor de Negócios</p>
-          <h1 style="margin:8px 0 0 0;color:#fff;font-size:20px;">⚠️ ${deal.dealType === 'Lead' ? 'Lead' : 'Negócio'} parado há ${deal.daysSinceUpdate} dias</h1>
+          <h1 style="margin:8px 0 0 0;color:#fff;font-size:20px;">⚠️ Negócio parado há ${deal.daysSinceUpdate} dias</h1>
         </td></tr>
 
         <!-- Body -->
         <tr><td style="background:#fff;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 10px 10px;padding:28px;">
 
           <p style="margin:0 0 20px 0;font-size:15px;color:#374151;line-height:1.5;">${greeting}</p>
+${avisoDivergencia}
 
           <!-- Deal card -->
           <table width="100%" cellpadding="0" cellspacing="0" style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;margin-bottom:24px;">
             <tr><td style="padding:16px 20px;border-bottom:1px solid #e5e7eb;">
               <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
-                <span style="font-size:11px;color:#9ca3af;text-transform:uppercase;letter-spacing:0.5px;">${deal.dealType === 'Lead' ? 'Lead' : 'Negócio'}</span>
+                <span style="font-size:11px;color:#9ca3af;text-transform:uppercase;letter-spacing:0.5px;">Tipo de cliente</span>
                 <span style="display:inline-block;padding:2px 10px;border-radius:99px;font-size:11px;font-weight:700;
                   background:${deal.dealType === 'Lead' ? '#eff6ff' : '#f0fdf4'};
                   color:${deal.dealType === 'Lead' ? '#1d4ed8' : '#15803d'};
@@ -260,7 +278,7 @@ function dealEmailHtml({ deal, ownerName, role, logId }) {
           <table width="100%" cellpadding="0" cellspacing="0" style="background:#eff6ff;border-left:3px solid #1a56db;border-radius:4px;margin-bottom:20px;">
             <tr><td style="padding:12px 16px;">
               <p style="margin:0;font-size:12px;color:#1e40af;line-height:1.5;">
-                <strong>O que conta como atualização?</strong> Qualquer ação dentro do card: comentário, mudança de etapa, nova tarefa ou alteração de campos.
+                <strong>O que conta como atualização?</strong> Qualquer ação dentro do card do negócio: comentário, mudança de etapa, nova tarefa ou alteração de campos. Registros feitos só na empresa ou no contato não contam — abra o negócio pelo botão acima.
               </p>
             </td></tr>
           </table>
@@ -343,9 +361,8 @@ async function sendMailWithRetry(transporter, mailOptions, retries = 3) {
 async function sendStaleNotification({ deal, ownerEmail, authorEmail, logId }) {
   let transporter = createTransporter();
   const from = getConfig('smtp_from') || getConfig('smtp_user');
-  const tipoSubject = deal.dealType === 'Lead' ? 'Lead' : 'Negócio';
   const subject = assuntoSeguro(
-    `⚠️ ${tipoSubject} parado há ${deal.daysSinceUpdate} dias: ${deal.title}`,
+    `⚠️ Negócio parado há ${deal.daysSinceUpdate} dias: ${deal.title}`,
   );
   const results = [];
 

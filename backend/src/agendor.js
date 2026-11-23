@@ -114,7 +114,10 @@ async function getUsers() {
 // A guarda `!orgId` continua devolvendo `null`, e não a sentinela: negócio sem organização não
 // tem consulta a falhar — é sem categoria, não indecidível. Oráculo dos dois caminhos:
 // backend/test/agendor.categoriaIndecidivel.test.js.
-async function getOrgCategory(orgId, cache) {
+// `donos` é opcional e só ANOTA o responsável da organização, que chega na mesma resposta da
+// categoria. Ele é informativo (aviso de responsável divergente no e-mail) e não decide nada:
+// numa falha, o dono simplesmente fica ausente e o aviso não aparece.
+async function getOrgCategory(orgId, cache, donos) {
   if (!orgId) return null;
   if (cache.has(orgId)) return cache.get(orgId);
   try {
@@ -122,6 +125,7 @@ async function getOrgCategory(orgId, cache) {
       api.get(`/organizations/${orgId}`),
     );
     const category = data.data?.category?.name || null;
+    donos?.set(orgId, data.data?.ownerUser || null);
     cache.set(orgId, category);
     return category;
   } catch {
@@ -165,13 +169,16 @@ async function getOrgCategory(orgId, cache) {
 // refazê-las uma a uma. Só a MENSAGEM do erro é logada — o objeto de erro do axios carrega
 // `config.headers` com o AGENDOR_TOKEN (mesma regra do CR-02, e a Agendor ainda ecoa o header de
 // volta no corpo da resposta).
-async function prefetchCategoriasDeOrganizacoes(quantidadeNecessaria) {
+async function prefetchCategoriasDeOrganizacoes(quantidadeNecessaria, donos) {
   const mapa = new Map();
   if (quantidadeNecessaria <= 0) return mapa;
 
+  // `donos`: mesma anotação informativa de getOrgCategory — ver o comentário lá.
   const registrar = (registros) => {
     for (const org of registros || []) {
-      if (org?.id) mapa.set(org.id, org.category?.name || null);
+      if (!org?.id) continue;
+      mapa.set(org.id, org.category?.name || null);
+      donos?.set(org.id, org.ownerUser || null);
     }
   };
 
@@ -548,7 +555,13 @@ async function getStaleDeals(staleDays = 15) {
   // retry e a mesma sentinela CATEGORIA_INDECIDIVEL. Quem lê `faltantes` está lendo a lista das
   // organizações para as quais a otimização não valeu; num dia em que a listagem não compensa ela
   // devolve o mapa vazio e `faltantes` é `uniqueOrgIds` inteiro, ou seja, o comportamento original.
-  const doLote = await prefetchCategoriasDeOrganizacoes(uniqueOrgIds.length);
+  // Responsável de cada organização, colhido de carona nas mesmas respostas da categoria — sem
+  // nenhuma requisição a mais. Alimenta só o aviso de responsável divergente (ver o laço abaixo).
+  const donoPorOrg = new Map();
+  const doLote = await prefetchCategoriasDeOrganizacoes(
+    uniqueOrgIds.length,
+    donoPorOrg,
+  );
   const faltantes = [];
   for (const id of uniqueOrgIds) {
     if (doLote.has(id)) categoriaPorOrg.set(id, doLote.get(id));
@@ -558,7 +571,10 @@ async function getStaleDeals(staleDays = 15) {
   for (let i = 0; i < faltantes.length; i += LOTE_DE_ORGS) {
     const lote = faltantes.slice(i, i + LOTE_DE_ORGS);
     const pares = await Promise.all(
-      lote.map(async (id) => [id, await getOrgCategory(id, cacheDaExecucao)]),
+      lote.map(async (id) => [
+        id,
+        await getOrgCategory(id, cacheDaExecucao, donoPorOrg),
+      ]),
     );
     for (const [id, categoria] of pares) categoriaPorOrg.set(id, categoria);
   }
@@ -600,6 +616,17 @@ async function getStaleDeals(staleDays = 15) {
       );
     }
 
+    // Responsável divergente: a organização foi passada para outra pessoa e o negócio ficou para
+    // trás no nome da anterior. O Agendor não transfere os negócios junto com a empresa, e quem
+    // recebe o aviso costuma olhar a EMPRESA — vê outro dono e atualizações recentes nela — e
+    // conclui que o e-mail está errado (caso real: Hydra Foods, negócio 43047037, nov/2026).
+    // É só INFORMATIVO: quem recebe continua sendo decidido exatamente como antes. Só compara
+    // quando os dois ids são conhecidos — dono ausente nunca gera aviso.
+    const donoDaOrg = donoPorOrg.get(deal.organization?.id) || null;
+    const responsavelDivergente = Boolean(
+      donoDaOrg?.id && deal.owner?.id && donoDaOrg.id !== deal.owner.id,
+    );
+
     allDeals.push({
       id: deal.id,
       title: deal.title?.trim(),
@@ -608,6 +635,8 @@ async function getStaleDeals(staleDays = 15) {
       authorId: deal.author?.id || null,
       authorName: deal.author?.name || null,
       organization: deal.organization?.name || null,
+      orgOwnerName: donoDaOrg?.name || null,
+      responsavelDivergente,
       orgCategory,
       categoriaIndecidivel,
       dealType: getDealType(orgCategory),
